@@ -211,6 +211,13 @@
             </exclusions>
         </dependency>
 
+        <!-- Model API (persistence-free types including ServiceDaemon interface) -->
+        <dependency>
+            <groupId>org.opennms.core</groupId>
+            <artifactId>org.opennms.core.model-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- javax.persistence API — needed at runtime so legacy opennms-model classes
              on the classpath don't cause ClassNotFoundException when Spring's classpath
              scanner encounters them. -->

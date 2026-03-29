@@ -1,0 +1,37 @@
+server:
+  port: 8080
+
+opennms:
+  home: ${OPENNMS_HOME:/opt/minion}
+  instance:
+    id: ${OPENNMS_INSTANCE_ID:OpenNMS}
+  minion:
+    id: ${MINION_ID:minion-default-01}
+    location: ${MINION_LOCATION:Default}
+    rpc.enabled: true
+    sink.enabled: true
+    twin.enabled: true
+    snmp.enabled: true
+    icmp.enabled: true
+    traps.enabled: true
+    syslog.enabled: true
+    poller.enabled: true
+    collector.enabled: true
+    detector.enabled: true
+    telemetry.enabled: true
+    heartbeat.enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_IPC_BOOTSTRAP_SERVERS:localhost:9092}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env,detectors,monitors,collectors
+  endpoint:
+    health:
+      show-details: always
+
+spring:
+  application:
+    name: opennms-minion

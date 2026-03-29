@@ -17,7 +17,7 @@
 #
 # Prerequisites:
 #   - Delta-V deployed: docker compose up -d
-#   - Minion healthy: docker compose exec minion bin/client "opennms:health-check"
+#   - Minion healthy: curl -sf http://localhost:8301/actuator/health
 #   - snmptrap available on host (net-snmp)
 #
 # Exit codes:
@@ -168,8 +168,8 @@ if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qw "delta-v-minion"; th
 fi
 ok "All required services running (including Minion)"
 
-# Verify Minion location
-MINION_LOCATION=$(docker compose exec -T minion cat /opt/minion/etc/org.opennms.minion.controller.cfg 2>/dev/null | grep "location" | head -1 | cut -d= -f2 | tr -d ' ' || echo "unknown")
+# Verify Minion location (Boot4: read from Spring env, not Karaf cfg file)
+MINION_LOCATION=$(docker compose exec -T minion sh -c 'echo ${MINION_LOCATION:-unknown}' 2>/dev/null || echo "unknown")
 log "Minion location: $MINION_LOCATION"
 
 # ── Start Kafka Consumers ─────────────────────────────────────────

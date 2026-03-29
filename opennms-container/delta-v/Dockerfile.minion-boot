@@ -1,0 +1,23 @@
+ARG JRE_IMAGE=opennms/jre-deltav:21
+FROM ${JRE_IMAGE}
+
+LABEL org.opencontainers.image.title="Delta-V Minion (Spring Boot)"
+LABEL org.opencontainers.image.description="Spring Boot 4 Minion - SNMP/ICMP proxy, trap/syslog listener, telemetry receiver"
+
+# ICMP proxy requires NET_RAW capability. On Alpine/musl, setcap on the Java
+# binary breaks libjli.so resolution (musl ignores LD_LIBRARY_PATH for
+# capability-enhanced binaries). Instead, grant NET_RAW via Docker's
+# --cap-add=NET_RAW in docker-compose.yml.
+USER root
+
+RUN addgroup -g 10001 minion && \
+    adduser -u 10001 -G minion -h /opt/minion -s /bin/sh -D minion && \
+    mkdir -p /opt/minion/etc && chown -R minion:minion /opt/minion
+
+COPY --chmod=755 entrypoint-minion.sh /opt/entrypoint-minion.sh
+COPY staging/minion-boot/daemon-boot-minion.jar /opt/daemon-boot-minion.jar
+
+EXPOSE 8080/tcp 1162/udp 1514/udp
+
+USER minion
+ENTRYPOINT ["/opt/entrypoint-minion.sh"]

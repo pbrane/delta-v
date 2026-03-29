@@ -91,9 +91,11 @@ services:
       retries: 3
 
   minion:
-    image: opennms/minion-deltav:${VERSION}
+    image: opennms/minion-boot:${VERSION}
     container_name: delta-v-minion
     hostname: minion-default-01
+    cap_add:
+      - NET_RAW
     depends_on:
       kafka:
         condition: service_healthy
@@ -104,22 +106,16 @@ services:
       JAVA_OPTS: >-
         -Xms256m -Xmx512m
         -Djava.security.egd=file:/dev/./urandom
-    volumes:
-      - minion-data:/opt/minion/data
     ports:
-      - "8301:8201"
-      - "11162:1162/udp"
-      - "1514:1514/udp"
+      - "8301:8080"           # Actuator (was 8201 Karaf SSH)
+      - "11162:1162/udp"      # SNMP Trapd
+      - "1514:1514/udp"       # Syslog
     healthcheck:
-      # Check Kafka RPC/Sink/Twin connectivity via the health API.
-      # Skip the Echo RPC passive check (requires probes from monolithic OpenNMS)
-      # and the bundle check (some bundles have unresolved optional deps).
-      # If all 3 Kafka connections show "Success", Minion can process RPC requests.
-      test: ["CMD-SHELL", "curl -sf 'http://localhost:8181/minion/rest/health?tag=broker' | grep -o '\"Success\"' | wc -l | grep -q '[3-9]'"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
       interval: 30s
       timeout: 10s
       retries: 10
-      start_period: 60s
+      start_period: 45s
 
   pollerd:
     profiles: [lite, full]
@@ -483,5 +479,4 @@ services:
 volumes:
   pgdata:
   kafkadata:
-  minion-data:
   collectd-data:

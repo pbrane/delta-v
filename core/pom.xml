@@ -34,6 +34,8 @@
     <module>criteria</module>
     <module>daemon</module>
     <module>daemon-common</module>
+    <module>daemon-boot-minion-common</module>
+    <module>daemon-boot-minion</module>
     <module>daemon-sink-kafka</module>
     <module>daemon-boot-alarmd</module>
     <module>daemon-boot-trapd</module>

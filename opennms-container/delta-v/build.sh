@@ -202,11 +202,29 @@ do_deltav_images() {
         -t "opennms/minion-deltav:latest" \
         .
 
+    # --- Stage Minion Boot fat JAR ---
+    log "Staging Minion Boot fat JAR..."
+    mkdir -p "$SCRIPT_DIR/staging/minion-boot"
+    # Copy only the fat JAR (exclude -sources.jar, -javadoc.jar, .original)
+    find "$REPO_ROOT/core/daemon-boot-minion/target" \
+        -maxdepth 1 -name "*.jar" \
+        ! -name "*-sources.jar" ! -name "*-javadoc.jar" ! -name "*.original" \
+        -exec cp {} "$SCRIPT_DIR/staging/minion-boot/daemon-boot-minion.jar" \;
+
+    # --- Build Minion Boot image ---
+    log "Building opennms/minion-boot:$VERSION..."
+    docker build \
+        --build-arg "VERSION=$VERSION" \
+        -f Dockerfile.minion-boot \
+        -t "opennms/minion-boot:$VERSION" \
+        -t "opennms/minion-boot:latest" \
+        .
+
     # Clean up staging
     rm -rf "$SCRIPT_DIR/staging"
 
     log "Delta-V images built:"
-    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav" | sort | head -20
+    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot" | sort | head -20
 }
 
 
