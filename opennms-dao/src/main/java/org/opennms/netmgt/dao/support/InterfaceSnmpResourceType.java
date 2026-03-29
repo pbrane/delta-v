@@ -46,6 +46,7 @@ import org.opennms.netmgt.model.OnmsResource;
 import org.opennms.netmgt.model.OnmsResourceType;
 import org.opennms.netmgt.model.OnmsSnmpInterface;
 import org.opennms.netmgt.model.ResourcePath;
+import org.opennms.netmgt.model.ResourceNodeUtils;
 import org.opennms.netmgt.model.ResourceTypeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,7 +113,7 @@ public class InterfaceSnmpResourceType implements OnmsResourceType {
     public List<OnmsResource> getResourcesForParent(OnmsResource parent) {
         final Set<String> ifaces = getQueryableInterfaces(parent);
         if (NodeResourceType.isNode(parent)) {
-            OnmsNode node = ResourceTypeUtils.getNodeFromResource(parent);
+            OnmsNode node = ResourceNodeUtils.getNodeFromResource(parent);
             return getNodeResources(parent.getPath(), ifaces, node);
         } else if (DomainResourceType.isDomain(parent)) {
             return getDomainResources(parent.getPath(), ifaces);
@@ -136,7 +137,7 @@ public class InterfaceSnmpResourceType implements OnmsResourceType {
         }
 
         // Grab the node entity
-        final OnmsNode node = ResourceTypeUtils.getNodeFromResource(parent);
+        final OnmsNode node = ResourceNodeUtils.getNodeFromResource(parent);
 
         // Verify that the requested resource exists
         final ResourcePath resourcePath = new ResourcePath(parent.getPath(), name);

@@ -32,6 +32,7 @@ import org.opennms.netmgt.model.OnmsNode;
 import org.opennms.netmgt.model.OnmsResource;
 import org.opennms.netmgt.model.OnmsResourceType;
 import org.opennms.netmgt.model.OnmsSnmpInterface;
+import org.opennms.netmgt.model.ResourceNodeUtils;
 import org.opennms.netmgt.model.ResourceTypeUtils;
 
 import com.google.common.collect.Sets;
@@ -86,7 +87,7 @@ public class InterfaceSnmpByIfIndexResourceType implements OnmsResourceType {
     @Override
     public OnmsResource getChildByName(final OnmsResource parent, final String name) {
         // Grab the node entity
-        final OnmsNode node = ResourceTypeUtils.getNodeFromResource(parent);
+        final OnmsNode node = ResourceNodeUtils.getNodeFromResource(parent);
 
         // Determine the ifIndex from the given name
         final int ifIndex = Integer.parseInt(name);

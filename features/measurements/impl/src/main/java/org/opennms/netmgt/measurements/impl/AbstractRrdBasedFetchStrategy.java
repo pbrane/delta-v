@@ -38,6 +38,7 @@ import org.opennms.netmgt.measurements.utils.Utils;
 import org.opennms.netmgt.model.OnmsNode;
 import org.opennms.netmgt.model.OnmsResource;
 import org.opennms.netmgt.model.ResourceId;
+import org.opennms.netmgt.model.ResourceNodeUtils;
 import org.opennms.netmgt.model.ResourceTypeUtils;
 import org.opennms.netmgt.model.RrdGraphAttribute;
 import org.opennms.netmgt.rrd.RrdException;
@@ -180,7 +181,7 @@ public abstract class AbstractRrdBasedFetchStrategy implements MeasurementFetchS
         if (resource == null) return null;
         OnmsNode node = null;
         try {
-            node = ResourceTypeUtils.getNodeFromResourceRoot(resource);
+            node = ResourceNodeUtils.getNodeFromResourceRoot(resource);
         } catch (final ObjectRetrievalFailureException e) {
             LOG.warn("Failed to get node info from resource: {}", resource, e);
         }

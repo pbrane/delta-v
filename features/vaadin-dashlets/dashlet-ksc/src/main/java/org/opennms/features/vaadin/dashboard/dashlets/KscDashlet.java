@@ -41,6 +41,7 @@ import org.opennms.netmgt.dao.api.ResourceDao;
 import org.opennms.netmgt.model.OnmsNode;
 import org.opennms.netmgt.model.OnmsResource;
 import org.opennms.netmgt.model.ResourceId;
+import org.opennms.netmgt.model.ResourceNodeUtils;
 import org.opennms.netmgt.model.ResourceTypeUtils;
 import org.opennms.vaadin.user.UserTimeZoneExtractor;
 import org.springframework.transaction.TransactionStatus;
@@ -420,7 +421,7 @@ public class KscDashlet extends AbstractDashlet {
                 OnmsResource resource;
                 if(nodeId == null){
                     resource = determineResourceByResourceId(resourceId);
-                    node = ResourceTypeUtils.getNodeFromResource(resource);
+                    node = ResourceNodeUtils.getNodeFromResource(resource);
                 } else {
                     node = m_nodeDao.get(nodeId);
                     resource = m_resourceDao.getResourceForNode(node);

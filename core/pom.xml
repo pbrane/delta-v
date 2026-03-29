@@ -25,6 +25,7 @@
     </plugins>
   </build>
   <modules>
+    <module>opennms-model-api</module>
     <module>api</module>
     <module>cache</module>
     <module>camel</module>

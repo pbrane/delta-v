@@ -28,7 +28,6 @@ import java.util.regex.Pattern;
 import org.opennms.netmgt.rrd.RrdRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.orm.ObjectRetrievalFailureException;
 
 /**
  * <p>ResourceTypeUtils class.</p>
@@ -116,63 +115,6 @@ public abstract class ResourceTypeUtils {
             throw new IllegalArgumentException("Node definition '" + nodeSource + "' is invalid, it should be in the format: 'foreignSource:foreignId'.");
         }
         return ident;
-    }
-
-    /**
-     * Convenience method for retrieving the OnmsNode entity from
-     * an abstract resource.
-     *
-     * @throws ObjectRetrievalFailureException on failure
-     */
-    public static OnmsNode getNodeFromResource(OnmsResource resource) {
-        // Null check
-        if (resource == null) {
-            throw new ObjectRetrievalFailureException(OnmsNode.class, "Resource must be non-null.");
-        }
-
-        // Grab the entity
-        final OnmsEntity entity = resource.getEntity();
-        if (entity == null) {
-            throw new ObjectRetrievalFailureException(OnmsNode.class, "Resource entity must be non-null: " + resource);
-        }
-
-        // Type check
-        if (!(entity instanceof OnmsNode)) {
-            throw new ObjectRetrievalFailureException(OnmsNode.class, "Resource entity must be an instance of OnmsNode: " + resource);
-        }
-
-        return (OnmsNode)entity;
-    }
-
-    /**
-     * Convenience method for retrieving the OnmsNode entity from
-     * an abstract resource's ancestor.
-     *
-     * @throws ObjectRetrievalFailureException on failure
-     */
-    public static OnmsNode getNodeFromResourceRoot(final OnmsResource resource) {
-        OnmsResource res = resource;
-        while (res != null && res.getParent() != null) {
-            res = res.getParent();
-        }
-
-        // Null check
-        if (res == null) {
-            throw new ObjectRetrievalFailureException(OnmsNode.class, "Resource must be non-null.");
-        }
-
-        // Grab the entity
-        final OnmsEntity entity = res.getEntity();
-        if (entity == null) {
-            throw new ObjectRetrievalFailureException(OnmsNode.class, "Resource entity must be non-null: " + resource);
-        }
-
-        // Type check
-        if (!(entity instanceof OnmsNode)) {
-            throw new ObjectRetrievalFailureException(OnmsNode.class, "Resource entity must be an instance of OnmsNode: " + resource);
-        }
-
-        return (OnmsNode)entity;
     }
 
     /**

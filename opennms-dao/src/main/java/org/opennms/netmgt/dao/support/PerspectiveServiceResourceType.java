@@ -37,6 +37,7 @@ import org.opennms.netmgt.model.OnmsNode;
 import org.opennms.netmgt.model.OnmsResource;
 import org.opennms.netmgt.model.OnmsResourceType;
 import org.opennms.netmgt.model.ResourcePath;
+import org.opennms.netmgt.model.ResourceNodeUtils;
 import org.opennms.netmgt.model.ResourceTypeUtils;
 
 public abstract class PerspectiveServiceResourceType implements OnmsResourceType {
@@ -70,7 +71,7 @@ public abstract class PerspectiveServiceResourceType implements OnmsResourceType
             return Collections.emptyList();
         }
 
-        final OnmsNode node = ResourceTypeUtils.getNodeFromResource(parent);
+        final OnmsNode node = ResourceNodeUtils.getNodeFromResource(parent);
         final String residentLocation = MonitoringLocationUtils.getLocationNameOrNullIfDefault(node);
 
         return node.getIpInterfaces().stream()
@@ -94,7 +95,7 @@ public abstract class PerspectiveServiceResourceType implements OnmsResourceType
         final String ipAddress = ipWithPerspective.substring(0, splitIndex);
         final String perspectiveLocation = ipWithPerspective.substring(splitIndex + 1);
 
-        final OnmsNode node = ResourceTypeUtils.getNodeFromResource(parent);
+        final OnmsNode node = ResourceNodeUtils.getNodeFromResource(parent);
         final String residentLocation = MonitoringLocationUtils.getLocationNameOrNullIfDefault(node);
 
         final ResourcePath basePath = this.serviceType.getInterfacePath(residentLocation, ipAddress);

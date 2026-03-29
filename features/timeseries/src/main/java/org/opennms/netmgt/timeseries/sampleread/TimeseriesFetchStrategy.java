@@ -65,6 +65,7 @@ import org.opennms.netmgt.measurements.utils.Utils;
 import org.opennms.netmgt.model.OnmsNode;
 import org.opennms.netmgt.model.OnmsResource;
 import org.opennms.netmgt.model.ResourceId;
+import org.opennms.netmgt.model.ResourceNodeUtils;
 import org.opennms.netmgt.model.ResourceTypeUtils;
 import org.opennms.netmgt.model.RrdGraphAttribute;
 import org.opennms.netmgt.timeseries.TimeseriesStorageManager;
@@ -347,12 +348,12 @@ public class TimeseriesFetchStrategy implements MeasurementFetchStrategy {
     private OnmsNode getNode(final OnmsResource resource, final Source source) {
         OnmsNode node = null;
         try {
-            node = ResourceTypeUtils.getNodeFromResourceRoot(resource);
+            node = ResourceNodeUtils.getNodeFromResourceRoot(resource);
         } catch (final ObjectRetrievalFailureException e) {
         }
         if (node == null) {
             final OnmsResource otherResource = resourceDao.getResourceById(ResourceId.fromString(source.getResourceId()).getParent());
-            node = ResourceTypeUtils.getNodeFromResource(otherResource);
+            node = ResourceNodeUtils.getNodeFromResource(otherResource);
         }
         return node;
     }

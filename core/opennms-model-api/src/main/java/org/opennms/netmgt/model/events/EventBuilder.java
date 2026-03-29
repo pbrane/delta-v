@@ -31,9 +31,6 @@ import java.util.List;
 import org.opennms.core.time.ZonedDateTimeBuilder;
 import org.opennms.core.utils.StringUtils;
 import org.opennms.netmgt.events.api.EventConstants;
-import org.opennms.netmgt.model.OnmsIpInterface;
-import org.opennms.netmgt.model.OnmsMonitoredService;
-import org.opennms.netmgt.model.OnmsNode;
 import org.opennms.netmgt.model.OnmsSeverity;
 import org.opennms.netmgt.xml.event.AlarmData;
 import org.opennms.netmgt.xml.event.Event;
@@ -473,49 +470,6 @@ public class EventBuilder {
         return this;
     }
     
-    /**
-     * <p>setNode</p>
-     *
-     * @param node a {@link org.opennms.netmgt.model.OnmsNode} object.
-     * @return a {@link org.opennms.netmgt.model.events.EventBuilder} object.
-     */
-    public EventBuilder setNode(final OnmsNode node) {
-        if (node != null) {
-            m_event.setNodeid(node.getId().longValue());
-        }
-        return this;
-    }
-    
-    /**
-     * <p>setIpInterface</p>
-     *
-     * @param iface a {@link org.opennms.netmgt.model.OnmsIpInterface} object.
-     * @return a {@link org.opennms.netmgt.model.events.EventBuilder} object.
-     */
-    public EventBuilder setIpInterface(final OnmsIpInterface iface) {
-        if (iface != null) {
-            if (iface.getNode() != null) {
-                m_event.setNodeid(iface.getNode().getId().longValue());
-            }
-            m_event.setInterfaceAddress(iface.getIpAddress());
-        }
-        return this;
-    }
-    
-    /**
-     * <p>setMonitoredService</p>
-     *
-     * @param monitoredService a {@link org.opennms.netmgt.model.OnmsMonitoredService} object.
-     * @return a {@link org.opennms.netmgt.model.events.EventBuilder} object.
-     */
-    public EventBuilder setMonitoredService(final OnmsMonitoredService monitoredService) {
-        if (monitoredService != null) {
-            m_event.setNodeid(monitoredService.getNodeId().longValue());
-            m_event.setInterfaceAddress(monitoredService.getIpAddress());
-            m_event.setService(monitoredService.getServiceName());
-        }
-        return this;
-    }
 
 
     /**

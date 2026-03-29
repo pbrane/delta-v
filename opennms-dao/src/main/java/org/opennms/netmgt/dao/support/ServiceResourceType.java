@@ -38,6 +38,7 @@ import org.opennms.netmgt.model.OnmsNode;
 import org.opennms.netmgt.model.OnmsResource;
 import org.opennms.netmgt.model.OnmsResourceType;
 import org.opennms.netmgt.model.ResourcePath;
+import org.opennms.netmgt.model.ResourceNodeUtils;
 import org.opennms.netmgt.model.ResourceTypeUtils;
 import org.springframework.orm.ObjectRetrievalFailureException;
 
@@ -72,7 +73,7 @@ public abstract class ServiceResourceType implements OnmsResourceType {
     @Override
     public OnmsResource getChildByName(OnmsResource parent, String ipAddress) {
         // Grab the node entity
-        final OnmsNode node = ResourceTypeUtils.getNodeFromResource(parent);
+        final OnmsNode node = ResourceNodeUtils.getNodeFromResource(parent);
 
         // Determine the location name
         final String locationName = MonitoringLocationUtils.getLocationNameOrNullIfDefault(node);
@@ -102,7 +103,7 @@ public abstract class ServiceResourceType implements OnmsResourceType {
         }
 
         // Grab the node entity
-        final OnmsNode node = ResourceTypeUtils.getNodeFromResource(parent);
+        final OnmsNode node = ResourceNodeUtils.getNodeFromResource(parent);
 
         // Determine the location name
         final String locationName = MonitoringLocationUtils.getLocationNameOrNullIfDefault(node);
