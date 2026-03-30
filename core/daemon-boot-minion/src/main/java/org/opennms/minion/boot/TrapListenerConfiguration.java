@@ -22,7 +22,6 @@
 package org.opennms.minion.boot;
 
 import org.opennms.core.ipc.sink.api.MessageDispatcherFactory;
-import org.opennms.core.ipc.twin.api.TwinSubscriber;
 import org.opennms.netmgt.dao.api.DistPollerDao;
 import org.opennms.netmgt.trapd.TrapdConfigBean;
 import org.opennms.netmgt.trapd.TrapListener;
@@ -68,19 +67,15 @@ public class TrapListenerConfiguration {
     public TrapListener trapListener(TrapdConfigBean config,
                                      MessageDispatcherFactory messageDispatcherFactory,
                                      DistPollerDao distPollerDao) throws Exception {
-        TrapListener listener = new TrapListener(config);
-        listener.setMessageDispatcherFactory(messageDispatcherFactory);
-        listener.setDistPollerDao(distPollerDao);
-        return listener;
+        return new TrapListener(config, messageDispatcherFactory, distPollerDao);
     }
 
     /**
      * SmartLifecycle that activates the TrapListener at phase 400.
      *
-     * <p>Calls {@code TrapListener.start()} which uses a 5-second fallback timer
-     * to open the trap port with default config when no Twin publisher is
-     * available. The Delta-V trapd daemon does not yet publish TrapListenerConfig
-     * via Twin, so we skip the Twin subscription and open immediately.</p>
+     * <p>Opens the trap port synchronously with default config. No Twin
+     * subscription — the Delta-V trapd daemon doesn't publish TrapListenerConfig
+     * via Twin, so we bypass the Twin/timer path entirely.</p>
      */
     @Bean
     public SmartLifecycle trapListenerLifecycle(TrapListener trapListener) {
@@ -89,12 +84,7 @@ public class TrapListenerConfiguration {
 
             @Override
             public void start() {
-                // Ensure TwinSubscriber is null so start() uses the 5-second
-                // fallback timer to open the trap port with default config.
-                // The @Autowired field would otherwise wait for a Twin config
-                // that the Delta-V trapd daemon doesn't publish yet.
-                trapListener.unbind(null);
-                trapListener.start();
+                trapListener.openWithDefaultConfig();
                 running = true;
             }
 

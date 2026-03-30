@@ -47,7 +47,6 @@ import org.opennms.netmgt.snmp.TrapListenerConfig;
 import org.opennms.netmgt.snmp.TrapNotificationListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class TrapListener implements TrapNotificationListener {
     private static final Logger LOG = LoggerFactory.getLogger(TrapListener.class);
@@ -58,10 +57,8 @@ public class TrapListener implements TrapNotificationListener {
 
     private long subscriberTimeoutMs = 60 * 1000;
 
-    @Autowired
     private MessageDispatcherFactory m_messageDispatcherFactory;
 
-    @Autowired
     private DistPollerDao m_distPollerDao;
 
     private boolean m_registeredForTraps;
@@ -70,7 +67,6 @@ public class TrapListener implements TrapNotificationListener {
 
     private AsyncDispatcher<TrapInformationWrapper> m_dispatcher;
 
-    @Autowired
     private TwinSubscriber m_twinSubscriber;
 
     private Closeable m_twinSubscription;
@@ -80,6 +76,19 @@ public class TrapListener implements TrapNotificationListener {
     public TrapListener(final TrapdConfig config) throws SocketException {
         Objects.requireNonNull(config, "Config cannot be null");
         m_config = config;
+    }
+
+    /**
+     * Full constructor for Spring Boot — all dependencies explicit, no field injection.
+     * TwinSubscriber is intentionally omitted; use {@link #bind(TwinSubscriber)} for
+     * OSGi environments where Twin is available.
+     */
+    public TrapListener(final TrapdConfig config,
+                        final MessageDispatcherFactory messageDispatcherFactory,
+                        final DistPollerDao distPollerDao) throws SocketException {
+        this(config);
+        m_messageDispatcherFactory = Objects.requireNonNull(messageDispatcherFactory);
+        m_distPollerDao = Objects.requireNonNull(distPollerDao);
     }
 
     @Override
@@ -141,6 +150,18 @@ public class TrapListener implements TrapNotificationListener {
         }
     }
 
+    /**
+     * Opens the trap port synchronously with default config.
+     * Use this in environments (like Spring Boot daemons) where Twin is not
+     * available and the port should open immediately during startup.
+     */
+    public void openWithDefaultConfig() {
+        synchronized (configuredLock) {
+            m_configured = true;
+            this.open(new TrapListenerConfig());
+        }
+    }
+
     public void subscribe() {
         m_twinSubscription = m_twinSubscriber.subscribe(TrapListenerConfig.TWIN_KEY, TrapListenerConfig.class, (config) -> {
             try (Logging.MDCCloseable mdc = Logging.withPrefixCloseable(Trapd.LOG4J_CATEGORY)) {
@@ -190,10 +211,12 @@ public class TrapListener implements TrapNotificationListener {
     }
 
     public void stop() {
-        try {
-            m_twinSubscription.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (m_twinSubscription != null) {
+            try {
+                m_twinSubscription.close();
+            } catch (IOException e) {
+                LOG.warn("stop: exception occurred closing twin subscription", e);
+            }
         }
 
         this.close();
