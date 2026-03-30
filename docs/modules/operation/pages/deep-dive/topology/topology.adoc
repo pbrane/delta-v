@@ -69,13 +69,11 @@ org.opennms.features.topology.app.icons.default.cfg <1>
 org.opennms.features.topology.app.icons.application.cfg <2>
 org.opennms.features.topology.app.icons.bsm.cfg <3>
 org.opennms.features.topology.app.icons.linkd.cfg <4>
-org.opennms.features.topology.app.icons.vmware.cfg <5>
 -----
 <1> Default icon mapping.
 <2> Icon mapping for the Application Topology Provider.
 <3> Icon mapping for the Business Services Topology Provider.
 <4> Icon mapping for the Linkd Topology Provider.
-<5> Icon mapping for the Vmware Topology Provider.
 
 Each file contains a mapping in the form of `<icon key> = <icon id>`.
 

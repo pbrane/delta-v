@@ -112,18 +112,6 @@ curl -X GET -u admin:admin http://localhost:8980/opennms/api/v2/graphs
         "id": "nodes",
         "label": "Enhanced Linkd Topology Provider"
     },
-    {
-        "description": "The VMware Topology Provider displays the infrastructure information gathered by the VMware Provisioning process.",
-        "graphs": [
-            {
-                "description": "The VMware Topology Provider displays the infrastructure information gathered by the VMware Provisioning process.",
-                "label": "VMware Topology Provider",
-                "namespace": "vmware"
-            }
-        ],
-        "id": "vmware",
-        "label": "VMware Topology Provider"
-    }
 ]
 ----
 
@@ -395,13 +383,13 @@ curl -X GET -u admin:admin http://localhost:8980/opennms/api/v2/graphs/layer3-to
             "namespace": "layer3-network"
         },
         {
-            "iconKey": "vmware-network",
+            "iconKey": "cloud",
             "id": "net-central",
             "label": "192.168.10.0/24",
             "namespace": "layer3-network"
         },
         {
-            "iconKey": "vmware-network",
+            "iconKey": "cloud",
             "id": "net-location",
             "label": "192.168.50.0/24",
             "namespace": "layer3-network"
@@ -496,7 +484,7 @@ curl -X POST -u admin:admin -H "Content-Type: application/json" -d '{ "semanticZ
             }
         },
         {
-            "iconKey": "vmware-network",
+            "iconKey": "cloud",
             "id": "net-central",
             "label": "192.168.10.0/24",
             "namespace": "layer3-network"
