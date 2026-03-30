@@ -537,11 +537,6 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.opennms.features.topology.plugins.topo</groupId>
-      <artifactId>org.opennms.features.topology.plugins.topo.vmware</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.opennms.features.topology</groupId>
       <artifactId>org.opennms.features.topology.shell</artifactId>
       <version>${project.version}</version>

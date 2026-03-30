@@ -874,19 +874,6 @@
         <bundle dependency="true">mvn:org.apache.httpcomponents/httpcore-osgi/${httpcoreVersion}</bundle>
         <bundle dependency="true">mvn:org.apache.httpcomponents/httpclient-osgi/${httpclientVersion}</bundle>
     </feature>
-    <feature name="opennms-vmware" version="${project.version}" description="OpenNMS :: Integrations :: VMware Integration">
-        <feature>commons-cli</feature>
-        <feature>commons-io</feature>
-        <feature>commons-lang</feature>
-        <feature>dom4j</feature>
-        <feature version="${guavaOsgiVersion}">guava</feature>
-        <bundle dependency="true">mvn:org.apache.httpcomponents/httpcore-osgi/${httpcoreVersion}</bundle>
-        <bundle dependency="true">mvn:org.apache.httpcomponents/httpclient-osgi/${httpclientVersion}</bundle>
-        <bundle>wrap:mvn:com.toastcoders/yavijava/6.0.05$Bundle-SymbolicName=com.toastcoders.yavijava&amp;Bundle-Version=6.0.05</bundle>
-        <bundle>wrap:mvn:org.sblim.slp/sblimSLPClient/1.17$Bundle-SymbolicName=org.sblim.slp.client&amp;Bundle-Version=1.17</bundle>
-        <bundle>wrap:mvn:org.sblim.wbem/sblimCIMClient/1.17$Bundle-SymbolicName=org.sblim.webm.client&amp;Bundle-Version=1.17</bundle>
-        <bundle>mvn:org.opennms/opennms-vmware/${project.version}</bundle>
-    </feature>
     <feature name="opennms-poller-monitors-core" version="${project.version}" description="OpenNMS :: Poller :: Monitors :: Core">
         <feature>activemq-client</feature>
         <feature>bsf</feature>
@@ -1421,11 +1408,6 @@
         <details>Alarm browser to enhance the Linkd topology UI.</details>
         <feature>opennms-topology-api</feature>
         <bundle>mvn:org.opennms.features.topology.plugins/org.opennms.features.topology.plugins.browsers/${project.version}</bundle>
-    </feature>
-    <feature name="opennms-topology-runtime-vmware" version="${project.version}" description="OpenNMS :: Features :: Topology :: Features :: VMware">
-        <details>Runtime and plugins for the OpenNMS VMware topology web app.</details>
-        <feature>opennms-topology-runtime-base</feature>
-        <bundle>mvn:org.opennms.features.topology.plugins.topo/org.opennms.features.topology.plugins.topo.vmware/${project.version}</bundle>
     </feature>
     <feature name="opennms-topology-runtime-application" version="${project.version}" description="OpenNMS :: Features :: Topology :: Features :: Application">
         <details>Runtime and plugins for the OpenNMS Application Topology Provider</details>

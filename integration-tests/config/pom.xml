@@ -116,11 +116,6 @@
     </dependency>
     <dependency>
       <groupId>org.opennms</groupId>
-      <artifactId>opennms-vmware</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.opennms</groupId>
       <artifactId>opennms-alarm-northbounder-bsf</artifactId>
       <scope>test</scope>
     </dependency>
