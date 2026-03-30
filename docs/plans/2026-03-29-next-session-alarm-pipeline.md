@@ -1,4 +1,4 @@
-# Next Session: Fix Alarm Pipeline (Minion Trap Listener → Trapd → Alarmd)
+# Next Session: Fix Minion Trap Listener Port Binding
 
 > Copy everything below the line into the next Claude Code conversation.
 
@@ -6,61 +6,54 @@
 
 ## Context
 
-Branch `feature/minion-boot4-clean` now has all 12 missing entities ported to `model-jakarta` and `opennms-model` classpath-isolated from all 12 daemon-boot modules. The `nodeScanCompleted` E2E test PASSES — provisiond can scan nodes with Hibernate 7.
+Branch `feature/minion-boot4-clean`. Entity porting done (nodeScanCompleted PASSES). Minion @ComponentScan fixed. TrapListener lifecycle fixed to bypass Twin. But the trap port (UDP 1162) still isn't opening.
 
-## Root Cause: Minion Has No Trap Listener
+## What's Been Fixed
 
-The Spring Boot Minion (`daemon-boot-minion`) does NOT have a Trapd Sink module. It has:
-- KafkaEventSubscriptionService (event polling)
-- Kafka RPC server (for SNMP proxy, ICMP proxy, DNS proxy)
-- Kafka Sink client (for sending data to Horizon)
+1. **@ComponentScan override** — MinionApplication had `@ComponentScan(basePackages="org.opennms.core.daemon.common")` which overrode `scanBasePackages` from `@SpringBootApplication`, silently dropping `org.opennms.minion.boot` and `org.opennms.minion.common`. Fixed by including all 3 packages.
 
-But it's missing:
-- **TrapSinkModule** — UDP 1162 listener that receives SNMP traps and dispatches them to Kafka Sink topic `OpenNMS.Sink.Trap`
+2. **Twin dependency** — TrapListenerConfiguration called `trapListener.bind(twinSubscriber)` which waited for TrapListenerConfig from core via Twin. Since daemon-boot-trapd doesn't publish Twin, the port never opened. Fixed to call `unbind(null)` then `start()` for the 5-second fallback timer.
 
-Without this, SNMP traps sent to Minion port 1162 are silently dropped. The coldStart trap in the E2E test works because it goes through a different path (Minion health check → newSuspect event via Kafka events, not via Trap sink).
+## Current Problem
 
-## What Needs to Happen
+After both fixes, the Minion starts all beans correctly (KafkaRemoteMessageDispatcherFactory initializes, RPC server starts, heartbeats send) BUT no "Listening on" message appears for the trap port. The TrapListener's `start()` method schedules a 5-second Timer that should call `open(new TrapListenerConfig())`, which calls `SnmpUtils.registerForTraps(this, address, port, snmpV3Users)`.
 
-### Option A: Add Trap Listener to Spring Boot Minion
-Port the Karaf-based TrapSinkModule to the Spring Boot Minion:
-1. Add dependency on `features/events/traps` (TrapSinkModule, TrapLogDTO)
-2. Configure SnmpTrapAddress/SnmpTrapPort (default 1162)
-3. Wire SnmpTrapListener → TrapSinkModule → KafkaSinkClient → `OpenNMS.Sink.Trap` topic
-4. Trapd daemon (Spring Boot) picks up from `OpenNMS.Sink.Trap`, converts to events, forwards to `opennms-fault-events`
+### Debugging Hypotheses
 
-### Option B: Keep Using Legacy Minion for Traps
-Use the legacy Karaf-based Minion (`minion-deltav` image) instead of `minion-boot` for E2E testing. The legacy Minion already has the Trapd Sink module working via OSGi.
+1. **SNMP strategy not initialized** — `SnmpUtils.registerForTraps()` needs the Snmp4j strategy. Check if `SnmpUtils.getStrategy()` returns null.
 
-## E2E Results (2026-03-29, post entity porting)
+2. **TrapListener.start() exception swallowed** — The Timer task might throw an exception that's silently caught. The `open()` method has a try-catch around `registerForTraps()`.
 
-| Test | Result | Notes |
-|------|--------|-------|
-| Docker image build | PASS | All 15+ images built |
-| All services healthy | PASS | 7 passive daemons + minion healthy |
-| coldStart trap to Minion | PASS | Via health check path, not Trap Sink |
-| nodeScanCompleted | **PASS** | Fixed by entity porting |
-| linkDown trap sent | PASS | snmptrap command succeeds |
-| Translated SNMP_Link_Down | FAIL | Minion doesn't forward traps to Kafka |
-| linkDown alarm in DB | FAIL | No event = no alarm |
-| linkUp trap sent | PASS | snmptrap command succeeds |
-| Translated SNMP_Link_Up | FAIL | Same root cause |
-| linkDown alarm cleared | FAIL | No alarm to clear |
+3. **MDC logging suppression** — TrapListener uses `Logging.withPrefixCloseable(Trapd.LOG4J_CATEGORY)` which sets MDC prefix. Spring Boot logback may not output these. Fix: configure logback-spring.xml or add explicit logger for `org.opennms.netmgt.trapd`.
 
-## Key Evidence
+4. **Spring @Autowired re-injection** — Even though lifecycle calls `unbind(null)`, Spring might re-inject `m_twinSubscriber` after the lifecycle runs. This would make `start()` take the Twin subscriber path instead of the Timer fallback. Fix: don't use `@Autowired` field injection — use constructor injection.
 
-1. `OpenNMS.Sink.Trap` Kafka topic has 0 messages after sending traps
-2. Minion logs show NO activity when traps are sent to port 1162
-3. Minion code loads 0 detector factories (`Loaded 0 detector factories via ServiceLoader`)
-4. coldStart works because it goes through a different path (Minion health-check → newSuspect event)
+### Quick Test
 
-## Key Files
+Add debug logging to `TrapListenerConfiguration`:
+```java
+@Override
+public void start() {
+    LOG.info("TrapListenerLifecycle: starting trap listener");
+    trapListener.unbind(null);
+    trapListener.start();
+    LOG.info("TrapListenerLifecycle: start() returned");
+    running = true;
+}
+```
 
-- `core/daemon-boot-minion/` — Spring Boot Minion module
-- `core/daemon-boot-minion-common/` — Shared Minion infrastructure (Kafka IPC)
-- `features/events/traps/` — TrapSinkModule, TrapListener, TrapLogDTO
-- `opennms-container/delta-v/test-e2e.sh` — E2E test script
+### Key Files
 
-## Also Track: Pre-clean Timing Issue
+- `core/daemon-boot-minion/src/main/java/org/opennms/minion/boot/TrapListenerConfiguration.java`
+- `core/daemon-boot-minion/src/main/java/org/opennms/minion/boot/MinionApplication.java`
+- `features/events/traps/src/main/java/org/opennms/netmgt/trapd/TrapListener.java` (lines 122-175)
+- `core/snmp/api/src/main/java/org/opennms/netmgt/snmp/SnmpUtils.java` (`registerForTraps`)
 
-When running `test-e2e.sh --pre-clean`, the DB cleanup triggers reimport of all 3 requisitions (12 nodes). SNMP timeouts on non-SNMP containers (eventtranslator, syslogd, etc.) cause the scan to take >180s, exceeding the nodeScanCompleted timeout. Fix: either increase timeout or reduce number of nodes in requisitions.
+## E2E Status
+
+| Test | Result |
+|------|--------|
+| nodeScanCompleted | **PASS** |
+| coldStart trap | PASS |
+| linkDown/linkUp traps | FAIL (Minion doesn't forward to Kafka) |
+| Alarms | FAIL (no events = no alarms) |
