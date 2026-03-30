@@ -70,8 +70,7 @@ public class CollectorListIT {
             "org.opennms.protocols.xml.collector.XmlCollector")
             .build();
 
-    private ImmutableSet<String> expectedMinionCollectors = ImmutableSet.<String> builder().add(
-            "org.opennms.protocols.nsclient.collector.NSClientCollector")
+    private ImmutableSet<String> expectedMinionCollectors = ImmutableSet.<String> builder()
             .addAll(commonCollectors)
             .build();
 

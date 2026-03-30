@@ -51,8 +51,6 @@
         <entry key="ksc-performance-reports.xml" value="kscReportFactory"/>
         <entry key="microblog-configuration.xml" value="microblogConfigurationDao"/>
         <!--  <entry key="modemConfig.properties" value="unknown"/> -->
-        <!-- <entry key="nsclient-config.xml" value="nsClientPeerFactory"/> -->
-        <!-- <entry key="nsclient-datacollection-config.xml" value="nsClientDataCollectionConfigFactory"/> -->
         <entry key="opennms-datasources.xml" value="dataSourceTester"/>
         <entry key="opennms.properties" value="unknown"/>
         <entry key="poll-outages.xml" value="pollOutagesDao"/>
@@ -231,20 +229,6 @@
     <property name="configResource" value="file:${opennms.home}/etc/microblog-configuration.xml"/>
   </bean>
 
-  <!--
-  <bean id="nsClientPeerFactory-init" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
-    <property name="staticMethod"><value>org.opennms.netmgt.protocols.nsclient.config.NSClientPeerFactory.init</value></property>
-  </bean>
-
-  <bean id="nsClientPeerFactory" class="org.opennms.netmgt.protocols.nsclient.config.NSClientPeerFactory" depends-on="nsClientPeerFactory-init" factory-method="getInstance"/>
-
-  <bean id="nsClientDataCollectionConfigFactory-init" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
-    <property name="staticMethod"><value>org.opennms.netmgt.protocols.nsclient.config.NSClientDataCollectionConfigFactory.init</value></property>
-  </bean>
-
-  <bean id="nsClientDataCollectionConfigFactory" class="org.opennms.netmgt.protocols.nsclient.config.NSClientDataCollectionConfigFactory" depends-on="nsClientDataCollectionConfigFactory-init" factory-method="getInstance"/>
-  -->
-    
   <bean id="dataSourceTester" class="org.opennms.core.db.DataSourceConfigurationFactory">
     <constructor-arg value="${opennms.home}/etc/opennms-datasources.xml"/>
   </bean>
