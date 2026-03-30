@@ -21,17 +21,17 @@
  */
 package org.opennms.netmgt.bsm.persistence.api.functions.map;
 
-import javax.persistence.Column;
-import javax.persistence.DiscriminatorColumn;
-import javax.persistence.DiscriminatorType;
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "bsm_map")
@@ -43,7 +43,7 @@ public abstract class AbstractMapFunctionEntity {
     private Long m_id;
 
     @Id
-    @SequenceGenerator(name = "opennmsSequence", sequenceName = "opennmsNxtId")
+    @SequenceGenerator(name = "opennmsSequence", sequenceName = "opennmsNxtId", allocationSize = 1)
     @GeneratedValue(generator = "opennmsSequence")
     @Column(name = "id", nullable = false)
     public Long getId() {

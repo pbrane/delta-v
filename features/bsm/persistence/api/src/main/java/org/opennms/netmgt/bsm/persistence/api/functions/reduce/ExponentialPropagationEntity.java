@@ -21,9 +21,9 @@
  */
 package org.opennms.netmgt.bsm.persistence.api.functions.reduce;
 
-import javax.persistence.Column;
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
 @Entity
 @DiscriminatorValue(value="exponential-propagation")

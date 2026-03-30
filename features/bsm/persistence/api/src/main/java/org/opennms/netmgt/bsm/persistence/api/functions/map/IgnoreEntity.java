@@ -21,8 +21,8 @@
  */
 package org.opennms.netmgt.bsm.persistence.api.functions.map;
 
-import javax.persistence.DiscriminatorValue;
-import javax.persistence.Entity;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
 @Entity
 @DiscriminatorValue(value="ignore")
