@@ -157,11 +157,43 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Persistence-free model API — enums, DTOs, constants shared across daemons -->
+        <dependency>
+            <groupId>org.opennms.core</groupId>
+            <artifactId>org.opennms.core.model-api</artifactId>
+            <exclusions>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- Jakarta entity classes — MUST be listed FIRST -->
         <dependency>
             <groupId>org.opennms.core</groupId>
             <artifactId>org.opennms.core.model-jakarta</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.opennms</groupId>
+                    <artifactId>opennms-model</artifactId>
+                </exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- opennms-model at runtime — provides non-entity types (Acknowledgeable, etc.)
+             needed by model-jakarta entities. MUST be listed AFTER model-jakarta so that
+             jakarta-annotated entity classes win the classloader race in the fat JAR.
+             Transitive exclusions on other deps prevent it entering via uncontrolled paths. -->
+        <dependency>
+            <groupId>org.opennms</groupId>
+            <artifactId>opennms-model</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+            <exclusions>
+                <exclusion><groupId>org.hibernate</groupId><artifactId>hibernate-core</artifactId></exclusion>
+                <exclusion><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.0-api</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Shared daemon infrastructure -->
@@ -174,6 +206,11 @@
                     <groupId>com.fasterxml.jackson.module</groupId>
                     <artifactId>jackson-module-scala_2.13</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.opennms</groupId>
+                    <artifactId>opennms-model</artifactId>
+                </exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
             </exclusions>
         </dependency>
 
@@ -220,6 +257,9 @@
                 <!-- Exclude config-model which contains legacy OnmsMonitoringLocation with
                      javax.persistence annotations — not needed here (no JPA) -->
                 <exclusion><groupId>org.opennms</groupId><artifactId>opennms-config-model</artifactId></exclusion>
+                <!-- Exclude legacy opennms-model — replaced by model-api + model-jakarta -->
+                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
             </exclusions>
         </dependency>
 
@@ -228,6 +268,10 @@
             <groupId>org.opennms.features.bsm</groupId>
             <artifactId>org.opennms.features.bsm.service.api</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.opennms.features.bsm</groupId>
@@ -271,6 +315,9 @@
                 <!-- Exclude config-model which contains legacy OnmsMonitoringLocation with
                      javax.persistence annotations — not needed here (no JPA) -->
                 <exclusion><groupId>org.opennms</groupId><artifactId>opennms-config-model</artifactId></exclusion>
+                <!-- Exclude legacy opennms-model — replaced by model-api + model-jakarta -->
+                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
             </exclusions>
         </dependency>
 
@@ -317,6 +364,9 @@
                 <!-- Exclude config-model which contains legacy OnmsMonitoringLocation with
                      javax.persistence annotations — not needed here (no JPA) -->
                 <exclusion><groupId>org.opennms</groupId><artifactId>opennms-config-model</artifactId></exclusion>
+                <!-- Exclude legacy opennms-model — replaced by model-api + model-jakarta -->
+                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
             </exclusions>
         </dependency>
 
@@ -329,6 +379,8 @@
                 <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion>
                 <exclusion><groupId>org.slf4j</groupId><artifactId>jcl-over-slf4j</artifactId></exclusion>
                 <exclusion><groupId>org.slf4j</groupId><artifactId>log4j-over-slf4j</artifactId></exclusion>
+                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
             </exclusions>
         </dependency>
 

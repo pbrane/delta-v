@@ -164,6 +164,10 @@
             <version>${project.version}</version>
             <exclusions>
                 <exclusion>
+                    <groupId>org.opennms</groupId>
+                    <artifactId>opennms-model</artifactId>
+                </exclusion>
+                <exclusion>
                     <groupId>org.apache.servicemix.bundles</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
@@ -171,6 +175,7 @@
                     <groupId>org.hibernate</groupId>
                     <artifactId>hibernate-core</artifactId>
                 </exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
             </exclusions>
         </dependency>
 
@@ -180,6 +185,7 @@
             <artifactId>org.opennms.features.event-translator</artifactId>
             <version>${project.version}</version>
             <exclusions>
+                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
                 <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-aop</artifactId></exclusion>
                 <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-aspects</artifactId></exclusion>
                 <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-beans</artifactId></exclusion>
@@ -208,6 +214,7 @@
                 <exclusion><groupId>org.ops4j.pax.logging</groupId><artifactId>pax-logging-api</artifactId></exclusion>
                 <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
                 <exclusion><groupId>com.fasterxml.jackson.module</groupId><artifactId>jackson-module-scala_2.13</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
             </exclusions>
         </dependency>
 
@@ -216,6 +223,25 @@
             <groupId>org.opennms.core</groupId>
             <artifactId>org.opennms.core.model-api</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- opennms-model at runtime — provides non-entity types (Acknowledgeable, etc.)
+             needed by model-jakarta entities. MUST be listed AFTER model-jakarta so that
+             jakarta-annotated entity classes win the classloader race in the fat JAR.
+             Transitive exclusions on other deps prevent it entering via uncontrolled paths. -->
+        <dependency>
+            <groupId>org.opennms</groupId>
+            <artifactId>opennms-model</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+            <exclusions>
+                <exclusion><groupId>org.hibernate</groupId><artifactId>hibernate-core</artifactId></exclusion>
+                <exclusion><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.0-api</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+            </exclusions>
         </dependency>
 
         <!-- javax.persistence API — needed at runtime so legacy opennms-model classes

@@ -50,6 +50,14 @@
             <!-- Pin Jackson 2.19.4 — parent POM manages 2.16.2 which lacks JsonFormat$Shape.POJO
                  required by Spring Boot 4.0.3. Explicit entries here override the parent's
                  managed versions even though the Spring Boot BOM is imported first. -->
+            <!-- Pin Jakarta XML Bind 4.x — parent POM manages 2.3.3 which still uses
+                 the javax.xml.bind package. Entities ported from opennms-model use
+                 jakarta.xml.bind annotations and need 4.0+. -->
+            <dependency>
+                <groupId>jakarta.xml.bind</groupId>
+                <artifactId>jakarta.xml.bind-api</artifactId>
+                <version>4.0.2</version>
+            </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
@@ -109,6 +117,13 @@
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>
+        </dependency>
+
+        <!-- Jakarta XML Bind — needed by entities with JAXB annotations
+             (OnmsAssetRecord, OnmsHwEntity family, OnmsAcknowledgment) -->
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
         </dependency>
 
         <!-- AbstractDaoJpa base class -->
