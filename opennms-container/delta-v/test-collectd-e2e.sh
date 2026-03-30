@@ -212,6 +212,22 @@ REQEOF
             ok "Requisition created"
         fi
 
+        # Add requisition-def so Provisiond auto-imports on startup
+        mkdir -p provisiond-overlay/etc
+        cat > provisiond-overlay/etc/provisiond-configuration.xml <<PROVEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<provisiond-configuration xmlns="http://xmlns.opennms.org/xsd/config/provisiond-configuration"
+  foreign-source-dir="/opt/deltav/etc/foreign-sources"
+  requistion-dir="/opt/deltav/etc/imports"
+  importThreads="4" scanThreads="4" rescanThreads="4" writeThreads="4" >
+  <requisition-def import-name="${FOREIGN_SOURCE}"
+                   import-url-resource="file:///opt/deltav/etc/imports/${FOREIGN_SOURCE}.xml">
+    <cron-schedule>0/30 * * * * ?</cron-schedule>
+  </requisition-def>
+</provisiond-configuration>
+PROVEOF
+        ok "Provisiond configuration updated with ${FOREIGN_SOURCE} import"
+
         # Restart Provisiond to pick up config and trigger import
         log "  Restarting Provisiond to import requisition..."
         docker compose restart provisiond
