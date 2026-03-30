@@ -26,7 +26,6 @@
 ** xref:performance-data-collection/collectors/http.adoc[]
 ** xref:performance-data-collection/collectors/jdbc.adoc[]
 ** xref:performance-data-collection/collectors/jmx.adoc[]
-** xref:performance-data-collection/collectors/nsclient.adoc[]
 ** xref:performance-data-collection/collectors/prometheus.adoc[]
 ** xref:performance-data-collection/collectors/SnmpCollector.adoc[]
 ** xref:performance-data-collection/collectors/tca.adoc[]
