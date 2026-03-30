@@ -77,22 +77,24 @@ public class TrapListenerConfiguration {
     /**
      * SmartLifecycle that activates the TrapListener at phase 400.
      *
-     * <p>On start, calls {@code bind(TwinSubscriber)} which sets the subscriber
-     * and immediately subscribes for configuration updates. When the core sends
-     * a TrapListenerConfig via Twin, the listener opens the trap port. This
-     * replaces the OSGi dynamic bind/unbind pattern.</p>
-     *
-     * <p>We do NOT call {@code TrapListener.start()} here because {@code bind()}
-     * already subscribes (calling {@code start()} would double-subscribe).</p>
+     * <p>Calls {@code TrapListener.start()} which uses a 5-second fallback timer
+     * to open the trap port with default config when no Twin publisher is
+     * available. The Delta-V trapd daemon does not yet publish TrapListenerConfig
+     * via Twin, so we skip the Twin subscription and open immediately.</p>
      */
     @Bean
-    public SmartLifecycle trapListenerLifecycle(TrapListener trapListener, TwinSubscriber twinSubscriber) {
+    public SmartLifecycle trapListenerLifecycle(TrapListener trapListener) {
         return new SmartLifecycle() {
             private volatile boolean running;
 
             @Override
             public void start() {
-                trapListener.bind(twinSubscriber);
+                // Ensure TwinSubscriber is null so start() uses the 5-second
+                // fallback timer to open the trap port with default config.
+                // The @Autowired field would otherwise wait for a Twin config
+                // that the Delta-V trapd daemon doesn't publish yet.
+                trapListener.unbind(null);
+                trapListener.start();
                 running = true;
             }
 

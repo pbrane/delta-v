@@ -47,7 +47,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     }
 )
 @ComponentScan(
-    basePackages = "org.opennms.core.daemon.common",
+    basePackages = {
+        "org.opennms.minion.common",
+        "org.opennms.minion.boot",
+        "org.opennms.core.daemon.common"
+    },
     excludeFilters = @ComponentScan.Filter(
         type = FilterType.ASSIGNABLE_TYPE,
         classes = EventConfEnrichmentService.class
