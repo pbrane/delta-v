@@ -19,9 +19,6 @@
           <!-- northbounders -->
           <exclude>lib/*alarm-northbounder-jms*</exclude>
 
-          <!-- protocols -->
-          <exclude>etc/nsclient-config.xml</exclude>
-
           <!-- provisioning adapters -->
           <exclude>etc/*snmp-asset-adapter*</exclude>
           <exclude>lib/*snmp-asset-provisioning-adapter*</exclude>

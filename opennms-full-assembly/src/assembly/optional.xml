@@ -10,7 +10,6 @@
     <componentDescriptor>src/assembly/components/base-optional.xml</componentDescriptor>
     <componentDescriptor>src/assembly/components/cifs.xml</componentDescriptor>
     <componentDescriptor>src/assembly/components/juniper-tca.xml</componentDescriptor>
-    <componentDescriptor>src/assembly/components/nsclient.xml</componentDescriptor>
     <componentDescriptor>src/assembly/components/radius.xml</componentDescriptor>
     <componentDescriptor>src/assembly/components/vtdxml.xml</componentDescriptor>
   </componentDescriptors>
