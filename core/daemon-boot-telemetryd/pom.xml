@@ -183,15 +183,15 @@
             </exclusions>
         </dependency>
 
-        <!-- opennms-model at runtime — provides non-entity types (Acknowledgeable, etc.)
-             needed by model-jakarta entities. MUST be listed AFTER model-jakarta so that
-             jakarta-annotated entity classes win the classloader race in the fat JAR.
-             Transitive exclusions on other deps prevent it entering via uncontrolled paths. -->
+        <!-- opennms-model — provides non-entity types and base classes (Acknowledgeable,
+             OnmsEntity, etc.) needed by model-jakarta entities and daemon code at compile
+             time. MUST be listed AFTER model-jakarta so that jakarta-annotated entity
+             classes win the classloader race in the fat JAR. Transitive exclusions on
+             other deps prevent it entering via uncontrolled paths. -->
         <dependency>
             <groupId>org.opennms</groupId>
             <artifactId>opennms-model</artifactId>
             <version>${project.version}</version>
-            <scope>runtime</scope>
             <exclusions>
                 <exclusion><groupId>org.hibernate</groupId><artifactId>hibernate-core</artifactId></exclusion>
                 <exclusion><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.0-api</artifactId></exclusion>

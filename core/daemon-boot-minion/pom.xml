@@ -660,17 +660,16 @@
             <version>7.0.0</version>
             <scope>runtime</scope>
         </dependency>
-        <!-- opennms-model at runtime scope: many protocol modules (PingSweepRpcModule,
-             DiscoveryConfigFactory, etc.) transitively reference classes in opennms-model
-             (IPPollAddress, OnmsNode, etc.). Spring's classpath scanning triggers class
-             loading even for unused references. Runtime scope keeps them loadable without
-             compiling against them. ServiceMix exclusions still apply via the transitive
-             dependencies that actually pull opennms-model. -->
+        <!-- opennms-model — provides non-entity types and base classes (Acknowledgeable,
+             OnmsEntity, etc.) needed by model-jakarta entities and daemon code at compile
+             time. Many protocol modules (PingSweepRpcModule, DiscoveryConfigFactory, etc.)
+             transitively reference classes in opennms-model (IPPollAddress, OnmsNode, etc.).
+             ServiceMix exclusions still apply via the transitive dependencies that actually
+             pull opennms-model. -->
         <dependency>
             <groupId>org.opennms</groupId>
             <artifactId>opennms-model</artifactId>
             <version>${project.version}</version>
-            <scope>runtime</scope>
             <exclusions>
                 <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-beans</artifactId></exclusion>
                 <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-context</artifactId></exclusion>
