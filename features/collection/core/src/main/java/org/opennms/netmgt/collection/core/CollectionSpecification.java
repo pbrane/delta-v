@@ -50,7 +50,7 @@ import org.opennms.netmgt.collection.api.LocationAwareCollectorClient;
 import org.opennms.netmgt.collection.api.ServiceCollector;
 import org.opennms.netmgt.collection.api.ServiceParameters;
 import org.opennms.netmgt.collection.api.ServiceParameters.ParameterName;
-import org.opennms.netmgt.config.CollectdConfigFactory;
+import org.opennms.netmgt.config.api.CollectdConfigFactory;
 import org.opennms.netmgt.config.collectd.Package;
 import org.opennms.netmgt.config.collectd.Parameter;
 import org.opennms.netmgt.config.collectd.Service;

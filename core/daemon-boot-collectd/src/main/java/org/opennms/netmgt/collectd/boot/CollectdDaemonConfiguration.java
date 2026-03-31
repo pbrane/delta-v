@@ -39,7 +39,10 @@ import org.opennms.netmgt.collection.api.PersisterFactory;
 import org.opennms.netmgt.collectd.Collectd;
 import org.opennms.netmgt.collectd.DefaultResourceTypeMapper;
 import org.opennms.netmgt.collectd.DefaultSnmpCollectionAgentFactory;
-import org.opennms.netmgt.config.CollectdConfigFactory;
+import org.opennms.netmgt.config.api.CollectdConfigFactory;
+import org.opennms.netmgt.config.api.DefaultCollectdConfigFactory;
+import org.opennms.netmgt.config.collectd.CollectdConfiguration;
+import org.opennms.netmgt.filter.api.FilterDao;
 import org.opennms.netmgt.config.DataCollectionConfigFactory;
 import org.opennms.netmgt.config.DefaultDataCollectionConfigDao;
 import org.opennms.netmgt.config.DefaultResourceTypesDao;
@@ -119,17 +122,19 @@ public class CollectdDaemonConfiguration {
     // ===================================================================
 
     /**
-     * Loads collectd-configuration.xml via the singleton CollectdConfigFactory.
+     * Loads collectd-configuration.xml via Jackson XmlMapper and creates a
+     * {@link DefaultCollectdConfigFactory} with injected FilterDao.
      *
      * <p>Must run after FilterDaoFactory initialization because
-     * {@code CollectdConfigFactory} validates filter rules against
-     * {@code FilterDaoFactory.getInstance()}.</p>
+     * filter evaluation in package matching requires an active FilterDao.</p>
      */
     @Bean
     @DependsOn("filterDaoInitializer")
-    public CollectdConfigFactory collectdConfigFactory() throws IOException {
-        LOG.info("Initializing CollectdConfigFactory");
-        return new CollectdConfigFactory();
+    public CollectdConfigFactory collectdConfigFactory(FilterDao filterDao) throws IOException {
+        var configFile = new File(opennmsHome, "etc/collectd-configuration.xml");
+        LOG.info("Loading CollectdConfigFactory from {}", configFile);
+        var config = XML_MAPPER.readValue(configFile, CollectdConfiguration.class);
+        return new DefaultCollectdConfigFactory(config, filterDao);
     }
 
     /**

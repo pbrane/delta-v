@@ -21,8 +21,14 @@
  */
 package org.opennms.netmgt.perspectivepoller.boot;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+
 import javax.sql.DataSource;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl;
 import org.opennms.netmgt.collection.api.AttributeGroup;
 import org.opennms.netmgt.collection.api.CollectionAgentFactory;
@@ -32,7 +38,8 @@ import org.opennms.netmgt.collection.api.CollectionSet;
 import org.opennms.netmgt.collection.api.Persister;
 import org.opennms.netmgt.collection.api.PersisterFactory;
 import org.opennms.netmgt.collection.api.ServiceParameters;
-import org.opennms.netmgt.config.DatabaseSchemaConfigFactory;
+import org.opennms.netmgt.config.api.DefaultDatabaseSchemaConfig;
+import org.opennms.netmgt.config.filter.DatabaseSchema;
 import org.opennms.netmgt.dao.api.SessionUtils;
 import org.opennms.netmgt.eventd.EventUtil;
 import org.opennms.netmgt.filter.FilterDaoFactory;
@@ -86,6 +93,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class PerspectivePollerdJpaConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(PerspectivePollerdJpaConfiguration.class);
+
+    private static final XmlMapper XML_MAPPER;
+    static {
+        XML_MAPPER = XmlMapper.builder().defaultUseWrapper(false).build();
+        XML_MAPPER.registerModule(new JaxbAnnotationModule());
+        XML_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    }
 
     // ===================================================================
     // Section 1: JPA / Naming
@@ -187,15 +201,20 @@ public class PerspectivePollerdJpaConfiguration {
         LOG.info("Initializing FilterDaoFactory with JdbcFilterDao");
         var jdbcFilterDao = new JdbcFilterDao();
         jdbcFilterDao.setDataSource(dataSource);
-        try {
-            DatabaseSchemaConfigFactory.init();
-        } catch (Exception e) {
-            throw new RuntimeException("Could not initialize DatabaseSchemaConfigFactory", e);
-        }
-        jdbcFilterDao.setDatabaseSchemaConfigFactory(DatabaseSchemaConfigFactory.getInstance());
+        var schemaConfig = loadDatabaseSchemaConfig();
+        jdbcFilterDao.setDatabaseSchemaConfigFactory(schemaConfig);
         jdbcFilterDao.afterPropertiesSet();
         FilterDaoFactory.setInstance(jdbcFilterDao);
         return jdbcFilterDao;
+    }
+
+    private DefaultDatabaseSchemaConfig loadDatabaseSchemaConfig() {
+        try (var is = getClass().getResourceAsStream("/database-schema.xml")) {
+            var schema = XML_MAPPER.readValue(is, DatabaseSchema.class);
+            return new DefaultDatabaseSchemaConfig(schema);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to load database-schema.xml from classpath", e);
+        }
     }
 
     // ===================================================================

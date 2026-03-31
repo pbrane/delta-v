@@ -50,7 +50,7 @@ import org.opennms.netmgt.collection.support.CollectionAttributeWrapper;
 import org.opennms.netmgt.collection.support.CollectionResourceWrapper;
 import org.opennms.netmgt.collection.support.CollectionSetVisitorWrapper;
 import org.opennms.netmgt.collection.support.ConstantTimeKeeper;
-import org.opennms.netmgt.config.CollectdConfigFactory;
+import org.opennms.netmgt.config.api.CollectdConfigFactory;
 import org.opennms.netmgt.config.DataCollectionConfigFactory;
 import org.opennms.netmgt.dao.api.IpInterfaceDao;
 import org.opennms.netmgt.events.api.EventConstants;

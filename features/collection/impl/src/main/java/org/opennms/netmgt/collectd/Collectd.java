@@ -59,7 +59,7 @@ import org.opennms.netmgt.collection.api.ServiceCollector;
 import org.opennms.netmgt.collection.api.ServiceCollectorRegistry;
 import org.opennms.netmgt.collection.core.CollectionSpecification;
 import org.opennms.netmgt.collection.core.DefaultCollectdInstrumentation;
-import org.opennms.netmgt.config.CollectdConfigFactory;
+import org.opennms.netmgt.config.api.CollectdConfigFactory;
 import org.opennms.netmgt.config.DataCollectionConfigFactory;
 import org.opennms.netmgt.config.SnmpEventInfo;
 import org.opennms.netmgt.config.SnmpPeerFactory;
