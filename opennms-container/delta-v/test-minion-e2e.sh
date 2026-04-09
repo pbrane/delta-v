@@ -297,6 +297,30 @@ else
     fail "No linkDown alarm found in PostgreSQL"
 fi
 
+# Verify alarm logmsg is expanded (not empty, no raw %tokens%)
+ALARM_LOGMSG=$(psql_query "SELECT logmsg FROM alarms WHERE eventuei = 'uei.opennms.org/translator/traps/SNMP_Link_Down' AND logmsg IS NOT NULL AND logmsg != '' LIMIT 1")
+if [ -n "$ALARM_LOGMSG" ]; then
+    if echo "$ALARM_LOGMSG" | grep -q '%nodelabel%'; then
+        fail "Alarm logmsg contains unexpanded %nodelabel% token: $ALARM_LOGMSG"
+    else
+        ok "Alarm logmsg expanded: $ALARM_LOGMSG"
+    fi
+else
+    fail "Alarm logmsg is empty — event template expansion not working"
+fi
+
+# Verify alarm description is expanded (not empty, no raw %tokens%)
+ALARM_DESCR=$(psql_query "SELECT description FROM alarms WHERE eventuei = 'uei.opennms.org/translator/traps/SNMP_Link_Down' AND description IS NOT NULL AND description != '' LIMIT 1")
+if [ -n "$ALARM_DESCR" ]; then
+    if echo "$ALARM_DESCR" | grep -q '%nodelabel%'; then
+        fail "Alarm description contains unexpanded %nodelabel% token"
+    else
+        ok "Alarm description expanded (non-empty, tokens resolved)"
+    fi
+else
+    fail "Alarm description is empty — event template expansion not working"
+fi
+
 # ══════════════════════════════════════════════════════════════════
 # Phase 3: Alarm Clearing via linkUp Trap (through Minion)
 # ══════════════════════════════════════════════════════════════════
