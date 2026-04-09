@@ -112,10 +112,15 @@ public class EventConfEnrichmentService {
             org.opennms.netmgt.xml.event.Logmsg eventLogmsg = new org.opennms.netmgt.xml.event.Logmsg();
             org.opennms.netmgt.xml.eventconf.Logmsg confLogmsg = matched.getLogmsg();
             eventLogmsg.setContent(confLogmsg.getContent());
-            if (confLogmsg.getDest() != null) {
-                eventLogmsg.setDest(confLogmsg.getDest().toString());
-            }
+            eventLogmsg.setDest("logndisplay");
             event.setLogmsg(eventLogmsg);
+        }
+
+        // Delta-V has no events table — force logndisplay so AlarmPersisterImpl
+        // always processes the event. Legacy "donotpersist" dest values from
+        // EventTranslator or trap eventconf are meaningless without an events table.
+        if (event.getLogmsg() != null) {
+            event.getLogmsg().setDest("logndisplay");
         }
 
         if (event.getDescr() == null && matched.getDescr() != null) {
