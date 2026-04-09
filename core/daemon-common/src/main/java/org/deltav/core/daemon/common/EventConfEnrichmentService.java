@@ -34,6 +34,7 @@ import org.opennms.netmgt.xml.event.Parm;
 import org.opennms.netmgt.xml.event.UpdateField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -52,6 +53,7 @@ import org.springframework.stereotype.Service;
  * classic OpenNMS would generate.</p>
  */
 @Service
+@ConditionalOnProperty("spring.datasource.url")
 public class EventConfEnrichmentService {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventConfEnrichmentService.class);
