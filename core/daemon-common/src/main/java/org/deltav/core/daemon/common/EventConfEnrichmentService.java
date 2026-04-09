@@ -25,6 +25,7 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 import org.opennms.netmgt.config.api.EventConfDao;
+import org.opennms.netmgt.eventd.AbstractEventUtil;
 import org.opennms.netmgt.model.EventConfEvent;
 import org.opennms.netmgt.model.EventConfSource;
 import org.opennms.netmgt.xml.event.AlarmData;
@@ -34,6 +35,7 @@ import org.opennms.netmgt.xml.event.UpdateField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 /**
@@ -55,9 +57,12 @@ public class EventConfEnrichmentService {
     private static final Logger LOG = LoggerFactory.getLogger(EventConfEnrichmentService.class);
 
     private final DaemonEventConfDao eventConfDao;
+    @Nullable
+    private final AbstractEventUtil eventUtil;
 
-    public EventConfEnrichmentService(DataSource dataSource) {
+    public EventConfEnrichmentService(DataSource dataSource, @Nullable AbstractEventUtil eventUtil) {
         this.eventConfDao = new DaemonEventConfDao();
+        this.eventUtil = eventUtil;
         List<EventConfEvent> events = loadEventConfFromDb(new JdbcTemplate(dataSource));
         if (!events.isEmpty()) {
             eventConfDao.loadEventsFromDB(events);
@@ -109,6 +114,41 @@ public class EventConfEnrichmentService {
                 eventLogmsg.setDest(confLogmsg.getDest().toString());
             }
             event.setLogmsg(eventLogmsg);
+        }
+
+        if (event.getDescr() == null && matched.getDescr() != null) {
+            event.setDescr(matched.getDescr());
+        }
+
+        // Expand DB-backed tokens (%nodelabel%, %ifalias%, %foreignsource%, etc.)
+        // in logmsg and descr using JdbcEventUtil's JDBC lookups.
+        expandTemplateTokens(event);
+    }
+
+    /**
+     * Expands DB-backed parameter tokens in the event's logmsg and descr fields
+     * using {@link AbstractEventUtil#expandParms(String, Event)}.
+     *
+     * <p>This resolves tokens like {@code %nodelabel%}, {@code %ifalias%},
+     * {@code %foreignsource%}, {@code %foreignid%}, {@code %nodelocation%},
+     * {@code %primaryinterface%}, and {@code %asset[field]%} by querying
+     * PostgreSQL via {@link JdbcEventUtil}.</p>
+     */
+    private void expandTemplateTokens(Event event) {
+        if (eventUtil == null) {
+            return;
+        }
+        try {
+            if (event.getLogmsg() != null && event.getLogmsg().getContent() != null) {
+                String expanded = eventUtil.expandParms(event.getLogmsg().getContent(), event);
+                event.getLogmsg().setContent(expanded);
+            }
+            if (event.getDescr() != null) {
+                event.setDescr(eventUtil.expandParms(event.getDescr(), event));
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to expand template tokens for event {}: {}",
+                    event.getUei(), e.getMessage());
         }
     }
 

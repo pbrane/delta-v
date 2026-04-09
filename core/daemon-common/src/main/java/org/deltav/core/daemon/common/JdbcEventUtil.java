@@ -25,6 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * JDBC-backed {@link org.opennms.netmgt.eventd.EventUtil} for Spring Boot daemons.
@@ -44,7 +46,8 @@ public class JdbcEventUtil extends AbstractEventUtil {
 
     private final JdbcTemplate jdbc;
 
-    public JdbcEventUtil(DataSource dataSource) {
+    public JdbcEventUtil(DataSource dataSource, PlatformTransactionManager transactionManager) {
+        super(null, new TransactionTemplate(transactionManager));
         this.jdbc = new JdbcTemplate(dataSource);
     }
 

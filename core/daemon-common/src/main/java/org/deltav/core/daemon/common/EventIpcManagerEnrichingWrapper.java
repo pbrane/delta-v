@@ -28,12 +28,14 @@ import org.opennms.netmgt.xml.event.Log;
 
 /**
  * Delegating {@link EventIpcManager} wrapper that enriches events with
- * alarm-data, severity, and logmsg from the event configuration before
- * forwarding them to the real {@link EventIpcManager}.
+ * alarm-data, severity, logmsg, and descr from the event configuration
+ * before forwarding them to the real {@link EventIpcManager}.
  *
- * <p>Used by EventTranslator so that translated events are enriched before
- * being published to Kafka, ensuring downstream Alarmd sees fully-populated
- * alarm-data without needing to re-enrich on the alarm side.</p>
+ * <p>Wired as the primary {@link EventIpcManager} by
+ * {@link KafkaEventTransportConfiguration} so that ALL events from ALL
+ * daemons pass through {@link EventConfEnrichmentService#enrichEvent}
+ * before reaching Kafka. This replaces the role of Eventd's EventExpander
+ * in classic OpenNMS.</p>
  */
 public class EventIpcManagerEnrichingWrapper implements EventIpcManager {
 
