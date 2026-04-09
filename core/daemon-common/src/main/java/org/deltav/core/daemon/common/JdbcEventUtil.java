@@ -94,6 +94,13 @@ public class JdbcEventUtil extends AbstractEventUtil {
     }
 
     @Override
+    public String getIfAliasByNodeAndIfIndex(long nodeId, int ifIndex) throws SQLException {
+        return queryString(
+                "SELECT snmpifalias FROM snmpinterface WHERE nodeid = ? AND snmpifindex = ?",
+                nodeId, ifIndex);
+    }
+
+    @Override
     public String getPrimaryInterface(long nodeId) throws SQLException {
         return queryString(
                 "SELECT ipaddr FROM ipinterface WHERE nodeid = ? AND issnmpprimary = 'P' LIMIT 1",

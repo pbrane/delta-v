@@ -41,7 +41,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- Horizon JAR version (published by pbrane/delta-v-horizon) -->
-    <deltav.horizon.version>1.0.5</deltav.horizon.version>
+    <deltav.horizon.version>1.0.7</deltav.horizon.version>
 
     <!-- Plugin versions not inherited from spring-boot-starter-parent -->
     <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
