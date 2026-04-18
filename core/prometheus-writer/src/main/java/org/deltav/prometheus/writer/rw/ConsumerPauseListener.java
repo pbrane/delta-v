@@ -5,6 +5,7 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
+import org.deltav.prometheus.writer.metrics.PrometheusWriterMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.stream.binding.BindingsLifecycleController;
@@ -24,7 +25,7 @@ public class ConsumerPauseListener {
     public ConsumerPauseListener(CircuitBreaker cb, BindingsLifecycleController lifecycle, MeterRegistry metrics) {
         this.cb = cb;
         this.lifecycle = lifecycle;
-        Gauge.builder("deltav.prometheus.writer.consumer.paused", pausedGauge::get).register(metrics);
+        Gauge.builder(PrometheusWriterMetrics.CONSUMER_PAUSED, pausedGauge::get).register(metrics);
     }
 
     @PostConstruct

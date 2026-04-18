@@ -7,6 +7,7 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.deltav.prometheus.writer.config.PrometheusWriterProperties;
+import org.deltav.prometheus.writer.metrics.PrometheusWriterMetrics;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -44,7 +45,7 @@ public class PrometheusWriterCircuitBreaker {
                 case OPEN -> 2;
             });
         });
-        Gauge.builder("deltav.prometheus.writer.circuit.state", stateGauge::get)
+        Gauge.builder(PrometheusWriterMetrics.CIRCUIT_STATE, stateGauge::get)
                 .tag("endpoint", props.remoteWrite().url())
                 .register(metrics);
         return cb;

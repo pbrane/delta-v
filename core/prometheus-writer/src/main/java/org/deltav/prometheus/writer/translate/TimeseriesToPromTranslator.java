@@ -4,6 +4,7 @@ package org.deltav.prometheus.writer.translate;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.deltav.prometheus.writer.config.PrometheusWriterProperties;
+import org.deltav.prometheus.writer.metrics.PrometheusWriterMetrics;
 import org.deltav.timeseries.proto.Attribute;
 import org.deltav.timeseries.proto.AttributeGroup;
 import org.deltav.timeseries.proto.AttributeType;
@@ -39,11 +40,11 @@ public class TimeseriesToPromTranslator {
         this.sanitizer = sanitizer;
         this.labelBuilder = labelBuilder;
         this.props = props;
-        this.droppedString = reg.counter("deltav.prometheus.writer.samples.dropped",
+        this.droppedString = reg.counter(PrometheusWriterMetrics.SAMPLES_DROPPED,
                 "reason", "string_attribute");
-        this.droppedUnspecified = reg.counter("deltav.prometheus.writer.samples.dropped",
+        this.droppedUnspecified = reg.counter(PrometheusWriterMetrics.SAMPLES_DROPPED,
                 "reason", "type_unspecified");
-        this.enrichmentMissing = reg.counter("deltav.prometheus.writer.enrichment.missing",
+        this.enrichmentMissing = reg.counter(PrometheusWriterMetrics.ENRICHMENT_MISSING,
                 "reason", "never_seen");
     }
 

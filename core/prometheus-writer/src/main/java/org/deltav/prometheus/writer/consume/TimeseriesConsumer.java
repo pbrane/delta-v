@@ -3,6 +3,7 @@ package org.deltav.prometheus.writer.consume;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.deltav.prometheus.writer.metrics.PrometheusWriterMetrics;
 import org.deltav.prometheus.writer.nodecontext.NodeContextCache;
 import org.deltav.prometheus.writer.rw.BatchingRwWriter;
 import org.deltav.prometheus.writer.translate.PromSample;
@@ -29,9 +30,9 @@ public class TimeseriesConsumer {
             TimeseriesToPromTranslator translator,
             BatchingRwWriter writer,
             MeterRegistry metrics) {
-        Counter consumed = metrics.counter("deltav.prometheus.writer.records.consumed");
-        Counter samplesIn = metrics.counter("deltav.prometheus.writer.samples.in");
-        Counter parseErrors = metrics.counter("deltav.prometheus.writer.records.parse.errors");
+        Counter consumed = metrics.counter(PrometheusWriterMetrics.RECORDS_CONSUMED);
+        Counter samplesIn = metrics.counter(PrometheusWriterMetrics.SAMPLES_IN);
+        Counter parseErrors = metrics.counter(PrometheusWriterMetrics.RECORDS_PARSE_ERRORS);
         return message -> {
             try {
                 TimeseriesBatch batch = TimeseriesBatch.parseFrom(message.getPayload());

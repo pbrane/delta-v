@@ -3,6 +3,7 @@ package org.deltav.prometheus.writer.dlq;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.deltav.prometheus.writer.metrics.PrometheusWriterMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.stream.function.StreamBridge;
@@ -42,7 +43,7 @@ public class DlqPublisher {
         Message<byte[]> msg = MessageBuilder.withPayload(sourcePayload).copyHeaders(headers).build();
         boolean sent = streamBridge.send(BINDING, msg);
         if (sent) {
-            Counter.builder("deltav.prometheus.writer.dlq.records")
+            Counter.builder(PrometheusWriterMetrics.DLQ_RECORDS)
                     .tag("reason", reason).register(metrics).increment();
         } else {
             LOG.error("StreamBridge.send returned false - DLQ record lost: key={} reason={}", key, reason);

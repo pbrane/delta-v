@@ -13,6 +13,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.deltav.prometheus.writer.metrics.PrometheusWriterMetrics;
 import org.deltav.timeseries.proto.NodeContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,7 +158,7 @@ public class NodeContextKafkaBootstrap implements Runnable {
     private void finishBootstrap() {
         cache.markReady();
         long durationNs = bootstrapSample.stop(
-                meterRegistry.timer("deltav.prometheus.writer.node.context.bootstrap.duration"));
+                meterRegistry.timer(PrometheusWriterMetrics.NC_BOOTSTRAP_DURATION));
         long durationMillis = durationNs / 1_000_000L;
         LOG.info("NodeContextCache bootstrap complete: {} entries in {} ms", cache.size(), durationMillis);
         eventPublisher.publishEvent(new NodeContextCacheReadyEvent(this, durationMillis, cache.size()));

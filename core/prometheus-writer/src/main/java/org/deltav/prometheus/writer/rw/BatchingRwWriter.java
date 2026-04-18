@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.deltav.prometheus.writer.config.PrometheusWriterProperties;
+import org.deltav.prometheus.writer.metrics.PrometheusWriterMetrics;
 import org.deltav.prometheus.writer.translate.PromSample;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,15 +41,15 @@ public class BatchingRwWriter {
                             RemoteWriteHttpClient http, MeterRegistry reg) {
         this.props = props; this.builder = builder; this.http = http;
         String endpoint = props.remoteWrite().url();
-        this.batchesSent = Counter.builder("deltav.prometheus.writer.batches.sent")
+        this.batchesSent = Counter.builder(PrometheusWriterMetrics.BATCHES_SENT)
                 .tag("endpoint", endpoint).register(reg);
-        this.samplesSent = Counter.builder("deltav.prometheus.writer.samples.sent")
+        this.samplesSent = Counter.builder(PrometheusWriterMetrics.SAMPLES_SENT)
                 .tag("endpoint", endpoint).register(reg);
-        this.batchBytes = DistributionSummary.builder("deltav.prometheus.writer.batch.size.bytes")
+        this.batchBytes = DistributionSummary.builder(PrometheusWriterMetrics.BATCH_SIZE_BYTES)
                 .tag("endpoint", endpoint).register(reg);
-        this.batchSampleCount = DistributionSummary.builder("deltav.prometheus.writer.batch.sample.count")
+        this.batchSampleCount = DistributionSummary.builder(PrometheusWriterMetrics.BATCH_SAMPLE_COUNT)
                 .tag("endpoint", endpoint).register(reg);
-        this.flushDuration = Timer.builder("deltav.prometheus.writer.flush.duration")
+        this.flushDuration = Timer.builder(PrometheusWriterMetrics.FLUSH_DURATION)
                 .tag("endpoint", endpoint).register(reg);
     }
 
