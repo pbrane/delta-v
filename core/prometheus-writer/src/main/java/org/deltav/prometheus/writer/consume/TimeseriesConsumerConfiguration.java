@@ -21,8 +21,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 @Configuration
-public class TimeseriesConsumer {
-    private static final Logger LOG = LoggerFactory.getLogger(TimeseriesConsumer.class);
+public class TimeseriesConsumerConfiguration {
+    private static final Logger LOG = LoggerFactory.getLogger(TimeseriesConsumerConfiguration.class);
 
     @Bean
     public Consumer<Message<byte[]>> timeseriesConsumer(

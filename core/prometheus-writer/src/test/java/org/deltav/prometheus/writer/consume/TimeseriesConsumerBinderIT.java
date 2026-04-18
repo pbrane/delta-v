@@ -28,11 +28,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * SCS test-binder IT for {@link TimeseriesConsumer}. Asserts the full path:
+ * SCS test-binder IT for {@link TimeseriesConsumerConfiguration}. Asserts the full path:
  * binder &rarr; deserialize &rarr; cache lookup &rarr; translator &rarr;
  * {@link BatchingRwWriter#add}, plus the parse-error counter on malformed input.
  *
- * <p>Loads only a tiny boot test app that imports {@link TimeseriesConsumer}
+ * <p>Loads only a tiny boot test app that imports {@link TimeseriesConsumerConfiguration}
  * plus a {@link MockBeans} configuration providing Mockito stubs for the
  * cache, translator, and writer. {@link EnableAutoConfiguration} pulls in
  * Spring Cloud Function + Spring Cloud Stream so the {@code Consumer} bean is
@@ -59,7 +59,7 @@ class TimeseriesConsumerBinderIT {
      * in-process test binder via {@code @ConditionalOnMissingBean(Binder.class)}.
      */
     @EnableAutoConfiguration
-    @Import({TimeseriesConsumer.class, MockBeans.class, TestChannelBinderConfiguration.class})
+    @Import({TimeseriesConsumerConfiguration.class, MockBeans.class, TestChannelBinderConfiguration.class})
     static class TestApp {
     }
 
