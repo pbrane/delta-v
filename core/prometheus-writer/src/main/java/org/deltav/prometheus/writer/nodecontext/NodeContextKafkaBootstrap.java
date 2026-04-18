@@ -6,10 +6,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PreDestroy;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -24,13 +24,13 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -97,58 +97,65 @@ public class NodeContextKafkaBootstrap implements Runnable {
 
     @Override
     public void run() {
+        // Tracks per-partition end-offset captured at the moment the broker assigned the
+        // partition to us. The bootstrap is "complete" when every assigned partition has
+        // been drained up to its captured HWM. Both maps mutate from the consumer thread
+        // (poll loop) and the rebalance listener (called inline during poll), so a
+        // ConcurrentHashMap is defensive-but-cheap.
+        Map<TopicPartition, Long> endOffsets = new ConcurrentHashMap<>();
+        Set<TopicPartition> caughtUp = ConcurrentHashMap.newKeySet();
+        AtomicBoolean bootstrapMarked = new AtomicBoolean(false);
+
         try (KafkaConsumer<String, byte[]> consumer = buildConsumer()) {
-            List<PartitionInfo> parts = consumer.partitionsFor(TOPIC);
-            if (parts == null || parts.isEmpty()) {
-                LOG.warn("Topic {} has no partitions yet — marking cache ready with empty state", TOPIC);
-                finishBootstrap();
-                liveTail(consumer);
-                return;
-            }
-            Set<TopicPartition> allParts = new HashSet<>();
-            for (PartitionInfo p : parts) {
-                allParts.add(new TopicPartition(TOPIC, p.partition()));
-            }
-            consumer.assign(allParts);
-
-            Map<TopicPartition, Long> endOffsets = new HashMap<>(consumer.endOffsets(allParts));
-            consumer.seekToBeginning(allParts);
-
-            Set<TopicPartition> caughtUp = new HashSet<>();
-            // An empty partition (end offset == 0) is instantly "caught up".
-            for (Map.Entry<TopicPartition, Long> e : endOffsets.entrySet()) {
-                if (e.getValue() == 0L) {
-                    caughtUp.add(e.getKey());
+            consumer.subscribe(List.of(TOPIC), new ConsumerRebalanceListener() {
+                @Override
+                public void onPartitionsAssigned(Collection<TopicPartition> assigned) {
+                    // Record HWM at assignment time so we know when we have replayed the
+                    // compacted topic up to "now". Then seek to the beginning so we
+                    // actually replay everything (compacted topic semantics: we need
+                    // the latest value per key, not just the live tail).
+                    Map<TopicPartition, Long> hwm = consumer.endOffsets(assigned);
+                    endOffsets.putAll(hwm);
+                    consumer.seekToBeginning(assigned);
+                    // Empty partitions (end offset == 0) are instantly caught up.
+                    for (Map.Entry<TopicPartition, Long> e : hwm.entrySet()) {
+                        if (e.getValue() == 0L) {
+                            caughtUp.add(e.getKey());
+                        }
+                    }
                 }
-            }
 
-            while (running.get() && caughtUp.size() < allParts.size()) {
+                @Override
+                public void onPartitionsRevoked(Collection<TopicPartition> revoked) {
+                    // No-op. Kafka may reassign us; the next onPartitionsAssigned will
+                    // re-establish HWM and re-seek. AtomicBoolean bootstrapMarked
+                    // prevents duplicate NodeContextCacheReadyEvent publication.
+                }
+            });
+
+            while (running.get()) {
                 ConsumerRecords<String, byte[]> records = consumer.poll(POLL_TIMEOUT);
                 for (ConsumerRecord<String, byte[]> r : records) {
                     applyRecord(r);
                     TopicPartition tp = new TopicPartition(r.topic(), r.partition());
-                    if (r.offset() + 1 >= endOffsets.get(tp)) {
+                    Long hwm = endOffsets.get(tp);
+                    if (hwm != null && r.offset() + 1 >= hwm) {
                         caughtUp.add(tp);
                     }
                 }
+                // Mark cache ready exactly once, after the first full drain across all
+                // currently-assigned partitions. The compareAndSet guards against double-
+                // firing if poll() somehow re-enters this branch before bootstrapMarked
+                // becomes visible (defensive — single consumer thread, but cheap).
+                if (!bootstrapMarked.get()
+                        && !endOffsets.isEmpty()
+                        && caughtUp.containsAll(endOffsets.keySet())
+                        && bootstrapMarked.compareAndSet(false, true)) {
+                    finishBootstrap();
+                }
             }
-            finishBootstrap();
-            liveTail(consumer);
         } catch (Exception e) {
             LOG.error("NodeContextKafkaBootstrap fatal error", e);
-        }
-    }
-
-    private void liveTail(KafkaConsumer<String, byte[]> consumer) {
-        while (running.get()) {
-            try {
-                ConsumerRecords<String, byte[]> records = consumer.poll(POLL_TIMEOUT);
-                for (ConsumerRecord<String, byte[]> r : records) {
-                    applyRecord(r);
-                }
-            } catch (Exception e) {
-                LOG.warn("NodeContextKafkaBootstrap live-tail error — will retry after poll timeout", e);
-            }
         }
     }
 
