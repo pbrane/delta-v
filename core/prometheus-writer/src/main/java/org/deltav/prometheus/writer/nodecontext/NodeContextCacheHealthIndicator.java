@@ -5,7 +5,7 @@ import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
-@Component("nodeContextCache")
+@Component("nodeContextCacheHealthIndicator")
 public class NodeContextCacheHealthIndicator implements HealthIndicator {
     private final NodeContextCache cache;
 
