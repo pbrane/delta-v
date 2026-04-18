@@ -16,7 +16,10 @@
  */
 package org.deltav.collectd.timeseries;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -27,11 +30,15 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.deltav.collectd.timeseries.TimeseriesKafkaPublisherConfiguration.FanoutPersister;
 import org.deltav.collectd.timeseries.TimeseriesKafkaPublisherConfiguration.FanoutPersisterFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import org.opennms.netmgt.collection.api.CollectionResource;
 import org.opennms.netmgt.collection.api.CollectionSet;
 import org.opennms.netmgt.collection.api.Persister;
 import org.opennms.netmgt.collection.api.PersisterFactory;
@@ -142,5 +149,119 @@ class FanoutPersisterTest {
         verify(innerPersister1).completeCollectionSet(setA);
         verify(innerPersister2, never()).completeCollectionSet(any());
         verify(publisher).publish(setA, "pkg-A", 1, "");
+    }
+
+    // --- Task 3 observability + fail-fast behavioural tests ------------------
+    // Pin the counter-increment and fail-fast behaviour added in Task 3.
+    // These mock TimeseriesKafkaPersister directly (unlike the older tests,
+    // which wire a real TimeseriesKafkaPersister around a mock publisher).
+
+    private MeterRegistry registry;
+    private Persister innerV2;
+    private TimeseriesKafkaPersister kafkaV2;
+
+    @BeforeEach
+    void setUpV2() {
+        registry = new SimpleMeterRegistry();
+        innerV2 = mock(Persister.class);
+        kafkaV2 = mock(TimeseriesKafkaPersister.class);
+    }
+
+    private FanoutPersister makeV2(boolean failFastInner, boolean failFastKafka) {
+        return new FanoutPersister(innerV2, kafkaV2, registry, failFastInner, failFastKafka);
+    }
+
+    @Test
+    void counter_increments_on_inner_failure_in_visitResource() {
+        CollectionResource r = mock(CollectionResource.class);
+        doThrow(new RuntimeException("inner boom")).when(innerV2).visitResource(r);
+        doNothing().when(kafkaV2).visitResource(r);
+
+        makeV2(false, false).visitResource(r);
+
+        Counter c = registry.find("deltav.collectd.persister.inner.failures").tag("step", "visitResource").counter();
+        assertThat(c).isNotNull();
+        assertThat(c.count()).isEqualTo(1.0);
+        verify(kafkaV2).visitResource(r);
+    }
+
+    @Test
+    void counter_increments_on_kafka_failure_in_visitResource() {
+        CollectionResource r = mock(CollectionResource.class);
+        doNothing().when(innerV2).visitResource(r);
+        doThrow(new RuntimeException("kafka boom")).when(kafkaV2).visitResource(r);
+
+        makeV2(false, false).visitResource(r);
+
+        Counter c = registry.find("deltav.collectd.persister.kafka.failures").tag("step", "visitResource").counter();
+        assertThat(c).isNotNull();
+        assertThat(c.count()).isEqualTo(1.0);
+        verify(innerV2).visitResource(r);
+    }
+
+    @Test
+    void counters_preregistered_at_startup_with_zero_value() {
+        makeV2(false, false);
+        String[] steps = new String[]{
+                "visitCollectionSet", "visitResource", "visitGroup", "visitAttribute",
+                "completeAttribute", "completeGroup", "completeResource", "completeCollectionSet",
+                "persistNumericAttribute", "persistStringAttribute"
+        };
+        for (String step : steps) {
+            Counter ic = registry.find("deltav.collectd.persister.inner.failures").tag("step", step).counter();
+            Counter kc = registry.find("deltav.collectd.persister.kafka.failures").tag("step", step).counter();
+            assertThat(ic).as("inner counter step=%s", step).isNotNull();
+            assertThat(ic.count()).isZero();
+            assertThat(kc).as("kafka counter step=%s", step).isNotNull();
+            assertThat(kc.count()).isZero();
+        }
+    }
+
+    @Test
+    void fail_fast_inner_true_rethrows() {
+        CollectionResource r = mock(CollectionResource.class);
+        doThrow(new RuntimeException("inner boom")).when(innerV2).visitResource(r);
+
+        FanoutPersister p = makeV2(true, false);
+        assertThatThrownBy(() -> p.visitResource(r))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("fail-fast enabled");
+    }
+
+    @Test
+    void fail_fast_inner_false_swallows_and_continues() {
+        CollectionResource r = mock(CollectionResource.class);
+        doThrow(new RuntimeException("inner boom")).when(innerV2).visitResource(r);
+        doNothing().when(kafkaV2).visitResource(r);
+
+        makeV2(false, false).visitResource(r);  // must NOT throw
+
+        verify(kafkaV2).visitResource(r);
+    }
+
+    @Test
+    void fail_fast_kafka_true_rethrows() {
+        CollectionResource r = mock(CollectionResource.class);
+        doNothing().when(innerV2).visitResource(r);
+        doThrow(new RuntimeException("kafka boom")).when(kafkaV2).visitResource(r);
+
+        FanoutPersister p = makeV2(false, true);
+        assertThatThrownBy(() -> p.visitResource(r))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("fail-fast enabled");
+    }
+
+    @Test
+    void throwable_not_just_runtime_exception() {
+        CollectionResource r = mock(CollectionResource.class);
+        doThrow(new LinkageError("NoSuchMethodError from horizon"))
+                .when(innerV2).visitResource(r);
+        doNothing().when(kafkaV2).visitResource(r);
+
+        makeV2(false, false).visitResource(r);  // must NOT throw
+
+        Counter c = registry.find("deltav.collectd.persister.inner.failures").tag("step", "visitResource").counter();
+        assertThat(c.count()).isEqualTo(1.0);
+        verify(kafkaV2).visitResource(r);
     }
 }
