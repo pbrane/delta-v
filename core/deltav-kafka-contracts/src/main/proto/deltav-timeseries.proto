@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// API version: 1 (FROZEN at Phase 2 GA — delta-v#<TBD-phase-2-PR>)
+// API version: 1 (FROZEN at Phase 2 GA — delta-v#174)
 //
 // Public contract for the deltav-timeseries Kafka topic.
 //

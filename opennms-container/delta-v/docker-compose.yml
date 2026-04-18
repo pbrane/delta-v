@@ -173,7 +173,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OPENNMS_HOME: /opt/deltav
       OPENNMS_TIMESERIES_STRATEGY: inmemory
-      DELTAV_TIMESERIES_ENABLED: ${DELTAV_TIMESERIES_ENABLED:-false}
+      DELTAV_TIMESERIES_ENABLED: ${DELTAV_TIMESERIES_ENABLED:-true}
     volumes:
       - ./collectd-daemon-overlay/etc:/opt/deltav/etc:ro
     stop_grace_period: 60s
