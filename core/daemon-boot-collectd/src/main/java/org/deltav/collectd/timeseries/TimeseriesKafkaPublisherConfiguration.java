@@ -53,6 +53,12 @@ import org.springframework.kafka.config.TopicBuilder;
 @ConditionalOnProperty(name = "deltav.timeseries.enabled", havingValue = "true")
 public class TimeseriesKafkaPublisherConfiguration {
 
+    private static final Logger LOG = LoggerFactory.getLogger(TimeseriesKafkaPublisherConfiguration.class);
+
+    public TimeseriesKafkaPublisherConfiguration() {
+        LOG.info("TimeseriesKafkaPublisherConfiguration loaded — @ConditionalOnProperty(deltav.timeseries.enabled=true) matched");
+    }
+
     @Bean
     public CollectionSetToProtobufTranslator collectionSetToProtobufTranslator() {
         return new CollectionSetToProtobufTranslator();
@@ -92,6 +98,9 @@ public class TimeseriesKafkaPublisherConfiguration {
     public PersisterFactory compositePersisterFactory(
             @Qualifier("timeseriesPersisterFactory") PersisterFactory innerFactory,
             TimeseriesKafkaPublisher publisher) {
+        LOG.info("Creating compositePersisterFactory wrapping inner={}@{}",
+                innerFactory.getClass().getName(),
+                System.identityHashCode(innerFactory));
         return new FanoutPersisterFactory(innerFactory, publisher);
     }
 
