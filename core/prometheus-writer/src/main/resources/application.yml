@@ -1,0 +1,62 @@
+# Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later
+spring:
+  application:
+    name: prometheus-writer
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}  # prod yaml MUST carry this — Phase 0 #170 lesson
+  cloud:
+    function:
+      definition: timeseriesConsumer
+    stream:
+      kafka:
+        binder:
+          brokers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      bindings:
+        timeseriesConsumer-in-0:
+          destination: deltav-timeseries
+          group: prometheus-writer
+          consumer:
+            concurrency: 4
+        publishDlq-out-0:
+          destination: deltav-prometheus-writer-dlq
+          producer:
+            use-native-encoding: true    # Phase 1.5 SCS splitter-lesson prophylactic
+
+prometheus-writer:
+  remote-write:
+    url: ${PROMETHEUS_WRITER_REMOTE_WRITE_URL:http://victoriametrics:8428/api/v1/write}
+    auth:
+      type: ${PROMETHEUS_WRITER_AUTH_TYPE:none}
+      bearer-token: ${PROMETHEUS_WRITER_BEARER_TOKEN:}
+      basic-username: ${PROMETHEUS_WRITER_BASIC_USER:}
+      basic-password: ${PROMETHEUS_WRITER_BASIC_PASS:}
+    headers: {}
+  batch:
+    max-samples: 1000
+    max-bytes: 1048576
+    max-interval-ms: 1000
+  retry:
+    initial-backoff-ms: 100
+    max-backoff-ms: 30000
+    jitter-factor: 0.1
+  circuit-breaker:
+    failure-rate-threshold: 50
+    sliding-window-size: 20
+    minimum-number-of-calls: 10
+    wait-duration-open-ms: 30000
+    half-open-permitted-calls: 3
+  labels:
+    from-metadata: []
+  startup-gate:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, bindings
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
