@@ -15,7 +15,7 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Configuration
-public class PrometheusWriterCircuitBreaker {
+public class PrometheusWriterCircuitBreakerConfiguration {
 
     public static final String NAME = "prometheus-writer";
 

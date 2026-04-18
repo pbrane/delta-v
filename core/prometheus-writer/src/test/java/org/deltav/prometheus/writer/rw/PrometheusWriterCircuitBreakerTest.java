@@ -23,7 +23,7 @@ class PrometheusWriterCircuitBreakerTest {
     }
 
     private CircuitBreaker fresh(PrometheusWriterProperties p) {
-        PrometheusWriterCircuitBreaker cfg = new PrometheusWriterCircuitBreaker();
+        PrometheusWriterCircuitBreakerConfiguration cfg = new PrometheusWriterCircuitBreakerConfiguration();
         CircuitBreakerRegistry reg = cfg.circuitBreakerRegistry(p);
         return cfg.prometheusWriterCircuitBreaker(reg, new SimpleMeterRegistry(), p);
     }
