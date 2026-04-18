@@ -13,16 +13,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// API version: 1
+// API version: 1 (FROZEN at Phase 2 GA — delta-v#<TBD-phase-2-PR>)
 //
-// Public contract for the deltav-node-context Kafka topic (compacted).
+// Public contract for the deltav-node-context Kafka topic.
 //
-// Versioning: during Phase 1 (feature flag off in production) breaking
-// schema changes are permissible. Once Phase 2 ships (flag on by default),
-// only forward-compatible changes are allowed: new fields with new tag
-// numbers, new enum values at the end. Renaming or renumbering existing
-// fields, deleting fields, or changing field types are breaking changes
-// that require a deprecation cycle.
+// Versioning: this wire format is frozen as of Phase 2 GA. Only
+// forward-compatible changes are permitted: new fields with new tag
+// numbers, new enum values appended at the end. Renaming or renumbering
+// existing fields, deleting fields, or changing field types are breaking
+// changes that require bumping to // API version: 2 with a one-release
+// deprecation cycle maintaining v1 as read-only.
 //
 // Producer: provisiond change feed (future PR). This file is committed in
 // the Kafka Time Series producer PR for contract completeness and to allow

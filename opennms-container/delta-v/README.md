@@ -331,6 +331,73 @@ tombstone. On every provisiond restart, the full node set is re-published
 
 Default changed from **7 days → 1 day** in Phase 1. Override via `DELTAV_TIMESERIES_RETENTION_DAYS`. Rationale: at production scale, 7-day retention for high-volume metric records consumes significantly more disk than necessary (≈40 GB steady state at 10k nodes vs ≈5.76 GB with 1-day).
 
+## Phase 2 — Prometheus Remote Write consumer
+
+The `prometheus-writer` service consumes `deltav-timeseries`, enriches each
+batch with node identity from `deltav-node-context`, and POSTs Snappy-compressed
+Prometheus Remote Write protobuf batches to a configurable endpoint.
+
+### Profiles
+
+- **lite, full** — starts `prometheus-writer`. Point `PROMETHEUS_WRITER_REMOTE_WRITE_URL`
+  at your TSDB (Mimir, VictoriaMetrics, Cortex, Thanos Receive, Prometheus with
+  `--web.enable-remote-write-receiver`). Without a reachable target, the writer
+  starts healthy, opens its circuit on first POST failure, and stays paused.
+- **metrics-e2e** — adds a pinned `victoriametrics:v1.106.1` container for E2E.
+  Not intended for production.
+
+### Configuration
+
+Environment variables (also see `core/prometheus-writer/src/main/resources/application.yml`):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PROMETHEUS_WRITER_REMOTE_WRITE_URL` | `http://victoriametrics:8428/api/v1/write` | RW endpoint |
+| `PROMETHEUS_WRITER_AUTH_TYPE` | `none` | `none` / `bearer` / `basic` |
+| `PROMETHEUS_WRITER_BEARER_TOKEN` | (empty) | Bearer token when `AUTH_TYPE=bearer` |
+| `PROMETHEUS_WRITER_BASIC_USER` | (empty) | Basic auth user |
+| `PROMETHEUS_WRITER_BASIC_PASS` | (empty) | Basic auth pass |
+| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `kafka:9092` (compose) | Kafka brokers |
+
+Extra headers (e.g. `X-Scope-OrgID` for Mimir tenancy) via yaml
+`prometheus-writer.remote-write.headers.{name}: "{value}"`.
+
+Opt-in metadata-label promotion:
+
+```yaml
+prometheus-writer:
+  labels:
+    from-metadata:
+      - requisition:region
+      - snmp:sysLocation
+```
+
+### Metrics
+
+All exposed at `/actuator/prometheus`, prefix `deltav_prometheus_writer_`.
+See `docs/superpowers/specs/2026-04-17-kafka-ts-phase-2-prometheus-consumer-design.md` §7
+for the full list.
+
+Useful PromQL examples:
+
+```
+rate(deltav_prometheus_writer_samples_sent_total[5m])
+rate(deltav_prometheus_writer_enrichment_missing_total[5m])
+deltav_prometheus_writer_circuit_state         # 0=closed, 1=half_open, 2=open
+deltav_prometheus_writer_node_context_cache_size
+```
+
+### Topics
+
+- Consumes `deltav-timeseries` (group `prometheus-writer`)
+- Consumes `deltav-node-context` (unique group per instance)
+- Produces to `deltav-prometheus-writer-dlq` (poison-pill records only)
+
+### Wire format frozen
+
+As of Phase 2 GA, both `deltav-timeseries` and `deltav-node-context` protobuf
+schemas are frozen. Only forward-compatible additions (new tag numbers) permitted.
+
 ## Troubleshooting
 
 **Images not found:** Run `./build.sh` to build all images. Verify with `docker images | grep opennms`.
