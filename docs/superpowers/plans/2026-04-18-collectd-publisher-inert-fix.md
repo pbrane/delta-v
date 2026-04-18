@@ -1,92 +1,539 @@
-# Collectd Kafka Publisher Inert Fix — Implementation Plan
+# Phase 2 NodeContextKafkaBootstrap Race Fix + Collectd Hygiene — Implementation Plan (v2)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Unblock the delta-v Kafka Time Series pipeline by identifying and fixing the wiring regression that makes `TimeseriesKafkaPublisher` silently inert, ship observability + regression tests so this class of silent swallow cannot re-occur, flip the compose default, and close out Phase 2's deferred proto-header placeholder. Acceptance is the Phase 2 E2E (`opennms-container/delta-v/test-prometheus-writer-e2e.sh`) exiting 0 with `ALL ASSERTIONS PASSED`.
+> **This plan SUPERSEDES the v1 plan at commit `262309050ed`.** The original plan assumed the Phase 0 Collectd publisher was inert. Live-stack investigation (Task 2 of v1) refuted that — the publisher works fine. The actual bug is a race in Phase 2's `NodeContextKafkaBootstrap`. v1's diagnostic-exposure commit (`d3c6d049cab`) is retained on the branch; everything else gets rewritten.
 
-**Architecture:** Diagnose-first, fix-second, then harden. Commit 1 exposes actuator endpoints + adds two diagnostic `LOG.info` lines to surface the runtime wiring decisions. Commit 2 ships the minimum-diff surgical fix once evidence identifies the root cause. Commit 3 adds Micrometer counters + Spring fail-fast properties inside `FanoutPersister`. Commit 4 adds `FanoutPersisterTest` unit tests + `CollectdApplicationScanIT` real-main-class IT. Commit 5 flips `DELTAV_TIMESERIES_ENABLED` default and substitutes the `<TBD-phase-2-PR>` proto placeholder. Commit 6 partially reverts Commit 1 (keeps `/actuator/conditions`).
+**Goal:** Fix the `NodeContextKafkaBootstrap` race so the cache is populated under both topic-exists-at-startup and topic-created-later orderings. Ship complementary Collectd silent-swallow hygiene (Micrometer counters, dev fail-fast toggle, real-main-class scan IT). Acceptance: Phase 2 E2E (`./test-prometheus-writer-e2e.sh`) exits 0 with `ALL ASSERTIONS PASSED` end-to-end — first successful run of the full pipeline.
 
-**Tech Stack:** Spring Boot 4.0.3, horizon 1.0.10, Spring Cloud Stream Kafka binder, Micrometer Prometheus, Resilience4j unchanged (Collectd doesn't use it), JUnit 5, Mockito, Testcontainers Kafka (`apache/kafka:3.8.0`).
+**Architecture (v2):** Replace `NodeContextKafkaBootstrap.run()`'s `partitionsFor`-based branching with a single-path `consumer.subscribe(...)` flow whose `ConsumerRebalanceListener` records HWM, seeks to beginning, drains, and marks cache-ready exactly once after first full drain. Add complementary observability + fail-fast to Collectd's existing `FanoutPersister` so the Phase 0 inner-persister bugs (#1, #2, #4) become operator-visible (they remain swallowed today but are alertable after this PR). Compose default flip + proto-header pin close out Phase 2's deferred loose ends.
 
-**Spec:** `docs/superpowers/specs/2026-04-18-collectd-publisher-inert-fix-design.md`
+**Tech Stack:** Spring Boot 4.0.3, horizon 1.0.10, Spring Kafka, Apache Kafka client 3.x, Micrometer Prometheus, JUnit 5, Mockito, Testcontainers Kafka (`apache/kafka:3.8.0`), `commons-io:2.18.0` (test-scope, per `feedback_boot4_testcontainers_commons_io`).
 
-**Branch:** `fix/collectd-publisher-inert` (already created; spec commit `8c2729588e5` already on branch).
+**Spec:** `docs/superpowers/specs/2026-04-18-collectd-publisher-inert-fix-design.md` (v2, commit `f0a4d5b0f94`).
 
-**PR target:** `pbrane/delta-v` base `develop`. NEVER `OpenNMS/opennms`.
+**Branch:** `fix/collectd-publisher-inert` (name retained from v1; actual scope is mostly Phase 2 prometheus-writer + Collectd hygiene).
+
+**PR target:** `pbrane/delta-v` base `develop`. **NEVER `OpenNMS/opennms`** — memory `feedback_never_pr_opennms`.
 
 **Critical memory references:**
 - `feedback_never_pr_opennms` — PRs always `--repo pbrane/delta-v`.
 - `feedback_feature_branches` — never commit directly to `develop`.
 - `feedback_delta_v_uses_mvnw_not_compile_pl` — use `./mvnw`, never `compile.pl`.
-- `feedback_delta_v_full_reactor_verify` — run full-reactor build before push.
-- `feedback_boot4_testcontainers_commons_io` — Testcontainers needs explicit `commons-io:2.18.0` test dep on Boot 4.
-- `feedback_configuration_class_bean_name_collision` — `@Configuration` classes must not share camelCase name with their `@Bean` methods.
-- `feedback_deltav_package_namespace` — new code under `org.deltav.*` with BeaconStrategists copyright.
-- `project_collectd_publisher_inert_investigation` — root-cause hypothesis space + investigation plan.
+- `feedback_delta_v_full_reactor_verify` — full-reactor build before push.
+- `feedback_boot4_testcontainers_commons_io` — Boot 4 modules using Testcontainers need explicit `commons-io:2.18.0` test dep.
+- `feedback_configuration_class_bean_name_collision` — Collectd-side hygiene work obeys this rule.
+- `feedback_deltav_package_namespace` — new code uses `org.deltav.*` with BeaconStrategists copyright.
+- `project_collectd_publisher_inert_investigation` — root-cause memo (real bug: NodeContextKafkaBootstrap race).
+- `project_phase2_prometheus_writer_done` — PR #174 merged (`5ef18ed5384`); E2E deferred to this PR.
 
 ---
 
 ## Task ordering rationale
 
-14 tasks grouped by the six commits from the spec. Task ordering is dependency-driven. Commit 2's fix is contingent on Commit 1's evidence; the plan describes the most-likely shape (hypothesis C — bean-name vs `@Primary` injection) and flags adjustments for A / B / D.
+Nine tasks grouped by the six new commits from spec §4 + three acceptance gates. The race fix (Task 1) is the critical blocker; everything else is protective tooling or operational tidy. Each task either ends with a commit or is a verification-only step.
 
-1. **Commit 1 — diagnostic exposure** (Tasks 1-2)
-2. **Commit 2 — wiring fix** (Task 3)
-3. **Commit 3 — observability + fail-fast** (Tasks 4-8)
-4. **Commit 4 — scan IT** (Task 9)
-5. **Commit 5 — compose default + proto headers** (Task 10)
-6. **Commit 6 — diagnostic cleanup** (Task 11)
-7. **Acceptance gates** (Tasks 12-14)
+1. **Race fix** — Tasks 1-2 (Commits 2-3 in spec §4)
+2. **Collectd hygiene** — Tasks 3-4 (Commits 4-5)
+3. **Operational** — Tasks 5-6 (Commits 6-7)
+4. **Acceptance gates** — Tasks 7-9 (no commits; verification + push + PR)
 
 ---
 
-## Task 1: Expose diagnostic actuator endpoints + add startup logs
+## Task 1: NodeContextKafkaBootstrap race fix (subscribe + ConsumerRebalanceListener)
+
+**Goal:** Replace the racy `partitionsFor`-based two-branch logic in `NodeContextKafkaBootstrap.run()` with a single-path `consumer.subscribe(List.of(TOPIC))` flow whose `ConsumerRebalanceListener` records HWM, seeks to beginning, drains, and marks the cache ready exactly once.
 
 **Files:**
-- Modify: `core/daemon-boot-collectd/src/main/resources/application.yml`
-- Modify: `core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java`
+- Modify: `core/prometheus-writer/src/main/java/org/deltav/prometheus/writer/nodecontext/NodeContextKafkaBootstrap.java`
+- Modify (TDD test first, then verified by impl): `core/prometheus-writer/src/test/java/org/deltav/prometheus/writer/nodecontext/NodeContextKafkaBootstrapIT.java`
 
-- [ ] **Step 1: Extend actuator exposure in application.yml**
+> **TDD note:** the existing IT (`bootstrap_drains_to_HWM_then_marks_ready`, `tombstone_removes_key_from_cache_live`) tests the happy path with topic pre-created. Both should still pass after this fix without modification — the new code handles the topic-exists-at-startup case as a degenerate of the topic-created-later case. Task 2 adds the new race-test method explicitly.
 
-Locate the `management.endpoints.web.exposure.include` setting in `core/daemon-boot-collectd/src/main/resources/application.yml`. Read the file first to find exact current state:
+- [ ] **Step 1: Run existing NodeContextKafkaBootstrapIT to establish baseline**
 
 ```bash
-grep -nE "management|endpoint|exposure" core/daemon-boot-collectd/src/main/resources/application.yml
+./mvnw -pl core/prometheus-writer test -Dtest=NodeContextKafkaBootstrapIT
 ```
 
-If the include line already exists, edit to add `env,beans,conditions`:
+Expected: `2/2 PASS` in ~15-20s (Testcontainers Kafka spin-up dominates). Establishes that the existing two tests pass against the current racy code (they do — they pre-create the topic, so the racy branch is never exercised).
 
-```yaml
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health, info, prometheus, env, beans, conditions
-```
+- [ ] **Step 2: Replace `run()` method with the subscribe-based flow**
 
-If the block doesn't exist yet (possible — Collectd may rely on Spring Boot defaults), add the full block at the end of the file, before any trailing `---` document-end marker.
+Edit `core/prometheus-writer/src/main/java/org/deltav/prometheus/writer/nodecontext/NodeContextKafkaBootstrap.java`. Three changes:
 
-- [ ] **Step 2: Add diagnostic startup logs to TimeseriesKafkaPublisherConfiguration**
+1. Update imports — add `ConsumerRebalanceListener`, `ConcurrentHashMap`, drop `HashMap`/`HashSet` if no longer used, drop `PartitionInfo` (no longer referenced).
+2. Replace the entire `run()` method body.
+3. Remove the now-unused `partitionsFor`-branch logic.
 
-Edit `core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java`.
-
-First, confirm the existing logger import (`org.slf4j.Logger`, `org.slf4j.LoggerFactory`) is present. If not, add them at the top.
-
-Add a class-level `LOG` field near the top of the class (before the `@Bean` methods), immediately after the `@ConditionalOnProperty` annotation and class declaration:
+**Updated imports** (replace the existing `java.util.*` and `org.apache.kafka.*` block):
 
 ```java
-    private static final Logger LOG = LoggerFactory.getLogger(TimeseriesKafkaPublisherConfiguration.class);
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 ```
 
-Add a no-arg constructor that logs load-time evidence. Insert after the `LOG` field, before the first `@Bean`:
+```java
+import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+```
+
+(Drop `import org.apache.kafka.common.PartitionInfo;`, `import java.util.HashMap;`, `import java.util.HashSet;` — no longer used.)
+
+**Replace the entire `run()` method** (currently lines 98-140) with:
 
 ```java
-    public TimeseriesKafkaPublisherConfiguration() {
-        LOG.info("TimeseriesKafkaPublisherConfiguration loaded — @ConditionalOnProperty(deltav.timeseries.enabled=true) matched");
+    @Override
+    public void run() {
+        // Tracks per-partition end-offset captured at the moment the broker assigned the
+        // partition to us. The bootstrap is "complete" when every assigned partition has
+        // been drained up to its captured HWM. Both maps mutate from the consumer thread
+        // (poll loop) and the rebalance listener (called inline during poll), so a
+        // ConcurrentHashMap is defensive-but-cheap.
+        Map<TopicPartition, Long> endOffsets = new ConcurrentHashMap<>();
+        Set<TopicPartition> caughtUp = ConcurrentHashMap.newKeySet();
+        AtomicBoolean bootstrapMarked = new AtomicBoolean(false);
+
+        try (KafkaConsumer<String, byte[]> consumer = buildConsumer()) {
+            consumer.subscribe(List.of(TOPIC), new ConsumerRebalanceListener() {
+                @Override
+                public void onPartitionsAssigned(Collection<TopicPartition> assigned) {
+                    // Record HWM at assignment time so we know when we have replayed the
+                    // compacted topic up to "now". Then seek to the beginning so we
+                    // actually replay everything (compacted topic semantics: we need
+                    // the latest value per key, not just the live tail).
+                    Map<TopicPartition, Long> hwm = consumer.endOffsets(assigned);
+                    endOffsets.putAll(hwm);
+                    consumer.seekToBeginning(assigned);
+                    // Empty partitions (end offset == 0) are instantly caught up.
+                    for (Map.Entry<TopicPartition, Long> e : hwm.entrySet()) {
+                        if (e.getValue() == 0L) {
+                            caughtUp.add(e.getKey());
+                        }
+                    }
+                }
+
+                @Override
+                public void onPartitionsRevoked(Collection<TopicPartition> revoked) {
+                    // No-op. Kafka may reassign us; the next onPartitionsAssigned will
+                    // re-establish HWM and re-seek. AtomicBoolean bootstrapMarked
+                    // prevents duplicate NodeContextCacheReadyEvent publication.
+                }
+            });
+
+            while (running.get()) {
+                ConsumerRecords<String, byte[]> records = consumer.poll(POLL_TIMEOUT);
+                for (ConsumerRecord<String, byte[]> r : records) {
+                    applyRecord(r);
+                    TopicPartition tp = new TopicPartition(r.topic(), r.partition());
+                    Long hwm = endOffsets.get(tp);
+                    if (hwm != null && r.offset() + 1 >= hwm) {
+                        caughtUp.add(tp);
+                    }
+                }
+                // Mark cache ready exactly once, after the first full drain across all
+                // currently-assigned partitions. The compareAndSet guards against double-
+                // firing if poll() somehow re-enters this branch before bootstrapMarked
+                // becomes visible (defensive — single consumer thread, but cheap).
+                if (!bootstrapMarked.get()
+                        && !endOffsets.isEmpty()
+                        && caughtUp.containsAll(endOffsets.keySet())
+                        && bootstrapMarked.compareAndSet(false, true)) {
+                    finishBootstrap();
+                }
+            }
+        } catch (Exception e) {
+            LOG.error("NodeContextKafkaBootstrap fatal error", e);
+        }
     }
 ```
 
-Modify the `compositePersisterFactory` `@Bean` method to log the inner-factory identity just before returning:
+**Delete the now-unused `liveTail(KafkaConsumer)` method** (currently lines 142-153). It is superseded by the merged poll loop in the new `run()`. The method is private and has no callers outside `run()`.
+
+`applyRecord`, `finishBootstrap`, `buildConsumer`, `start`, `stop`, `onAppReady`, the constructor, and the gauge registration all stay unchanged.
+
+- [ ] **Step 3: Re-run the existing IT to confirm no regression**
+
+```bash
+./mvnw -pl core/prometheus-writer test -Dtest=NodeContextKafkaBootstrapIT
+```
+
+Expected: still `2/2 PASS`. The two existing tests (`bootstrap_drains_to_HWM_then_marks_ready`, `tombstone_removes_key_from_cache_live`) now exercise the new subscribe-based path. Cache should be ready and populated; tombstones should still propagate.
+
+If either fails, STOP and report. The likely culprits: (a) the new `bootstrapMarked` gate fires before all partitions are caught up (fix: check the `endOffsets.isEmpty()` short-circuit), (b) the `ConsumerRebalanceListener` interferes with the existing test's `produce(...)` followed by `await().until(cache::isReady)` timing (fix: extend the await timeout to 30s).
+
+- [ ] **Step 4: Verify the full module test suite still passes**
+
+```bash
+./mvnw -pl core/prometheus-writer verify
+```
+
+Expected: all unit + IT tests pass (~88+ total per the Phase 2 baseline). No new failures introduced by the rewrite of `run()`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add core/prometheus-writer/src/main/java/org/deltav/prometheus/writer/nodecontext/NodeContextKafkaBootstrap.java
+git commit -m "fix(prometheus-writer): NodeContextKafkaBootstrap subscribe + ConsumerRebalanceListener
+
+Race fix. Old code path: consumer.partitionsFor(TOPIC) returns null when
+deltav-node-context topic doesn't exist yet (provisiond hasn't created
+it), the 'no partitions yet' branch calls finishBootstrap() + liveTail()
+WITHOUT ever calling consumer.assign() or consumer.subscribe(). liveTail's
+consumer.poll() then throws IllegalStateException ('Consumer is not
+subscribed to any topics or assigned any partitions') on every 5s cycle
+forever. Records later written to the topic by provisiond are never
+consumed; cache stays empty; every prometheus-writer record hits
+enrichment_missing.
+
+New code path: single-path consumer.subscribe(List.of(TOPIC)) with a
+ConsumerRebalanceListener.onPartitionsAssigned that records HWM, seeks
+to beginning, and tracks 'caught up' state. The merged poll loop drains
+records and marks the cache ready exactly once (guarded by AtomicBoolean
+compareAndSet) after the first full drain to HWM across all assigned
+partitions. Same flow handles topic-exists-at-startup AND
+topic-created-later — no branching on partitionsFor.
+
+Existing IT tests (bootstrap_drains_to_HWM_then_marks_ready,
+tombstone_removes_key_from_cache_live) still pass — both pre-create the
+topic so they exercise the new path's degenerate case. Task 2 adds the
+new IT case that exercises the topic-created-after-start race that was
+broken.
+
+Surfaced by PR #174 E2E investigation
+(project_collectd_publisher_inert_investigation memory)."
+```
+
+---
+
+## Task 2: NodeContextKafkaBootstrapIT — topic-created-after-start case
+
+**Goal:** Add a regression-gate IT method that exercises the exact path that was broken in v1: bootstrap starts, topic does not exist, cache must NOT be marked ready, then create topic + produce records mid-flight, cache must become ready with the records.
+
+**Files:**
+- Modify: `core/prometheus-writer/src/test/java/org/deltav/prometheus/writer/nodecontext/NodeContextKafkaBootstrapIT.java`
+
+- [ ] **Step 1: Add the new test method to the existing IT class**
+
+Open `core/prometheus-writer/src/test/java/org/deltav/prometheus/writer/nodecontext/NodeContextKafkaBootstrapIT.java` and add this test method alongside the existing two. Place it after `tombstone_removes_key_from_cache_live` and before the `@AfterEach` (or at the end of the class — the order doesn't matter to JUnit):
+
+```java
+    @Test
+    void bootstrap_survives_topic_created_after_start() throws Exception {
+        // CRITICAL: do NOT call ensureTopic() at the start of this test. The whole
+        // point is that the topic does not exist when NodeContextKafkaBootstrap
+        // begins. The v1 racy code marked the cache ready immediately with size=0
+        // and entered an unassigned-poll loop that threw IllegalStateException
+        // forever, never consuming any records that were later written to the topic.
+        NodeContextCache cache = new NodeContextCache();
+        AtomicReference<NodeContextCacheReadyEvent> capturedEvent = new AtomicReference<>();
+        ApplicationEventPublisher publisher = e -> {
+            if (e instanceof NodeContextCacheReadyEvent r) capturedEvent.set(r);
+        };
+        NodeContextKafkaBootstrap boot = new NodeContextKafkaBootstrap(
+                cache, publisher, new SimpleMeterRegistry(), KAFKA.getBootstrapServers());
+        boot.start();
+        try {
+            // Sanity: cache must NOT be ready yet because the topic doesn't exist.
+            // Wait a moment to make sure the bootstrap thread has had time to attempt
+            // a subscribe and not short-circuit to ready.
+            Thread.sleep(2000);
+            assertThat(cache.isReady())
+                    .as("cache must not be ready before topic exists")
+                    .isFalse();
+            assertThat(capturedEvent.get())
+                    .as("ready event must not have fired before topic exists")
+                    .isNull();
+
+            // Now create the topic mid-flight. Kafka should rebalance our consumer
+            // (which subscribed to the not-yet-existent topic) and assign partitions.
+            ensureTopic();
+            // Produce a record so there's something for the bootstrap drain to land.
+            produce(200, false);
+
+            // Cache should become ready within 30s (allows for rebalance + drain).
+            await().atMost(Duration.ofSeconds(30)).until(cache::isReady);
+            assertThat(capturedEvent.get())
+                    .as("ready event must have fired exactly once after first drain")
+                    .isNotNull();
+            assertThat(cache.get("Default@200")).isPresent();
+        } finally {
+            boot.stop();
+        }
+    }
+```
+
+If `Thread.sleep(2000)` triggers a checkstyle/spotbugs warning in this codebase, replace with the existing `Awaitility.with().pollDelay(...)` idiom — the surrounding tests' style sets the precedent.
+
+- [ ] **Step 2: Run only the new test**
+
+```bash
+./mvnw -pl core/prometheus-writer test -Dtest=NodeContextKafkaBootstrapIT#bootstrap_survives_topic_created_after_start
+```
+
+Expected: `1/1 PASS` in ~15-25s (Testcontainers Kafka + 2s sanity wait + rebalance + drain).
+
+If it fails on the `assertThat(cache.isReady()).isFalse()` line: the new code is incorrectly marking the cache ready before partitions are assigned. Re-check `endOffsets.isEmpty()` short-circuit in `run()` — that gate prevents premature ready-firing.
+
+If it fails on `await().atMost(Duration.ofSeconds(30)).until(cache::isReady)`: the rebalance + drain didn't complete in time. Either (a) bump the timeout to 60s, or (b) the new code isn't catching up to HWM (re-check the `caughtUp.containsAll(endOffsets.keySet())` condition).
+
+If it fails on `assertThat(cache.get("Default@200")).isPresent()`: the record was consumed but not stored. Check `applyRecord` — should be unchanged from v1.
+
+- [ ] **Step 3: Run the full IT class to ensure no test interference**
+
+```bash
+./mvnw -pl core/prometheus-writer test -Dtest=NodeContextKafkaBootstrapIT
+```
+
+Expected: `3/3 PASS`. The new test plus the two existing tests (`bootstrap_drains_to_HWM_then_marks_ready`, `tombstone_removes_key_from_cache_live`) all pass against the new subscribe-based code.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add core/prometheus-writer/src/test/java/org/deltav/prometheus/writer/nodecontext/NodeContextKafkaBootstrapIT.java
+git commit -m "test(prometheus-writer): NodeContextKafkaBootstrapIT topic-created-after-start case
+
+Regression gate for the race fixed in the prior commit. Exercises the
+exact scenario that was broken: NodeContextKafkaBootstrap starts before
+deltav-node-context topic exists; cache must NOT be marked ready; then
+topic is created mid-flight and a record produced; cache must become
+ready and contain the record.
+
+Reproduces the race that the v1 code took the 'no partitions yet' branch
+on and silently entered an unassigned-poll loop. With the new
+subscribe + ConsumerRebalanceListener flow, Kafka rebalances and assigns
+the partitions when the topic appears, the listener records HWM and
+seeks to beginning, the merged poll loop drains, and the cache-ready
+gate fires.
+
+Existing two tests (bootstrap_drains_to_HWM_then_marks_ready,
+tombstone_removes_key_from_cache_live) unchanged — they exercise the
+topic-exists-at-startup degenerate case."
+```
+
+---
+
+## Task 3: FanoutPersister observability + dev fail-fast (Commit 4 — feat-only per spec)
+
+**Goal:** Add the (X) Micrometer counters + (Y) Spring fail-fast properties to `FanoutPersister` per spec §3-4. Make the Phase 0 inner-persister bugs (#1, #2, #4) operator-visible without fixing them. Default fail-fast off in production; ITs override via `@TestPropertySource`.
+
+> **Spec §4 mandates this commit is feat-only** (FanoutPersisterTest lives in Commit 5 / Task 4). Pure implementation here; tests in the next task. Run-to-fail-then-pass TDD discipline is preserved by writing tests in Task 4 against this task's already-landed implementation; ITs and the existing test suite verify no regression.
+
+**Files:**
+- Modify: `core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java`
+
+- [ ] **Step 1: Add Counter + MeterRegistry imports**
+
+The class already imports `MeterRegistry` (line 19). Add `Counter`:
+
+```java
+import io.micrometer.core.instrument.Counter;
+```
+
+- [ ] **Step 2: Add meter-name constants + STEPS array inside FanoutPersister**
+
+Inside the `FanoutPersister` static nested class, near the top (after the `LOG` field at line 150), add:
+
+```java
+        private static final String INNER_FAILURES_METER =
+                "deltav.collectd.persister.inner.failures";
+        private static final String KAFKA_FAILURES_METER =
+                "deltav.collectd.persister.kafka.failures";
+        private static final String[] STEPS = new String[]{
+                "visitCollectionSet", "visitResource", "visitGroup", "visitAttribute",
+                "completeAttribute", "completeGroup", "completeResource", "completeCollectionSet",
+                "persistNumericAttribute", "persistStringAttribute"
+        };
+```
+
+- [ ] **Step 3: Replace the FanoutPersister constructor + fields to take MeterRegistry + fail-fast booleans**
+
+Current shape (lines 152-158):
+
+```java
+        private final Persister innerPersister;
+        private final TimeseriesKafkaPersister kafkaPersister;
+
+        FanoutPersister(Persister innerPersister, TimeseriesKafkaPersister kafkaPersister) {
+            this.innerPersister = innerPersister;
+            this.kafkaPersister = kafkaPersister;
+        }
+```
+
+Replace with:
+
+```java
+        private final Persister innerPersister;
+        private final TimeseriesKafkaPersister kafkaPersister;
+        private final MeterRegistry meterRegistry;
+        private final boolean failFastInner;
+        private final boolean failFastKafka;
+
+        FanoutPersister(Persister innerPersister, TimeseriesKafkaPersister kafkaPersister,
+                        MeterRegistry meterRegistry, boolean failFastInner, boolean failFastKafka) {
+            this.innerPersister = innerPersister;
+            this.kafkaPersister = kafkaPersister;
+            this.meterRegistry = meterRegistry;
+            this.failFastInner = failFastInner;
+            this.failFastKafka = failFastKafka;
+            preRegisterCounters();
+        }
+
+        private void preRegisterCounters() {
+            // Pre-register all 20 (2 sides × 10 steps) counter tag combinations at
+            // construction time so ops can alert on rate>0 rather than missing-metric
+            // (which would otherwise be ambiguous with "no failures occurred").
+            for (String step : STEPS) {
+                Counter.builder(INNER_FAILURES_METER).tag("step", step).register(meterRegistry);
+                Counter.builder(KAFKA_FAILURES_METER).tag("step", step).register(meterRegistry);
+            }
+        }
+```
+
+- [ ] **Step 4: Replace runInner + runKafka to increment counters + honor fail-fast**
+
+Current shape (lines 160-180):
+
+```java
+        private void runInner(String step, Runnable task) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                LOG.warn("Inner persister threw during {}; continuing with Kafka path", step, e);
+            }
+        }
+
+        private void runKafka(String step, Runnable task) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                LOG.warn("Kafka persister threw during {}; continuing", step, e);
+            }
+        }
+```
+
+Replace with:
+
+```java
+        private void runInner(String step, Runnable task) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                meterRegistry.counter(INNER_FAILURES_METER, "step", step).increment();
+                LOG.warn("Inner persister threw during {}; continuing with Kafka path", step, e);
+                if (failFastInner) {
+                    throw new RuntimeException(
+                            "Inner persister failed during " + step + " (fail-fast enabled)", e);
+                }
+            }
+        }
+
+        private void runKafka(String step, Runnable task) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                meterRegistry.counter(KAFKA_FAILURES_METER, "step", step).increment();
+                LOG.warn("Kafka persister threw during {}; continuing", step, e);
+                if (failFastKafka) {
+                    throw new RuntimeException(
+                            "Kafka persister failed during " + step + " (fail-fast enabled)", e);
+                }
+            }
+        }
+```
+
+The `catch (Throwable e)` is preserved (per the existing comment about LinkageError from horizon's classpath quirks).
+
+- [ ] **Step 5: Extend FanoutPersisterFactory to carry MeterRegistry + fail-fast flags**
+
+Current shape (lines 102-127):
+
+```java
+    static final class FanoutPersisterFactory implements PersisterFactory {
+        private final PersisterFactory innerFactory;
+        private final TimeseriesKafkaPublisher publisher;
+
+        FanoutPersisterFactory(PersisterFactory innerFactory, TimeseriesKafkaPublisher publisher) {
+            this.innerFactory = innerFactory;
+            this.publisher = publisher;
+        }
+
+        @Override
+        public Persister createPersister(ServiceParameters params, RrdRepository repository) {
+            return new FanoutPersister(
+                    innerFactory.createPersister(params, repository),
+                    new TimeseriesKafkaPersister(publisher, params));
+        }
+
+        @Override
+        public Persister createPersister(ServiceParameters params, RrdRepository repository,
+                                         boolean dontPersistCounters, boolean forceStoreByGroup,
+                                         boolean dontReorderAttributes) {
+            return new FanoutPersister(
+                    innerFactory.createPersister(params, repository, dontPersistCounters,
+                            forceStoreByGroup, dontReorderAttributes),
+                    new TimeseriesKafkaPersister(publisher, params));
+        }
+    }
+```
+
+Replace with:
+
+```java
+    static final class FanoutPersisterFactory implements PersisterFactory {
+        private final PersisterFactory innerFactory;
+        private final TimeseriesKafkaPublisher publisher;
+        private final MeterRegistry meterRegistry;
+        private final boolean failFastInner;
+        private final boolean failFastKafka;
+
+        FanoutPersisterFactory(PersisterFactory innerFactory, TimeseriesKafkaPublisher publisher,
+                               MeterRegistry meterRegistry,
+                               boolean failFastInner, boolean failFastKafka) {
+            this.innerFactory = innerFactory;
+            this.publisher = publisher;
+            this.meterRegistry = meterRegistry;
+            this.failFastInner = failFastInner;
+            this.failFastKafka = failFastKafka;
+        }
+
+        @Override
+        public Persister createPersister(ServiceParameters params, RrdRepository repository) {
+            return new FanoutPersister(
+                    innerFactory.createPersister(params, repository),
+                    new TimeseriesKafkaPersister(publisher, params),
+                    meterRegistry, failFastInner, failFastKafka);
+        }
+
+        @Override
+        public Persister createPersister(ServiceParameters params, RrdRepository repository,
+                                         boolean dontPersistCounters, boolean forceStoreByGroup,
+                                         boolean dontReorderAttributes) {
+            return new FanoutPersister(
+                    innerFactory.createPersister(params, repository, dontPersistCounters,
+                            forceStoreByGroup, dontReorderAttributes),
+                    new TimeseriesKafkaPersister(publisher, params),
+                    meterRegistry, failFastInner, failFastKafka);
+        }
+    }
+```
+
+- [ ] **Step 6: Update the @Bean method to inject MeterRegistry + read the fail-fast properties**
+
+Current shape (lines 90-105):
 
 ```java
     @Bean
@@ -101,318 +548,146 @@ Modify the `compositePersisterFactory` `@Bean` method to log the inner-factory i
     }
 ```
 
-- [ ] **Step 3: Verify the module compiles**
+Replace with:
+
+```java
+    @Bean
+    @Primary
+    public PersisterFactory compositePersisterFactory(
+            @Qualifier("timeseriesPersisterFactory") PersisterFactory innerFactory,
+            TimeseriesKafkaPublisher publisher,
+            MeterRegistry meterRegistry,
+            @Value("${deltav.collectd.persister.inner.fail-fast:false}") boolean failFastInner,
+            @Value("${deltav.collectd.persister.kafka.fail-fast:false}") boolean failFastKafka) {
+        LOG.info("Creating compositePersisterFactory wrapping inner={}@{} (failFastInner={}, failFastKafka={})",
+                innerFactory.getClass().getName(),
+                System.identityHashCode(innerFactory),
+                failFastInner, failFastKafka);
+        return new FanoutPersisterFactory(innerFactory, publisher, meterRegistry,
+                failFastInner, failFastKafka);
+    }
+```
+
+The `@Value` import (`org.springframework.beans.factory.annotation.Value`) is already at line 36. No new import needed.
+
+- [ ] **Step 7: Update the class-level Javadoc to document the new meters + properties**
+
+Replace the `FanoutPersister` Javadoc block (currently lines 130-148) with:
+
+```java
+    /**
+     * Forwards each visitor callback to both delegate persisters, inner first
+     * then Kafka. Each delegate is invoked inside its own try/catch so that
+     * an exception in one does not prevent the other from running.
+     *
+     * <p>Observability (added 2026-04-18 — see project_collectd_publisher_inert_investigation):
+     * <ul>
+     *   <li>{@code deltav.collectd.persister.inner.failures{step=<visitor-step>}}
+     *       — Micrometer counter, pre-registered for all 10 visitor steps at
+     *       construction so ops can alert on rate&gt;0 rather than missing-metric.</li>
+     *   <li>{@code deltav.collectd.persister.kafka.failures{step=<visitor-step>}}
+     *       — symmetric for the Kafka side.</li>
+     * </ul>
+     *
+     * <p>Fail-fast toggles (default false in production; CI/IT profiles enable):
+     * <ul>
+     *   <li>{@code deltav.collectd.persister.inner.fail-fast} — when true, inner
+     *       Throwable propagates as RuntimeException instead of being swallowed.</li>
+     *   <li>{@code deltav.collectd.persister.kafka.fail-fast} — symmetric.</li>
+     * </ul>
+     *
+     * <p>Phase 0 horizon-side inner-persister bugs (UnexpectedRollbackException
+     * in MetaTagDataLoader; NPE in TimeseriesPersistOperationBuilder.setAttributeValue;
+     * ClassCastException in TimeseriesPersister.getUserDefinedMetaTags) are still
+     * caught and WARN-logged here. They do not block the Kafka path. See memory
+     * project_phase0_inner_persister_bugs_followup for the dedicated fix queue.
+     */
+```
+
+- [ ] **Step 8: Verify the module compiles + existing tests pass**
 
 ```bash
 ./mvnw -pl core/daemon-boot-collectd -DskipTests compile
 ```
 
-Expected: `BUILD SUCCESS`. The startup logs do not yet run; they fire only when the app boots.
+Expected: `BUILD SUCCESS`. The new constructor signature is backwards-compatible at the @Bean injection site only because we updated the @Bean method too.
 
-- [ ] **Step 4: Commit**
-
-```bash
-git add core/daemon-boot-collectd/src/main/resources/application.yml \
-        core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java
-git commit -m "diag(daemon-boot-collectd): expose env/beans/conditions + startup logs
-
-Temporary diagnostic exposure on Collectd's actuator plus two INFO log
-lines in TimeseriesKafkaPublisherConfiguration (class load + composite
-persister factory wrap). Lets us confirm which of the three wiring
-hypotheses (property resolution, condition evaluation, or @Primary vs
-qualifier injection) explains the silent inert publisher on develop.
-
-Will be partially reverted in Commit 6 — /actuator/conditions stays
-on permanently; env + beans + startup logs revert."
-```
-
----
-
-## Task 2: Capture evidence + identify root cause
-
-**Files:**
-- No code changes — this is a run-experiment + memory-update task.
-- Modify: `/Users/david/.claude/projects/-Users-david-development-src-opennms-delta-v/memory/project_collectd_publisher_inert_investigation.md`
-
-- [ ] **Step 1: Rebuild Collectd image**
-
-The `build.sh check_daemon_boot_freshness` check walks `daemon-boot-*/src/main/` + `pom.xml` but misses transitive deps. Since we just modified `daemon-boot-collectd`'s own sources, the check will catch it. If not, touch the pom as a workaround:
+Then run the existing test suite to confirm no regression:
 
 ```bash
-touch core/daemon-boot-collectd/pom.xml
-./opennms-container/delta-v/build.sh deltav 2>&1 | tail -5
+./mvnw -pl core/daemon-boot-collectd test
 ```
 
-Expected: `opennms/collectd:0.0.1-SNAPSHOT` rebuilt. Other 13 daemon-boot images stay cached.
+Expected: all existing tests pass. `FanoutPersister`'s 5-arg constructor is package-private and only called from `FanoutPersisterFactory.createPersister` (also updated). If any existing test instantiated `FanoutPersister` with the old 2-arg constructor, that test will fail to compile — STOP and report; we'll need to update those tests too.
 
-- [ ] **Step 2: Start the stack**
-
-```bash
-cd opennms-container/delta-v
-DELTAV_TIMESERIES_ENABLED=true docker compose --profile lite --profile metrics-e2e up -d
-echo "--- sleeping 90s for first full poll cycle ---"
-sleep 90
-```
-
-- [ ] **Step 3: Capture log evidence**
-
-```bash
-docker compose logs --no-color collectd 2>&1 | \
-  grep -E "TimeseriesKafkaPublisherConfiguration|compositePersisterFactory|persister.factory|PersisterFactory"
-```
-
-Three possible outcomes:
-- **Neither log line present**: class did not load → hypothesis A (property) or B (condition).
-- **Only the class-load line present**: class loaded but `@Bean` did not run → unexpected (hypothesis D) — possibly the bean ran but the log did not flush, possibly a deeper Spring issue.
-- **Both lines present**: class loaded and composite was wrapped → hypothesis C (bean-name resolution bypass).
-
-- [ ] **Step 4: Capture actuator evidence**
-
-```bash
-docker compose exec -T collectd curl -sf http://localhost:8080/actuator/env/deltav.timeseries.enabled 2>&1 | head -20
-echo "---"
-docker compose exec -T collectd curl -sf http://localhost:8080/actuator/conditions 2>&1 | \
-  python3 -c 'import json,sys; c=json.load(sys.stdin); m=c["contexts"]["application"]; \
-    print("positive:", "TimeseriesKafkaPublisherConfiguration" in m.get("positiveMatches",{})); \
-    print("negative:", [k for k in m.get("negativeMatches",{}) if "Timeseries" in k])'
-echo "---"
-docker compose exec -T collectd curl -sf http://localhost:8080/actuator/beans 2>&1 | \
-  python3 -c 'import json,sys; b=json.load(sys.stdin)["contexts"]["application"]["beans"]; \
-    print({name: {"type": v["type"].split(".")[-1], "primary": v.get("primary", False)} \
-           for name, v in b.items() if "PersisterFactory" in v.get("type","")})'
-```
-
-- [ ] **Step 5: Confirm topic state**
-
-```bash
-docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
-  --describe --topic deltav-timeseries 2>&1 | head -10
-docker compose exec -T kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 \
-  --describe --group prometheus-writer 2>&1 | head -10
-```
-
-- [ ] **Step 6: Tear down**
-
-```bash
-docker compose --profile lite --profile metrics-e2e down -v --remove-orphans
-```
-
-- [ ] **Step 7: Update the investigation memory with captured evidence**
-
-Edit `/Users/david/.claude/projects/-Users-david-development-src-opennms-delta-v/memory/project_collectd_publisher_inert_investigation.md`. Under `## Hypothesis space`, add a new section:
-
-```markdown
-## Root cause identified (2026-04-18)
-
-**Confirmed hypothesis:** [A / B / C / D — fill from evidence]
-
-### Evidence
-
-**Startup log lines** (from `docker compose logs collectd`):
-```
-[paste the matching log lines here]
-```
-
-**Actuator /conditions for TimeseriesKafkaPublisherConfiguration**:
-```
-[paste positive-matches or negative-matches JSON excerpt]
-```
-
-**Actuator /beans for PersisterFactory type**:
-```
-[paste the bean map]
-```
-
-**Kafka topic state**: [records present or zero across N partitions]
-
-### Root cause narrative
-
-[One paragraph explaining why hypothesis X fits the evidence. Tie the actuator + log evidence together. Cite specific bean names and their @Primary status.]
-```
-
-- [ ] **Step 8: No commit — evidence is captured in the memory note, not the repo**
-
-Memory files are under `~/.claude/...` and are not part of the repo. The evidence-capture step is a diagnostic step whose artifact is the memory update + the informed decision about Commit 2's fix shape.
-
----
-
-## Task 3: Wiring fix (contingent on Task 2's evidence)
-
-**Files (expected, for hypothesis C — adjust for A or B):**
-- Modify: `core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java`
-
-- [ ] **Step 1: Apply the fix per confirmed hypothesis**
-
-### Hypothesis C — bean-name vs `@Primary` injection (strongest prior)
-
-Horizon's `CollectableService` resolves `PersisterFactory` by `@Qualifier("timeseriesPersisterFactory")` rather than by type. `@Primary` is bypassed. Rename the composite bean to match the name horizon expects.
-
-**Edit 1**: Find the `compositePersisterFactory` `@Bean` method. Change its `@Bean` annotation + method name:
-
-```java
-    // Before:
-    @Bean
-    @Primary
-    public PersisterFactory compositePersisterFactory(
-            @Qualifier("timeseriesPersisterFactory") PersisterFactory innerFactory,
-            TimeseriesKafkaPublisher publisher) {
-        LOG.info("Creating compositePersisterFactory wrapping inner={}@{}",
-                innerFactory.getClass().getName(),
-                System.identityHashCode(innerFactory));
-        return new FanoutPersisterFactory(innerFactory, publisher);
-    }
-```
-
-```java
-    // After:
-    @Bean(name = "timeseriesPersisterFactory")
-    @Primary
-    public PersisterFactory timeseriesPersisterFactory(
-            @Qualifier("innerTimeseriesPersisterFactory") PersisterFactory innerFactory,
-            TimeseriesKafkaPublisher publisher) {
-        LOG.info("Creating composite timeseriesPersisterFactory wrapping inner={}@{}",
-                innerFactory.getClass().getName(),
-                System.identityHashCode(innerFactory));
-        return new FanoutPersisterFactory(innerFactory, publisher);
-    }
-```
-
-**Edit 2**: Find the inner `PersisterFactory` bean — it's declared in a companion `@Configuration` in `core/daemon-boot-collectd` (search for `@Bean.*PersisterFactory` to locate it). If the commit `7760eef1422` ("rename persisterFactory bean to timeseriesPersisterFactory") is relevant, look at where that rename landed. Expected location:
-
-```bash
-grep -rn "timeseriesPersisterFactory" core/daemon-boot-collectd/src/main/java/
-```
-
-Rename the inner bean from `timeseriesPersisterFactory` to `innerTimeseriesPersisterFactory` via `@Bean(name = "innerTimeseriesPersisterFactory")`:
-
-```java
-    // Before:
-    @Bean
-    public PersisterFactory timeseriesPersisterFactory(...) { ... }
-```
-
-```java
-    // After:
-    @Bean(name = "innerTimeseriesPersisterFactory")
-    public PersisterFactory innerTimeseriesPersisterFactory(...) { ... }
-```
-
-Both inner and outer beans now use explicit `name=` so horizon's `@Qualifier("timeseriesPersisterFactory")` resolves to OUR composite, which internally wraps `innerTimeseriesPersisterFactory`.
-
-### Hypothesis A — property not resolving
-
-Edit `core/daemon-boot-collectd/src/main/resources/application.yml`. Add an explicit binding of `deltav.timeseries.enabled` with the env-var fallback (belt-and-suspenders — the yaml binding happens first; env-var wins if present because `@Value`/env precedence). Locate the existing `deltav:` block:
-
-```yaml
-deltav:
-  timeseries:
-    enabled: ${DELTAV_TIMESERIES_ENABLED:false}
-```
-
-This already exists per prior inspection. If hypothesis A is confirmed, the issue is that the yaml binding is not propagating to `@ConditionalOnProperty`. The fix is to add an explicit `@PropertySource` or replace `@ConditionalOnProperty` with `@ConditionalOnExpression`. Apply the hypothesis-B fix (below) instead — it subsumes A.
-
-### Hypothesis B — condition evaluating false
-
-Edit the class-level annotation in `TimeseriesKafkaPublisherConfiguration.java`:
-
-```java
-    // Before:
-    @ConditionalOnProperty(name = "deltav.timeseries.enabled", havingValue = "true")
-```
-
-```java
-    // After:
-    @ConditionalOnExpression("#{'${deltav.timeseries.enabled:false}' == 'true'}")
-```
-
-### Hypothesis D — unknown
-
-STOP and report BLOCKED. Do not commit a speculative fix. Re-extend diagnosis (e.g. attach a remote debugger to the running collectd container, inspect horizon's `CollectableService.setPersisterFactory` source at the exact 1.0.10 version). Return to brainstorming.
-
-- [ ] **Step 2: Rebuild Collectd image**
-
-```bash
-touch core/daemon-boot-collectd/pom.xml
-./opennms-container/delta-v/build.sh deltav 2>&1 | tail -5
-```
-
-- [ ] **Step 3: Verify the fix live**
-
-```bash
-cd opennms-container/delta-v
-DELTAV_TIMESERIES_ENABLED=true docker compose --profile lite --profile metrics-e2e up -d
-sleep 90
-echo "=== deltav-timeseries record count ==="
-docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server kafka:9092 --topic deltav-timeseries \
-  --from-beginning --max-messages 1 --timeout-ms 10000 2>&1 | tail -3
-echo "=== prometheus-writer counter ==="
-docker compose exec -T prometheus-writer curl -sf http://localhost:8080/actuator/prometheus 2>/dev/null | \
-  grep -E '^deltav_prometheus_writer_records_consumed_total '
-```
-
-Expected: console-consumer reads at least 1 message (byte-array output, not "Processed a total of 0 messages"). `records_consumed_total > 0.0`.
-
-If zero records, STOP — the fix did not work; re-investigate.
-
-- [ ] **Step 4: Tear down**
-
-```bash
-docker compose --profile lite --profile metrics-e2e down -v --remove-orphans
-cd /Users/david/development/src/opennms/delta-v
-```
-
-- [ ] **Step 5: Commit the fix**
-
-Commit message for hypothesis C:
+- [ ] **Step 9: Commit**
 
 ```bash
 git add core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java
-# also add whatever file declared the inner PersisterFactory bean
-git commit -m "fix(daemon-boot-collectd): rename compositePersisterFactory bean to timeseriesPersisterFactory
+git commit -m "feat(daemon-boot-collectd): FanoutPersister observability + dev fail-fast
 
-Root cause: horizon CollectableService (horizon 1.0.10) resolves
-PersisterFactory by qualifier name ('timeseriesPersisterFactory')
-rather than by type, so @Primary on our composite bean was bypassed
-and the inner factory won at the injection point. Collectd silently
-ran the legacy persist path with zero Kafka publishes.
+(X) Two Micrometer counters — deltav.collectd.persister.{inner,kafka}.failures
+tagged by visitor step — pre-registered at construction for all 10 steps
+(× 2 sides = 20 tag combinations) so ops can alert on rate>0 rather than
+missing-metric. Phase 0 horizon-side inner-persister bugs (#1
+UnexpectedRollbackException, #2 NPE in TimeseriesPersistOperationBuilder,
+#4 ClassCastException in TimeseriesPersister.getUserDefinedMetaTags)
+become operator-visible without being fixed here — they remain swallowed
+by the existing isolation, deserve their own focused investigation, and
+are tracked under project_phase0_inner_persister_bugs_followup.
 
-Fix: give our composite the name 'timeseriesPersisterFactory' that
-horizon expects; rename the inner bean to
-'innerTimeseriesPersisterFactory'. Horizon now resolves to our
-composite; internally we wrap the renamed inner.
+(Y) Two Spring properties — deltav.collectd.persister.{inner,kafka}.fail-fast,
+default false in production. When true, Throwables propagate as
+RuntimeException instead of being swallowed + logged. CI / integration
+tests enable these via @TestPropertySource so silent regressions surface
+as test failures.
 
-Evidence captured in project_collectd_publisher_inert_investigation
-memo via the diagnostic commit."
+Tests landing in the next commit (Task 4): FanoutPersisterTest covers
+counter increments, pre-registration, fail-fast matrix, and the
+Throwable-not-just-RuntimeException catch (Phase 0 #3 LinkageError scar
+guard). CollectdApplicationScanIT exercises real-main-class wiring."
 ```
-
-Adjust the message body for hypothesis A or B if they were confirmed instead.
 
 ---
 
-## Task 4: Write the FanoutPersisterTest skeleton
+## Task 4: FanoutPersisterTest + CollectdApplicationScanIT (Commit 5 — test-only per spec)
+
+**Goal:** Pin Task 3's behavior with 7 unit tests + 3 real-main-class IT tests. Mandatory `commons-io:2.18.0` test dep per `feedback_boot4_testcontainers_commons_io`.
 
 **Files:**
+- Modify (if needed): `core/daemon-boot-collectd/pom.xml`
 - Create: `core/daemon-boot-collectd/src/test/java/org/deltav/collectd/timeseries/FanoutPersisterTest.java`
+- Create: `core/daemon-boot-collectd/src/test/java/org/deltav/netmgt/collectd/boot/CollectdApplicationScanIT.java`
 
-- [ ] **Step 1: Write the test class with all 7 test methods (most will fail until Tasks 5-7)**
+- [ ] **Step 1: Verify commons-io:2.18.0 test dep is present**
+
+```bash
+grep -A2 "commons-io" core/daemon-boot-collectd/pom.xml | head -10
+```
+
+If `commons-io:commons-io:2.18.0` with `<scope>test</scope>` is absent, add to `core/daemon-boot-collectd/pom.xml` inside `<dependencies>` (near other test-scoped deps):
+
+```xml
+        <!-- Required by Testcontainers 2.x / commons-compress 1.28+ — see
+             feedback_boot4_testcontainers_commons_io memory. Without this,
+             container start hangs at the wait-strategy timeout. -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.18.0</version>
+            <scope>test</scope>
+        </dependency>
+```
+
+- [ ] **Step 2: Create FanoutPersisterTest — 7 unit tests**
+
+Write `core/daemon-boot-collectd/src/test/java/org/deltav/collectd/timeseries/FanoutPersisterTest.java`:
 
 ```java
 /*
  * Copyright (C) 2026 BeaconStrategists, Inc.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
- * by the Free Software Foundation, either version 3 of the License,
- * or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * Licensed under the GNU Affero General Public License v3.
  */
 package org.deltav.collectd.timeseries;
 
@@ -506,7 +781,7 @@ class FanoutPersisterTest {
         FanoutPersister p = make(true, false);
         assertThatThrownBy(() -> p.visitResource(r))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("inner boom");
+                .hasMessageContaining("fail-fast enabled");
     }
 
     @Test
@@ -515,7 +790,7 @@ class FanoutPersisterTest {
         doThrow(new RuntimeException("inner boom")).when(inner).visitResource(r);
         doNothing().when(kafka).visitResource(r);
 
-        make(false, false).visitResource(r);  // should NOT throw
+        make(false, false).visitResource(r);  // must NOT throw
 
         verify(kafka).visitResource(r);
     }
@@ -529,7 +804,7 @@ class FanoutPersisterTest {
         FanoutPersister p = make(false, true);
         assertThatThrownBy(() -> p.visitResource(r))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("kafka boom");
+                .hasMessageContaining("fail-fast enabled");
     }
 
     @Test
@@ -539,7 +814,7 @@ class FanoutPersisterTest {
                 .when(inner).visitResource(r);
         doNothing().when(kafka).visitResource(r);
 
-        make(false, false).visitResource(r);  // should NOT throw
+        make(false, false).visitResource(r);  // must NOT throw
 
         Counter c = registry.find(INNER_FAILURES).tag("step", "visitResource").counter();
         assertThat(c.count()).isEqualTo(1.0);
@@ -548,380 +823,17 @@ class FanoutPersisterTest {
 }
 ```
 
-- [ ] **Step 2: Run — expect compile failure**
+- [ ] **Step 3: Run FanoutPersisterTest**
 
 ```bash
 ./mvnw -pl core/daemon-boot-collectd test -Dtest=FanoutPersisterTest
 ```
 
-Expected: compile failure — `FanoutPersister` constructor doesn't take `MeterRegistry` + two booleans yet; the `TimeseriesKafkaPersister` reference may or may not compile.
+Expected: `7/7 PASS` in <1s. If any fail, the Task 3 implementation has a defect — re-read the test failure and adjust the impl in `TimeseriesKafkaPublisherConfiguration.java` (tests stay fixed; impl bends).
 
-- [ ] **Step 3: Do NOT commit yet** — Task 5 adds the implementation that makes these tests pass.
+- [ ] **Step 4: Create CollectdApplicationScanIT — 3 real-main-class IT tests**
 
----
-
-## Task 5: Implement counter pre-registration
-
-**Files:**
-- Modify: `core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java`
-
-- [ ] **Step 1: Add imports + pre-registration helper**
-
-At the top of `TimeseriesKafkaPublisherConfiguration.java`, add imports:
-
-```java
-import io.micrometer.core.instrument.Counter;
-```
-
-(`MeterRegistry` is likely already imported.)
-
-Add a private static helper just inside the `FanoutPersister` nested class, near the other fields:
-
-```java
-        private static final String INNER_FAILURES_METER =
-                "deltav.collectd.persister.inner.failures";
-        private static final String KAFKA_FAILURES_METER =
-                "deltav.collectd.persister.kafka.failures";
-        private static final String[] STEPS = new String[]{
-                "visitCollectionSet", "visitResource", "visitGroup", "visitAttribute",
-                "completeAttribute", "completeGroup", "completeResource", "completeCollectionSet",
-                "persistNumericAttribute", "persistStringAttribute"
-        };
-```
-
-- [ ] **Step 2: Extend FanoutPersister constructor to take MeterRegistry + fail-fast flags**
-
-Replace the existing `FanoutPersister` constructor + fields:
-
-```java
-        // Before (current shape):
-        private final Persister innerPersister;
-        private final TimeseriesKafkaPersister kafkaPersister;
-
-        FanoutPersister(Persister innerPersister, TimeseriesKafkaPersister kafkaPersister) {
-            this.innerPersister = innerPersister;
-            this.kafkaPersister = kafkaPersister;
-        }
-```
-
-```java
-        // After:
-        private final Persister innerPersister;
-        private final TimeseriesKafkaPersister kafkaPersister;
-        private final MeterRegistry meterRegistry;
-        private final boolean failFastInner;
-        private final boolean failFastKafka;
-
-        FanoutPersister(Persister innerPersister, TimeseriesKafkaPersister kafkaPersister,
-                        MeterRegistry meterRegistry, boolean failFastInner, boolean failFastKafka) {
-            this.innerPersister = innerPersister;
-            this.kafkaPersister = kafkaPersister;
-            this.meterRegistry = meterRegistry;
-            this.failFastInner = failFastInner;
-            this.failFastKafka = failFastKafka;
-            preRegisterCounters();
-        }
-
-        private void preRegisterCounters() {
-            for (String step : STEPS) {
-                Counter.builder(INNER_FAILURES_METER).tag("step", step).register(meterRegistry);
-                Counter.builder(KAFKA_FAILURES_METER).tag("step", step).register(meterRegistry);
-            }
-        }
-```
-
-- [ ] **Step 3: Run only the pre-registration test**
-
-```bash
-./mvnw -pl core/daemon-boot-collectd test -Dtest=FanoutPersisterTest#counters_preregistered_at_startup_with_zero_value
-```
-
-Expected: PASS. Other tests may still fail; that's Task 6's job.
-
-- [ ] **Step 4: Do NOT commit yet** — bundle commit after Task 7.
-
----
-
-## Task 6: Implement counter increments + fail-fast branches
-
-**Files:**
-- Modify: `core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java`
-
-- [ ] **Step 1: Rewrite runInner and runKafka helpers with increment + fail-fast**
-
-Replace the existing `runInner` and `runKafka` methods inside `FanoutPersister`:
-
-```java
-        // Before (current shape):
-        private void runInner(String step, Runnable task) {
-            try {
-                task.run();
-            } catch (Throwable e) {
-                LOG.warn("Inner persister threw during {}; continuing with Kafka path", step, e);
-            }
-        }
-
-        private void runKafka(String step, Runnable task) {
-            try {
-                task.run();
-            } catch (Throwable e) {
-                LOG.warn("Kafka persister threw during {}; continuing", step, e);
-            }
-        }
-```
-
-```java
-        // After:
-        private void runInner(String step, Runnable task) {
-            try {
-                task.run();
-            } catch (Throwable e) {
-                meterRegistry.counter(INNER_FAILURES_METER, "step", step).increment();
-                LOG.warn("Inner persister threw during {}; continuing with Kafka path", step, e);
-                if (failFastInner) {
-                    throw new RuntimeException(
-                            "Inner persister failed during " + step + " (fail-fast enabled)", e);
-                }
-            }
-        }
-
-        private void runKafka(String step, Runnable task) {
-            try {
-                task.run();
-            } catch (Throwable e) {
-                meterRegistry.counter(KAFKA_FAILURES_METER, "step", step).increment();
-                LOG.warn("Kafka persister threw during {}; continuing", step, e);
-                if (failFastKafka) {
-                    throw new RuntimeException(
-                            "Kafka persister failed during " + step + " (fail-fast enabled)", e);
-                }
-            }
-        }
-```
-
-- [ ] **Step 2: Run the counter-increment + fail-fast tests**
-
-```bash
-./mvnw -pl core/daemon-boot-collectd test -Dtest=FanoutPersisterTest
-```
-
-Expected: all 7 tests PASS except possibly `throwable_not_just_runtime_exception` if the earlier Throwable catch was narrower. If any fail, re-read the implementation to confirm the catch is `Throwable` (not `Exception`) and the branch conditions match.
-
-- [ ] **Step 3: Do NOT commit yet** — Task 7 updates `FanoutPersisterFactory` to pass the new args.
-
----
-
-## Task 7: Wire FanoutPersisterFactory to pass MeterRegistry + fail-fast properties
-
-**Files:**
-- Modify: `core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java`
-
-- [ ] **Step 1: Extend FanoutPersisterFactory to carry MeterRegistry + flags**
-
-Replace the existing `FanoutPersisterFactory` nested class header + fields + constructor:
-
-```java
-        // Before:
-        static final class FanoutPersisterFactory implements PersisterFactory {
-            private final PersisterFactory innerFactory;
-            private final TimeseriesKafkaPublisher publisher;
-
-            FanoutPersisterFactory(PersisterFactory innerFactory, TimeseriesKafkaPublisher publisher) {
-                this.innerFactory = innerFactory;
-                this.publisher = publisher;
-            }
-```
-
-```java
-        // After:
-        static final class FanoutPersisterFactory implements PersisterFactory {
-            private final PersisterFactory innerFactory;
-            private final TimeseriesKafkaPublisher publisher;
-            private final MeterRegistry meterRegistry;
-            private final boolean failFastInner;
-            private final boolean failFastKafka;
-
-            FanoutPersisterFactory(PersisterFactory innerFactory, TimeseriesKafkaPublisher publisher,
-                                   MeterRegistry meterRegistry,
-                                   boolean failFastInner, boolean failFastKafka) {
-                this.innerFactory = innerFactory;
-                this.publisher = publisher;
-                this.meterRegistry = meterRegistry;
-                this.failFastInner = failFastInner;
-                this.failFastKafka = failFastKafka;
-            }
-```
-
-- [ ] **Step 2: Update both createPersister overloads to pass the new args**
-
-```java
-        // Before:
-        @Override
-        public Persister createPersister(ServiceParameters params, RrdRepository repository) {
-            return new FanoutPersister(
-                    innerFactory.createPersister(params, repository),
-                    new TimeseriesKafkaPersister(publisher, params));
-        }
-
-        @Override
-        public Persister createPersister(ServiceParameters params, RrdRepository repository,
-                                         boolean dontPersistCounters, boolean forceStoreByGroup,
-                                         boolean dontReorderAttributes) {
-            return new FanoutPersister(
-                    innerFactory.createPersister(params, repository, dontPersistCounters,
-                            forceStoreByGroup, dontReorderAttributes),
-                    new TimeseriesKafkaPersister(publisher, params));
-        }
-```
-
-```java
-        // After:
-        @Override
-        public Persister createPersister(ServiceParameters params, RrdRepository repository) {
-            return new FanoutPersister(
-                    innerFactory.createPersister(params, repository),
-                    new TimeseriesKafkaPersister(publisher, params),
-                    meterRegistry, failFastInner, failFastKafka);
-        }
-
-        @Override
-        public Persister createPersister(ServiceParameters params, RrdRepository repository,
-                                         boolean dontPersistCounters, boolean forceStoreByGroup,
-                                         boolean dontReorderAttributes) {
-            return new FanoutPersister(
-                    innerFactory.createPersister(params, repository, dontPersistCounters,
-                            forceStoreByGroup, dontReorderAttributes),
-                    new TimeseriesKafkaPersister(publisher, params),
-                    meterRegistry, failFastInner, failFastKafka);
-        }
-```
-
-- [ ] **Step 3: Update the @Bean method to inject MeterRegistry + read the fail-fast properties**
-
-The `@Bean` method (named `timeseriesPersisterFactory` after Task 3's rename, or `compositePersisterFactory` before) gains two additional parameters:
-
-```java
-    @Bean(name = "timeseriesPersisterFactory")
-    @Primary
-    public PersisterFactory timeseriesPersisterFactory(
-            @Qualifier("innerTimeseriesPersisterFactory") PersisterFactory innerFactory,
-            TimeseriesKafkaPublisher publisher,
-            MeterRegistry meterRegistry,
-            @Value("${deltav.collectd.persister.inner.fail-fast:false}") boolean failFastInner,
-            @Value("${deltav.collectd.persister.kafka.fail-fast:false}") boolean failFastKafka) {
-        LOG.info("Creating composite timeseriesPersisterFactory wrapping inner={}@{} (failFastInner={}, failFastKafka={})",
-                innerFactory.getClass().getName(),
-                System.identityHashCode(innerFactory),
-                failFastInner, failFastKafka);
-        return new FanoutPersisterFactory(innerFactory, publisher, meterRegistry,
-                failFastInner, failFastKafka);
-    }
-```
-
-- [ ] **Step 4: Update the class-level javadoc to describe the new meters + properties**
-
-Replace the existing class-level javadoc block:
-
-```java
-/**
- * Feature-flagged configuration for the Kafka Time Series producer. When
- * {@code deltav.timeseries.enabled=true}, publishes one TimeseriesBatch
- * protobuf record per CollectionSet poll to the deltav-timeseries topic.
- * When the flag is false (default), none of the beans are created and the
- * persister chain stays on the existing InMemoryStorage-backed
- * TimeseriesPersisterFactory path.
- *
- * <p>Observability (added post-Phase-2 to prevent silent-swallow regressions):
- * <ul>
- *   <li>{@code deltav.collectd.persister.inner.failures{step=<visitor-step>}}
- *       — Micrometer counter, pre-registered for all 10 visitor steps at
- *       startup so alerts on rate&gt;0 are unambiguous vs missing-metric.</li>
- *   <li>{@code deltav.collectd.persister.kafka.failures{step=<visitor-step>}}
- *       — symmetric for the Kafka side.</li>
- * </ul>
- *
- * <p>Fail-fast toggles (for CI / integration tests — default off in production):
- * <ul>
- *   <li>{@code deltav.collectd.persister.inner.fail-fast} — when true, inner
- *       Throwable propagates instead of being swallowed + logged.</li>
- *   <li>{@code deltav.collectd.persister.kafka.fail-fast} — symmetric for Kafka.</li>
- * </ul>
- *
- * <p>See the {@code project_collectd_publisher_inert_investigation} memory note
- * for the root-cause narrative that motivated these gates.
- */
-```
-
-- [ ] **Step 5: Run the full FanoutPersisterTest suite — expect 7/7 PASS**
-
-```bash
-./mvnw -pl core/daemon-boot-collectd test -Dtest=FanoutPersisterTest
-```
-
-Expected: 7/7 PASS.
-
-- [ ] **Step 6: Commit all three Tasks 4-7 together as one Commit 3**
-
-```bash
-git add core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java \
-        core/daemon-boot-collectd/src/test/java/org/deltav/collectd/timeseries/FanoutPersisterTest.java
-git commit -m "feat(daemon-boot-collectd): FanoutPersister observability + dev fail-fast
-
-(X) Two Micrometer counters — deltav.collectd.persister.{inner,kafka}.failures
-tagged by visitor step — pre-registered at startup for all 10 steps so
-ops can alert on rate>0 rather than missing-metric. Silent-swallow bugs
-like the one that hid the Kafka publisher being inert for weeks until
-Phase 2 PR #174 asserted downstream consumption cannot hide again.
-
-(Y) Two Spring properties — deltav.collectd.persister.{inner,kafka}.fail-fast,
-default false in production. When true, Throwables propagate instead of
-being swallowed + logged. CI and test profiles enable these via
-@TestPropertySource so integration tests fail on inner-persister
-regressions instead of silently absorbing them.
-
-Symmetric for inner and Kafka sides because the same class of wiring
-bug could hit either. Seven FanoutPersisterTest unit tests cover
-counter increments, pre-registration, fail-fast matrix, and the
-LinkageError-catches-Throwable scar guard (Phase 0 #3)."
-```
-
----
-
-## Task 8: (placeholder — no-op, Task 7 Step 6 handled the Commit 3 commit)
-
-Leaving this slot empty in the numbering so the Commit ↔ Task mapping stays clean in the commit log. Skip to Task 9.
-
----
-
-## Task 9: CollectdApplicationScanIT real-main-class IT
-
-**Files:**
-- Create: `core/daemon-boot-collectd/src/test/java/org/deltav/netmgt/collectd/boot/CollectdApplicationScanIT.java`
-- Possibly modify: `core/daemon-boot-collectd/pom.xml` (add `commons-io:2.18.0` test dep if not present — per memory `feedback_boot4_testcontainers_commons_io`)
-
-- [ ] **Step 1: Check if commons-io test dep is already in collectd's pom**
-
-```bash
-grep -A2 "commons-io" core/daemon-boot-collectd/pom.xml | head -10
-```
-
-If `commons-io:2.18.0` with `<scope>test</scope>` is absent, add to `core/daemon-boot-collectd/pom.xml` inside the `<dependencies>` section (near other test-scoped deps):
-
-```xml
-        <!-- Required by Testcontainers 2.x / commons-compress 1.28+ — see
-             feedback_boot4_testcontainers_commons_io memory. Without this,
-             container start hangs at the wait-strategy timeout. -->
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.18.0</version>
-            <scope>test</scope>
-        </dependency>
-```
-
-- [ ] **Step 2: Write the IT**
-
-Create `core/daemon-boot-collectd/src/test/java/org/deltav/netmgt/collectd/boot/CollectdApplicationScanIT.java`:
+Write `core/daemon-boot-collectd/src/test/java/org/deltav/netmgt/collectd/boot/CollectdApplicationScanIT.java`:
 
 ```java
 /*
@@ -937,7 +849,6 @@ import org.deltav.collectd.timeseries.TimeseriesKafkaPublisherConfiguration.Fano
 import org.junit.jupiter.api.Test;
 import org.opennms.netmgt.collection.api.PersisterFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -959,8 +870,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * composite PersisterFactory wires correctly so horizon's CollectableService
  * resolves to our FanoutPersisterFactory, not the bare inner factory.
  *
- * <p>Scar prophylactic: would have caught the silent-inert wiring bug
- * (project_collectd_publisher_inert_investigation) in one CI run.
+ * <p>Phase 2 PR #174 scar-prophylactic lineage: real-main-class startup
+ * catches @Configuration and bean-wiring bugs that unit tests + @Import-based
+ * ITs all bypass. Mandatory commons-io:2.18.0 test dep added to pom per
+ * feedback_boot4_testcontainers_commons_io memory.
  */
 @Testcontainers
 @SpringBootTest(classes = CollectdApplication.class,
@@ -969,7 +882,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "deltav.timeseries.enabled=true",
         "deltav.collectd.persister.inner.fail-fast=true",
         "deltav.collectd.persister.kafka.fail-fast=true",
-        // Avoid horizon config loaders hitting real SNMP agents during boot
+        // H2 in-memory DB to avoid needing a real Postgres in this IT
         "spring.datasource.url=jdbc:h2:mem:scan-it;MODE=PostgreSQL",
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
@@ -991,11 +904,10 @@ class CollectdApplicationScanIT {
     @Test
     void persister_factory_autowires_to_FanoutPersisterFactory_when_flag_true() {
         PersisterFactory factory = ctx.getBean(
-                "timeseriesPersisterFactory", PersisterFactory.class);
+                "compositePersisterFactory", PersisterFactory.class);
         assertThat(factory)
-                .as("with deltav.timeseries.enabled=true, the bean named "
-                        + "'timeseriesPersisterFactory' must be our FanoutPersisterFactory "
-                        + "wrapping the inner (horizon CollectableService resolves by qualifier name)")
+                .as("with deltav.timeseries.enabled=true, the @Primary "
+                        + "compositePersisterFactory must be FanoutPersisterFactory")
                 .isInstanceOf(FanoutPersisterFactory.class);
     }
 
@@ -1014,42 +926,58 @@ class CollectdApplicationScanIT {
 }
 ```
 
-- [ ] **Step 3: Run the IT**
+- [ ] **Step 5: Run the IT**
 
 ```bash
 ./mvnw -pl core/daemon-boot-collectd verify -Dit.test=CollectdApplicationScanIT
 ```
 
-Expected: 3/3 PASS in ~30-60s (Testcontainers Kafka startup dominates).
+Expected: `3/3 PASS` in ~30-60s (Testcontainers Kafka spin-up dominates).
 
-**If test fails** with `Timed out waiting for log output matching '.*Transitioning from RECOVERY to RUNNING.*'`: the commons-io 2.18.0 dep is missing. Add it per Step 1.
+If the test fails with `Timed out waiting for log output matching '.*Transitioning from RECOVERY to RUNNING.*'`: the `commons-io:2.18.0` dep isn't on the classpath. Re-check Step 1.
 
-**If `persister_factory_autowires_to_FanoutPersisterFactory_when_flag_true` fails** with the bean being a different class: Task 3's wiring fix didn't take effect. Re-check the `@Bean(name="timeseriesPersisterFactory")` rename + inner-bean `@Bean(name="innerTimeseriesPersisterFactory")` rename. STOP and report — the IT is doing its job.
+If `persister_factory_autowires_to_FanoutPersisterFactory_when_flag_true` fails (bean is wrong type): the Task 3 changes broke the @Bean method. Most likely a stale build — `./mvnw -pl core/daemon-boot-collectd clean install -DskipTests` then re-run.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Run the full module test suite to ensure no regression**
 
 ```bash
-git add core/daemon-boot-collectd/src/test/java/org/deltav/netmgt/collectd/boot/CollectdApplicationScanIT.java \
-        core/daemon-boot-collectd/pom.xml
-git commit -m "test(daemon-boot-collectd): CollectdApplicationScanIT real-main-class IT
+./mvnw -pl core/daemon-boot-collectd verify
+```
 
-Boots CollectdApplication via SpringApplication.run() against a
-Testcontainers Kafka broker with deltav.timeseries.enabled=true +
-fail-fast toggles on. Asserts:
-  - timeseriesPersisterFactory bean resolves to FanoutPersisterFactory
-    (the wiring regression this PR fixes would have been caught here)
+Expected: all unit + IT tests pass. The Task 3 + Task 4 changes are now fully covered.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add core/daemon-boot-collectd/pom.xml \
+        core/daemon-boot-collectd/src/test/java/org/deltav/collectd/timeseries/FanoutPersisterTest.java \
+        core/daemon-boot-collectd/src/test/java/org/deltav/netmgt/collectd/boot/CollectdApplicationScanIT.java
+git commit -m "test(daemon-boot-collectd): FanoutPersisterTest + CollectdApplicationScanIT
+
+T0 FanoutPersisterTest (7 unit tests):
+  - counter increments on inner / kafka failure (visitResource)
+  - counters pre-registered at startup with zero value (all 10 steps)
+  - fail-fast inner / kafka true / false matrix
+  - Throwable catch covers LinkageError (Phase 0 #3 NoSuchMethodError scar guard)
+
+T1 CollectdApplicationScanIT (3 real-main-class ITs, Testcontainers Kafka):
+  - PersisterFactory autowires to FanoutPersisterFactory when flag=true
   - deltavTimeseriesTopic NewTopic bean exists
   - TimeseriesKafkaPublisher bean exists
 
-Phase 2 PR #174 scar-prophylactic lineage: real-main-class startup
-catches @Configuration and bean-wiring bugs that unit tests +
-@Import-based ITs all bypass. Mandatory commons-io:2.18.0 test dep
-added per feedback_boot4_testcontainers_commons_io memory."
+Phase 2 PR #174 scar-prophylactic lineage: real-main-class boot via
+SpringApplication.run() against Testcontainers Kafka catches
+@Configuration class-name vs @Bean-method-name collisions and bean-wiring
+bugs that unit tests + @Import-based ITs all bypass. Mandatory
+commons-io:2.18.0 test dep added per feedback_boot4_testcontainers_commons_io
+memory."
 ```
 
 ---
 
-## Task 10: Compose default flip + proto-header substitution
+## Task 5: Compose default flip + proto-header substitution (Commit 6)
+
+**Goal:** Flip `DELTAV_TIMESERIES_ENABLED` default `false` → `true` so the Phase 0 producer is on by default in the delta-v stack. Resolve Phase 2's deferred `<TBD-phase-2-PR>` proto-header placeholder to `#174`.
 
 **Files:**
 - Modify: `opennms-container/delta-v/docker-compose.yml`
@@ -1058,7 +986,7 @@ added per feedback_boot4_testcontainers_commons_io memory."
 
 - [ ] **Step 1: Flip the compose default**
 
-Edit `opennms-container/delta-v/docker-compose.yml`. Find line 176:
+Find line 176 of `opennms-container/delta-v/docker-compose.yml`:
 
 ```yaml
       DELTAV_TIMESERIES_ENABLED: ${DELTAV_TIMESERIES_ENABLED:-false}
@@ -1070,15 +998,17 @@ Change to:
       DELTAV_TIMESERIES_ENABLED: ${DELTAV_TIMESERIES_ENABLED:-true}
 ```
 
-- [ ] **Step 2: Substitute the `<TBD-phase-2-PR>` placeholder in both proto headers**
+- [ ] **Step 2: Substitute the placeholder in both proto headers**
+
+Verify the placeholder exists:
 
 ```bash
 grep -n "TBD-phase-2-PR" core/deltav-kafka-contracts/src/main/proto/deltav-timeseries.proto core/deltav-kafka-contracts/src/main/proto/deltav-node-context.proto
 ```
 
-Expected: each file has one match in its header comment block. Edit each manually (do NOT use `sed -i` — the surrounding text differs slightly per file and a manual edit confirms context):
+Expected: each file has one match in its header comment block. Edit each (do NOT use `sed -i` — manual edit confirms the line context):
 
-Locate in `core/deltav-kafka-contracts/src/main/proto/deltav-timeseries.proto`:
+In `core/deltav-kafka-contracts/src/main/proto/deltav-timeseries.proto`, find:
 
 ```protobuf
 // API version: 1 (FROZEN at Phase 2 GA — delta-v#<TBD-phase-2-PR>)
@@ -1090,9 +1020,9 @@ Change to:
 // API version: 1 (FROZEN at Phase 2 GA — delta-v#174)
 ```
 
-Same substitution in `core/deltav-kafka-contracts/src/main/proto/deltav-node-context.proto`.
+Same change in `core/deltav-kafka-contracts/src/main/proto/deltav-node-context.proto`.
 
-- [ ] **Step 3: Verify docker-compose yaml syntax + protos compile**
+- [ ] **Step 3: Verify yaml + proto compile**
 
 ```bash
 cd opennms-container/delta-v && docker compose --profile lite --profile metrics-e2e config >/dev/null
@@ -1100,7 +1030,7 @@ cd /Users/david/development/src/opennms/delta-v
 ./mvnw -pl core/deltav-kafka-contracts -DskipTests clean install
 ```
 
-Expected: both exit 0; protobuf-maven-plugin BUILD SUCCESS.
+Expected: both exit 0. Compose config parses; protobuf-maven-plugin BUILD SUCCESS.
 
 - [ ] **Step 4: Commit**
 
@@ -1112,93 +1042,88 @@ git commit -m "feat(compose+proto): enable Kafka time-series publisher by defaul
 
 Compose default flipped from DELTAV_TIMESERIES_ENABLED=false to =true so
 the Phase 0 producer is on by default in the delta-v stack (matches its
-'DONE + E2E verified' status). Operators who need it off can still
-export the env var explicitly.
+'DONE + E2E verified' status as of this PR). Operators who need it off
+can still export the env var explicitly.
 
-Proto-header placeholder from Phase 2 resolved: <TBD-phase-2-PR> -> #174
-in both deltav-timeseries.proto and deltav-node-context.proto."
+Phase 2 proto-header placeholder resolved: <TBD-phase-2-PR> -> #174 in
+both deltav-timeseries.proto and deltav-node-context.proto."
 ```
 
 ---
 
-## Task 11: Diagnostic cleanup (partial revert of Task 1)
+## Task 6: Diagnostic cleanup (Commit 7 — partial revert of `d3c6d049cab`)
+
+**Goal:** Remove the temporary `env` + `beans` actuator exposure and the one-shot startup log added in Commit 1. **Keep `/actuator/conditions`** permanently (no secret exposure, useful for future wiring-regression triage). Keep the `compositePersisterFactory wrapping inner=...` log because Task 3 extended it to also report fail-fast state — it's now permanently informative at startup.
 
 **Files:**
 - Modify: `core/daemon-boot-collectd/src/main/resources/application.yml`
 - Modify: `core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java`
 
-- [ ] **Step 1: Revert env + beans from actuator exposure; keep conditions**
+- [ ] **Step 1: Revert env + beans from actuator exposure**
 
-Edit `core/daemon-boot-collectd/src/main/resources/application.yml`. Find the management block from Task 1:
+Edit `core/daemon-boot-collectd/src/main/resources/application.yml`. Find the include line set in Commit 1:
 
 ```yaml
-management:
-  endpoints:
-    web:
-      exposure:
         include: health, info, prometheus, env, beans, conditions
 ```
 
 Change to:
 
 ```yaml
-management:
-  endpoints:
-    web:
-      exposure:
         include: health, info, prometheus, conditions
 ```
 
-(Keep `conditions` permanently — it costs nothing at runtime, exposes no secrets, and makes future wiring-regression triage one curl away.)
+(Keep `conditions` permanently.)
 
-- [ ] **Step 2: Revert the two diagnostic LOG.info lines in TimeseriesKafkaPublisherConfiguration**
+- [ ] **Step 2: Remove the no-arg constructor diagnostic LOG.info**
 
-Remove the no-arg constructor that logs "TimeseriesKafkaPublisherConfiguration loaded":
+Edit `core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java`. Delete the no-arg constructor block added in Commit 1:
 
 ```java
-    // DELETE this block:
     public TimeseriesKafkaPublisherConfiguration() {
         LOG.info("TimeseriesKafkaPublisherConfiguration loaded — @ConditionalOnProperty(deltav.timeseries.enabled=true) matched");
     }
 ```
 
-Leave the `private static final Logger LOG` field — other code in the class uses it (`FanoutPersister.runInner` / `runKafka` WARN logs).
+Leave the `private static final Logger LOG = ...` field — `runInner` and `runKafka` still use it for WARN logs, and the `compositePersisterFactory` @Bean method (Task 3) also uses it.
 
-The `compositePersisterFactory`/`timeseriesPersisterFactory` `@Bean` method already logs via the `LOG.info(...)` Task 7 kept in place (describing the wrapped inner factory + fail-fast settings). That line stays — it's the one piece of startup-time evidence worth keeping forever.
+The `@Bean` method's `LOG.info("Creating compositePersisterFactory wrapping inner={}@{} (failFastInner={}, failFastKafka={})", ...)` from Task 3 stays — it's now permanently useful at startup.
 
-If after Task 7 the log line in the `@Bean` method reads exactly as Task 1 wrote it (without the `failFastInner` / `failFastKafka` args), update it to match Task 7 Step 3's version. If it already has the fail-fast info, leave as-is.
-
-- [ ] **Step 3: Verify unit tests + IT still pass**
+- [ ] **Step 3: Verify all tests still pass**
 
 ```bash
 ./mvnw -pl core/daemon-boot-collectd verify
 ```
 
-Expected: all tests PASS.
+Expected: all tests still green.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add core/daemon-boot-collectd/src/main/resources/application.yml \
         core/daemon-boot-collectd/src/main/java/org/deltav/collectd/timeseries/TimeseriesKafkaPublisherConfiguration.java
-git commit -m "chore(daemon-boot-collectd): revert temporary env/beans actuator + startup log
+git commit -m "chore(daemon-boot-collectd): revert temporary env/beans actuator exposure + one-shot startup log
 
-Task 1 exposed /actuator/env + /actuator/beans + /actuator/conditions
-and added two diagnostic startup logs so we could identify which
-wiring hypothesis explained the silent inert publisher. Root cause is
-captured in project_collectd_publisher_inert_investigation memory.
+Commit d3c6d049cab exposed /actuator/env + /actuator/beans + /actuator/conditions
+and added two diagnostic startup logs so we could identify the wiring
+hypothesis. Root cause is captured in
+project_collectd_publisher_inert_investigation memory; the real bug
+turned out to be the Phase 2 NodeContextKafkaBootstrap race (fixed
+earlier in this PR), not Collectd-side wiring.
 
-Revert env + beans exposure (noisy + expose secrets) and the
+Revert env + beans exposure (noisy + can expose secrets) and the
 'TimeseriesKafkaPublisherConfiguration loaded' log (one-shot startup
 line not worth keeping). Keep /actuator/conditions on permanently —
-it incurs no cost, exposes no secrets, and makes future wiring-regression
-triage one curl away. Keep the compositePersisterFactory wrap log
-because it now also reports fail-fast state."
+costs nothing at runtime, exposes no secrets, makes future wiring
+diagnosis one curl away. Keep the compositePersisterFactory wrap log
+because it now also reports fail-fast state (Task 3 extended it)."
 ```
 
 ---
 
-## Task 12: Full-reactor verify
+## Task 7: Full-reactor verify
+
+**Goal:** Confirm the Task 1-6 changes don't cascade into other reactor modules.
 
 - [ ] **Step 1: Run the full-reactor build**
 
@@ -1206,70 +1131,64 @@ because it now also reports fail-fast state."
 ./mvnw -B -DskipTests -fae clean install 2>&1 | tail -10
 ```
 
-Expected: `BUILD SUCCESS`. Every reactor module compiles against the new `TimeseriesKafkaPublisherConfiguration` signature.
+Expected: `BUILD SUCCESS`. Both `core/prometheus-writer` and `core/daemon-boot-collectd` compile against their changes; no other reactor module breaks. The `feedback_delta_v_full_reactor_verify` memory cites this as a mandatory pre-push gate.
 
-If any module fails with `cannot find symbol` referencing `FanoutPersister.FanoutPersister(Persister, TimeseriesKafkaPersister)`: the 2-arg constructor was used by test code somewhere else in the reactor. Update call sites to pass `MeterRegistry` + two booleans, or add a compatibility 2-arg constructor that defaults both booleans to `false` + uses a `NoopMeterRegistry`. (Unlikely — `FanoutPersister` is a nested class with package-private visibility scoped to `org.deltav.collectd.timeseries` — no external reactor deps.)
+If any module fails with `cannot find symbol` referencing `FanoutPersister.<init>(...)` or `FanoutPersisterFactory.<init>(...)`: an unexpected caller exists. Both classes are package-private inside `core/daemon-boot-collectd` so this is unlikely, but if it happens — STOP and report.
 
-- [ ] **Step 2: No commit** — the full-reactor build is a verification gate, not a code change.
+- [ ] **Step 2: No commit** — verification gate only.
 
 ---
 
-## Task 13: Full E2E acceptance gate
+## Task 8: Full E2E acceptance gate
 
-- [ ] **Step 1: Rebuild all delta-v images**
+**Goal:** Run the Phase 2 E2E end-to-end. Acceptance bar from spec §7.
+
+- [ ] **Step 1: Rebuild all delta-v Docker images**
 
 ```bash
 ./opennms-container/delta-v/build.sh deltav 2>&1 | tail -5
 ```
 
-Expected: opennms/collectd, opennms/prometheus-writer, and 12 other daemon images rebuilt.
+Expected: `opennms/collectd:0.0.1-SNAPSHOT`, `opennms/prometheus-writer:0.0.1-SNAPSHOT`, plus the other 12 daemon images. Self-healing freshness check should rebuild collectd + prometheus-writer (both have source changes). If either is unexpectedly skipped, force a rebuild via `touch core/daemon-boot-collectd/pom.xml core/prometheus-writer/pom.xml` and retry.
 
-- [ ] **Step 2: Run the Phase 2 E2E**
+- [ ] **Step 2: Run the Phase 2 E2E with proper exit-code propagation**
 
 ```bash
 set -o pipefail
-./opennms-container/delta-v/test-prometheus-writer-e2e.sh > /tmp/collectd-fix-e2e.log 2>&1
+./opennms-container/delta-v/test-prometheus-writer-e2e.sh > /tmp/v2-e2e.log 2>&1
 echo "E2E exit code: $?"
-tail -10 /tmp/collectd-fix-e2e.log
+tail -20 /tmp/v2-e2e.log
 ```
 
-Expected: exit 0, final log line `==> ALL ASSERTIONS PASSED`.
+Expected: exit `0`, log ends with `==> ALL ASSERTIONS PASSED`.
 
-Note the `set -o pipefail` + `> log 2>&1` — `tee` was found to swallow the exit code during Phase 2 investigation.
+The compose default (Task 5 Step 1) is now `true`, so `DELTAV_TIMESERIES_ENABLED` does not need to be exported. The race fix (Tasks 1-2) means prometheus-writer's NodeContextCache populates correctly. The compose script's existing assertions (`records_consumed_total > 0`, `samples_sent_total > 0`, `batches_sent_total > 0`, `circuit_state == 0`, all failure counters == 0, VictoriaMetrics returns the expected series with full label set) should all pass.
 
-**If any step fails**: run `grep -E "^==>|^FAIL" /tmp/collectd-fix-e2e.log` to see which step broke. If Step 5 (zero failure counters) fires with `enrichment_missing_total > 0` — Phase 1 node-context producer isn't feeding the cache. Check provisiond logs. If Step 6 VictoriaMetrics query fails — VM container didn't come up. Check `docker compose logs victoriametrics`.
+- [ ] **Step 3: If the E2E fails — STOP and report**
 
-- [ ] **Step 3: If a Phase 0 #2 or #3 bug surfaces (MetaTagDataLoader NPE, ResourceTypeUtils NoSuchMethodError)**
+`grep -E "^==>|^FAIL" /tmp/v2-e2e.log` to identify which step broke. Possible failures:
+- `enrichment_missing_total > 0` (acceptance criterion 7 in spec): the race fix didn't fully resolve the issue. Re-check Task 1 Step 2 — likely the `bootstrapMarked` gate or the rebalance listener has a defect.
+- `batches_failed_total > 0` (Phase 0 inner bug surfaced as Kafka-side failure): unlikely but possible.
+- VictoriaMetrics query returns no results: VM container didn't come up, or the labels differ from what Phase 2's E2E asserts. Check `docker compose logs victoriametrics`.
 
-Per (P) best-effort inline:
+Per spec §5, Phase 0 inner bugs #1, #2, #4 are punted to a follow-up PR. They should NOT block this E2E because Kafka publishes regardless. If one of them surfaces in a way that DOES block, that's the (II) decision being violated — STOP and report; don't try to inline-fix.
 
-- If `TimeseriesPersistOperationBuilder.setAttributeValue` NPE appears in collectd logs: locate the class in horizon 1.0.10's source, identify the init-order dependency, add a fix as a new commit on this branch. Add a regression test to `FanoutPersisterTest` or a targeted unit test.
-- If `ResourceTypeUtils.getResourcePathWithRepository` NoSuchMethodError appears: the shim classpath has a Linkage issue. Either port the missing method to the inlined helper from Phase 0 #170's `3a89122f5b0` fix, or add an explicit dep for the horizon class that supplies it.
-- If NEITHER surfaces: close them out in `project_collectd_publisher_inert_investigation` memo as "resolved or no longer reproducible during 2026-04-18 live E2E verification" without further action.
-
-- [ ] **Step 4: No commit** unless a Phase 0 #2 or #3 fix was made in Step 3. If so, commit with a message like:
-
-```
-fix(daemon-boot-collectd): [resolve Phase 0 known-issue #N]
-
-[Describe the trigger condition + fix]
-
-Caught during the collectd-publisher-inert-fix E2E (PR [TBD]).
-Memory project_collectd_publisher_inert_investigation updated.
-```
+- [ ] **Step 4: No commit** — acceptance gate only.
 
 ---
 
-## Task 14: Push + open PR
+## Task 9: Push + open PR
 
-- [ ] **Step 1: Confirm the branch is clean**
+**Goal:** Push branch + open PR against `pbrane/delta-v develop`.
+
+- [ ] **Step 1: Confirm branch is clean**
 
 ```bash
 git status --short
 git log --oneline develop..HEAD | wc -l
 ```
 
-Expected: clean (only the `provisiond-overlay/etc/imports/delta-v.xml` requisition drift, per memory `feedback_provisiond_requisition_drift` — leave unstaged). Commit count: 7 (1 spec + 6 fix commits) or 8 if a Phase 0 #2/#3 fix was added.
+Expected: clean working tree (modulo `provisiond-overlay/etc/imports/*.xml` requisition drift per `feedback_provisiond_requisition_drift` — leave unstaged). Commit count: 9 (1 spec-v1 + 1 plan-v1 + 1 diag-exposure + 1 spec-v2 + 6 new from this plan = 9 ahead of `develop`). 1 spec-v2 supersedes spec-v1 in content; both stay in history.
 
 - [ ] **Step 2: Push**
 
@@ -1277,61 +1196,62 @@ Expected: clean (only the `provisiond-overlay/etc/imports/delta-v.xml` requisiti
 git push -u origin fix/collectd-publisher-inert 2>&1 | tail -3
 ```
 
-- [ ] **Step 3: Open the PR — NEVER use OpenNMS/opennms (memory feedback_never_pr_opennms)**
+- [ ] **Step 3: Open the PR — NEVER use OpenNMS/opennms**
 
 ```bash
 gh pr create --repo pbrane/delta-v --base develop \
-    --title "fix(collectd): wire Kafka publisher + add observability/fail-fast + Phase 2 E2E gate" \
+    --title "fix(prometheus-writer): NodeContextKafkaBootstrap race + Collectd silent-swallow hygiene" \
     --body "$(cat <<'BODY'
 ## Summary
 
-- Fixes the Phase 0 \`TimeseriesKafkaPublisher\` / \`FanoutPersisterFactory\` wiring that was silently inert on current develop
-- Ships two Micrometer counters + two Spring fail-fast properties so this class of silent swallow cannot re-occur
-- Adds \`FanoutPersisterTest\` (7 unit tests) + \`CollectdApplicationScanIT\` (3 real-main-class ITs) as regression gates
-- Flips the compose default \`DELTAV_TIMESERIES_ENABLED\` \`false\` → \`true\`
-- Resolves Phase 2's deferred \`<TBD-phase-2-PR>\` proto-header placeholder → \`#174\`
+Unblocks the Phase 2 prometheus-writer E2E (test-prometheus-writer-e2e.sh).
+First end-to-end pass of the full delta-v Kafka time-series pipeline.
 
-## Root-cause narrative
+- **Race fix (the critical change)**: `core/prometheus-writer/.../NodeContextKafkaBootstrap.java` no longer takes a 'no partitions yet' branch that skipped `consumer.assign()/.subscribe()` and silently looped on `IllegalStateException` forever. Replaced with single-path `consumer.subscribe(...)` + `ConsumerRebalanceListener` that handles topic-exists-at-startup AND topic-created-later uniformly.
+- **Race regression IT**: new `NodeContextKafkaBootstrapIT.bootstrap_survives_topic_created_after_start` exercises the exact scenario that was broken.
+- **Collectd silent-swallow hygiene**: `FanoutPersister` gains `(X)` two Micrometer counters (`deltav.collectd.persister.{inner,kafka}.failures{step=…}`, pre-registered for all 10 visitor steps) + `(Y)` two Spring fail-fast properties (`deltav.collectd.persister.{inner,kafka}.fail-fast`, default false). Surface inner-persister bugs that are currently swallowed without operator signal.
+- **Real-main-class scan IT**: new `CollectdApplicationScanIT` (3 tests) — Phase 2 PR #174 scar-prophylactic lineage — would have pointed at the Phase 2 consumer side earlier if it had existed.
+- **Compose default flip**: `DELTAV_TIMESERIES_ENABLED` default `false` → `true` in `docker-compose.yml`.
+- **Phase 2 proto-header pin**: `<TBD-phase-2-PR>` → `#174` in both `deltav-timeseries.proto` and `deltav-node-context.proto`.
 
-See memory \`project_collectd_publisher_inert_investigation\` for the confirmed hypothesis + evidence. [Summarize the root cause in 2-3 sentences here, referencing the specific actuator + log evidence that identified it.]
+## Investigation history
 
-## Six-commit sequence
+The original v1 spec/plan assumed the Phase 0 Collectd publisher was inert on develop. Live-stack diagnosis (commit `d3c6d049cab` exposed the actuator + startup logs that made the truth visible) refuted the hypothesis: the publisher works fine — 6 batches per 90 s, real records on the topic, prometheus-writer consumes them. The actual bug is in Phase 2's consumer-side `NodeContextKafkaBootstrap`. Memory `project_collectd_publisher_inert_investigation` has the full root-cause narrative + evidence.
 
-1. \`diag(daemon-boot-collectd)\`: diagnostic actuator exposure + startup logs
-2. \`fix(daemon-boot-collectd)\`: the wiring fix (see hypothesis-specific commit body)
-3. \`feat(daemon-boot-collectd)\`: FanoutPersister observability + dev fail-fast
-4. \`test(daemon-boot-collectd)\`: CollectdApplicationScanIT real-main-class IT
-5. \`feat(compose+proto)\`: enable default + pin Phase 2 proto header
-6. \`chore(daemon-boot-collectd)\`: revert temporary env/beans actuator exposure
+The v1 spec (`8c2729588e5`) and v1 plan (`262309050ed`) are retained on the branch for audit. The v2 spec (`f0a4d5b0f94`) and v2 plan (this commit) supersede them.
+
+## Out of scope (memory-noted, separate PRs)
+
+- Phase 0 inner-persister bugs #1 (UnexpectedRollbackException), #2 (NPE in TimeseriesPersistOperationBuilder), and new #4 (ClassCastException in TimeseriesPersister.getUserDefinedMetaTags). All confirmed present and counted by this PR's new (X) counters; all currently swallowed by FanoutPersister isolation; none block Phase 2 E2E. See `project_phase0_inner_persister_bugs_followup` memory.
+- `build.sh check_daemon_boot_freshness` transitive-dep gap (forced `touch core/daemon-boot-collectd/pom.xml` during PR #174 investigation).
+- Phase 3 Thresholder.
 
 ## Acceptance verification
 
-- [x] \`./mvnw -pl core/daemon-boot-collectd verify\` — 7 unit + 3 IT tests pass
-- [x] \`./mvnw -B -DskipTests -fae clean install\` — full-reactor BUILD SUCCESS
-- [x] Live producer verification: \`docker compose up -d\` + wait 90s → \`deltav-timeseries\` has records, \`prometheus-writer records_consumed_total > 0\`
-- [x] \`./opennms-container/delta-v/test-prometheus-writer-e2e.sh\` — exit 0, \`ALL ASSERTIONS PASSED\` (first end-to-end pass of the full Phase 2 pipeline)
-- [x] Memory \`project_collectd_publisher_inert_investigation\` updated: OPEN → DONE with confirmed hypothesis + evidence
+- [x] `./mvnw -pl core/prometheus-writer verify` — all existing Phase 2 tests + new race-IT pass
+- [x] `./mvnw -pl core/daemon-boot-collectd verify` — 7 FanoutPersisterTest + 3 CollectdApplicationScanIT + existing tests pass
+- [x] `./mvnw -B -DskipTests -fae clean install` — full-reactor BUILD SUCCESS
+- [x] `./opennms-container/delta-v/test-prometheus-writer-e2e.sh` — exit 0, ALL ASSERTIONS PASSED (first end-to-end pass)
+- [x] Memory `project_collectd_publisher_inert_investigation` updated to RESOLVED with confirmed real root cause
+- [x] Memory `project_phase0_inner_persister_bugs_followup` created with stack traces + per-step rates from this investigation
+- [x] Memory `project_nodecontext_startup_race_pattern` (feedback) created with the rule
 
 ## Spec + plan
 
-- Spec: \`docs/superpowers/specs/2026-04-18-collectd-publisher-inert-fix-design.md\`
-- Plan: \`docs/superpowers/plans/2026-04-18-collectd-publisher-inert-fix.md\`
+- Spec (v2): `docs/superpowers/specs/2026-04-18-collectd-publisher-inert-fix-design.md`
+- Plan (v2): `docs/superpowers/plans/2026-04-18-collectd-publisher-inert-fix.md`
 BODY
 )"
 ```
 
-- [ ] **Step 4: Record the PR URL**
+- [ ] **Step 4: Record the PR URL** (output of `gh pr create`).
 
-Output from `gh pr create` includes the PR URL. Record it.
+- [ ] **Step 5: Post-merge memory updates** (do these manually after merge, not part of this PR):
 
-- [ ] **Step 5: Post-merge memory updates**
-
-(Manually, after merge — not part of this PR.)
-
-- Mark `project_collectd_publisher_inert_investigation`: OPEN → DONE; include the confirmed hypothesis.
-- Update `project_phase2_prometheus_writer_done`: add addendum "E2E now passes end-to-end post-PR [TBD]".
-- Update `project_kafka_timeseries_pipeline`: confirm producer genuinely live.
-- If Phase 0 #2 or #3 were fixed in Task 13 Step 3, create separate memory entries documenting resolution.
+- Flip `project_collectd_publisher_inert_investigation` status: `DIAGNOSED` → `RESOLVED (delta-v#TBD)`.
+- Add addendum to `project_phase2_prometheus_writer_done` noting "E2E now passes end-to-end as of delta-v#TBD".
+- Create `project_phase0_inner_persister_bugs_followup` capturing bugs #1, #2, #4 with the per-step counts from this investigation.
+- Create feedback memory `project_nodecontext_startup_race_pattern` documenting the rule: *any Spring-Kafka consumer using `consumer.partitionsFor(topic)` to make wiring decisions must handle the topic-does-not-exist-yet case via `subscribe` + `ConsumerRebalanceListener`, never via skip-and-enter-liveTail.*
 
 ---
 
@@ -1342,30 +1262,29 @@ Output from `gh pr create` includes the PR URL. Record it.
 | Spec section | Plan task(s) |
 |---|---|
 | §1 Context and goal | Plan preamble |
-| §2 Scope | Task ordering rationale + Out-of-Scope comments |
-| §3 Hypothesis space | Task 3 Step 1 per-hypothesis shape |
-| §4 Commit 1 (diagnostic) | Tasks 1-2 |
-| §4 Commit 2 (wiring fix) | Task 3 |
-| §4 Commit 3 (observability + fail-fast) | Tasks 4-7 |
-| §4 Commit 4 (tests) | Tasks 4-7 (T0) + Task 9 (T1) |
-| §4 Commit 5 (compose + protos) | Task 10 |
-| §4 Commit 6 (cleanup) | Task 11 |
-| §5 Phase 0 #2/#3 best-effort | Task 13 Step 3 |
-| §6 Acceptance criteria | Tasks 12-14 |
-| §7 Risks and trade-offs | Task 3 Step 1 per-hypothesis fallbacks + the "STOP" escape hatches |
-| §8 References | Plan preamble "Critical memory references" |
+| §2 Scope (in + out) | Task ordering rationale + per-task scope notes |
+| §3 Race-fix design | Task 1 |
+| §4 Commit 1 (already landed) | (no task — pre-existing) |
+| §4 Commit 2 (race fix) | Task 1 |
+| §4 Commit 3 (race IT) | Task 2 |
+| §4 Commit 4 (FanoutPersister obs + fail-fast) | Task 3 |
+| §4 Commit 5 (FanoutPersisterTest + scan IT) | Task 4 |
+| §4 Commit 6 (compose + proto) | Task 5 |
+| §4 Commit 7 (diagnostic cleanup) | Task 6 |
+| §5 Phase 0 inner bugs out-of-scope | Task 8 Step 3 (escape hatch + memory follow-up note) + Task 9 Step 5 (memory creation) |
+| §6 Test strategy | Tasks 1-4 (T0 + T1 + race-IT) + Task 8 (live E2E) |
+| §7 Acceptance criteria | Tasks 7-9 |
+| §8 Risks and trade-offs | Inline in Task 1 (rebalance edge cases note) + Task 8 Step 3 (Phase 0 bug escape hatch) |
+| §9 References | Plan preamble |
 
-**Placeholder scan:** one `[TBD]` in the PR body template for the PR URL (gets filled in at PR-open time) and one `[Describe the trigger condition + fix]` in the Task 13 Step 4 template commit body for a hypothetical Phase 0 #2/#3 fix. Both are legitimate fill-in-at-runtime placeholders, not plan-level TBDs.
+**Placeholder scan**: only legitimate runtime-fill placeholders — `TBD` in the post-merge memory updates (waiting on actual PR number) and the `<TBD-phase-2-PR>` literal in Task 5's substitution target. No plan-level TBDs.
 
-**Type consistency:** `FanoutPersister` constructor signature — `(Persister, TimeseriesKafkaPersister, MeterRegistry, boolean, boolean)` — is consistent in Tasks 4 (test), 5 (impl add registry + pre-reg), 6 (runInner/runKafka use fields), 7 (factory passes args). `FanoutPersisterFactory` constructor — `(PersisterFactory, TimeseriesKafkaPublisher, MeterRegistry, boolean, boolean)` — consistent in Task 7 impl + `@Bean` method signature. Counter metric names `deltav.collectd.persister.inner.failures` / `deltav.collectd.persister.kafka.failures` consistent between Task 4 test constants, Task 5 impl constants, Task 9 (not referenced directly but implied by meter pre-registration assertion). Bean names `timeseriesPersisterFactory` (composite, @Primary) + `innerTimeseriesPersisterFactory` consistent in Task 3 (fix), Task 7 (impl `@Bean`), Task 9 (IT bean lookup).
+**Type consistency** (post-Task-3): `FanoutPersister(Persister, TimeseriesKafkaPersister, MeterRegistry, boolean, boolean)` constructor signature is consistent in Task 3 Step 3 (impl), Task 4 Step 2 (`make()` helper in `FanoutPersisterTest`), and Task 4 Step 4 (no direct construction in `CollectdApplicationScanIT` — type-based bean lookup). `FanoutPersisterFactory(PersisterFactory, TimeseriesKafkaPublisher, MeterRegistry, boolean, boolean)` consistent in Task 3 Step 5 (impl) and Task 3 Step 6 (`@Bean` injection signature). Bean names `compositePersisterFactory` (this PR keeps the name from v1's diagnostic commit; the v2 design rejected the rename hypothesis since wiring was correct) and `timeseriesPersisterFactory` (horizon's inner) are stable across all references. Counter meter names `deltav.collectd.persister.inner.failures` / `deltav.collectd.persister.kafka.failures` consistent in Task 3 (constants), Task 4 Step 2 (test constants), Task 4 Step 7 (commit message).
 
 ---
 
-## Execution handoff (after plan saved)
+## Execution handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-04-18-collectd-publisher-inert-fix.md`. Two execution options:
+Plan complete and saved to `docs/superpowers/plans/2026-04-18-collectd-publisher-inert-fix.md` (overwriting v1 in place; v1 remains in branch history at commit `262309050ed`).
 
-1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration.
-2. **Inline Execution** — Execute tasks in this session using `executing-plans`, batch execution with checkpoints.
-
-Which approach?
+The execution path is the same `superpowers:subagent-driven-development` already in use this session. Resume with Task 1.
