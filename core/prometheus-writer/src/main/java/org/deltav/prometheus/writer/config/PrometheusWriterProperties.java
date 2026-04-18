@@ -1,6 +1,10 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
 package org.deltav.prometheus.writer.config;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -63,15 +67,15 @@ public record PrometheusWriterProperties(
     public record Retry(
             @Positive long initialBackoffMs,
             @Positive long maxBackoffMs,
-            double jitterFactor
+            @DecimalMin("0.0") @DecimalMax("1.0") double jitterFactor
     ) {}
 
     public record CircuitBreaker(
-            int failureRateThreshold,
-            int slidingWindowSize,
-            int minimumNumberOfCalls,
-            long waitDurationOpenMs,
-            int halfOpenPermittedCalls
+            @Min(1) @Max(100) int failureRateThreshold,
+            @Positive int slidingWindowSize,
+            @Positive int minimumNumberOfCalls,
+            @Positive long waitDurationOpenMs,
+            @Positive int halfOpenPermittedCalls
     ) {}
 
     public record Labels(
