@@ -93,6 +93,53 @@ class NodeContextKafkaBootstrapIT {
         }
     }
 
+    @Test
+    void bootstrap_survives_topic_created_after_start() throws Exception {
+        // CRITICAL: do NOT call ensureTopic() at the start of this test. The whole
+        // point is that the topic does not exist when NodeContextKafkaBootstrap
+        // begins. The v1 racy code marked the cache ready immediately with size=0
+        // and entered an unassigned-poll loop that threw IllegalStateException
+        // forever, never consuming any records that were later written to the topic.
+        NodeContextCache cache = new NodeContextCache();
+        AtomicReference<NodeContextCacheReadyEvent> capturedEvent = new AtomicReference<>();
+        ApplicationEventPublisher publisher = e -> {
+            if (e instanceof NodeContextCacheReadyEvent r) capturedEvent.set(r);
+        };
+        NodeContextKafkaBootstrap boot = new NodeContextKafkaBootstrap(
+                cache, publisher, new SimpleMeterRegistry(), KAFKA.getBootstrapServers());
+        boot.start();
+        try {
+            // Sanity: cache must NOT be ready yet because the topic doesn't exist.
+            // Wait a moment to make sure the bootstrap thread has had time to attempt
+            // a subscribe and not short-circuit to ready.
+            Thread.sleep(2000);
+            assertThat(cache.isReady())
+                    .as("cache must not be ready before topic exists")
+                    .isFalse();
+            assertThat(capturedEvent.get())
+                    .as("ready event must not have fired before topic exists")
+                    .isNull();
+
+            // Now create the topic mid-flight. Kafka should rebalance our consumer
+            // (which subscribed to the not-yet-existent topic) and assign partitions.
+            ensureTopic();
+            // Produce a record so there's something for the bootstrap drain to land.
+            produce(200, false);
+
+            // Cache should become ready within 30s (allows for rebalance + drain).
+            await().atMost(Duration.ofSeconds(30)).until(cache::isReady);
+            assertThat(capturedEvent.get())
+                    .as("ready event must have fired exactly once after first drain")
+                    .isNotNull();
+            assertThat(cache.get("Default@200")).isPresent();
+        } finally {
+            boot.stop();
+            // Tombstone our test record so it doesn't pollute the shared compacted
+            // topic for sibling tests that assert on exact cache size.
+            produce(200, true);
+        }
+    }
+
     // -------------------- helpers --------------------
 
     private void ensureTopic() throws Exception {
