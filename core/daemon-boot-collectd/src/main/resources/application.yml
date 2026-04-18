@@ -75,7 +75,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, prometheus, env, beans, conditions
+        include: health, info, prometheus, conditions
   metrics:
     tags:
       application: ${spring.application.name:collectd}

@@ -56,10 +56,6 @@ public class TimeseriesKafkaPublisherConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(TimeseriesKafkaPublisherConfiguration.class);
 
-    public TimeseriesKafkaPublisherConfiguration() {
-        LOG.info("TimeseriesKafkaPublisherConfiguration loaded — @ConditionalOnProperty(deltav.timeseries.enabled=true) matched");
-    }
-
     @Bean
     public CollectionSetToProtobufTranslator collectionSetToProtobufTranslator() {
         return new CollectionSetToProtobufTranslator();
