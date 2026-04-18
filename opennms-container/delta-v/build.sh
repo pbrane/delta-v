@@ -145,6 +145,14 @@ do_flow_enricher_image() {
     docker build -t "opennms/flow-enricher:$VERSION" -t "opennms/flow-enricher:latest" .
 }
 
+do_prometheus_writer_image() {
+    log "Building prometheus-writer image (opennms/prometheus-writer:$VERSION)..."
+    cd "$REPO_ROOT"
+    ./mvnw -B -f core/prometheus-writer/pom.xml -DskipTests package
+    cd "$REPO_ROOT/core/prometheus-writer"
+    docker build -t "opennms/prometheus-writer:$VERSION" -t "opennms/prometheus-writer:latest" .
+}
+
 do_jre_image() {
     log "Building opennms/jre-deltav:21..."
     cd "$SCRIPT_DIR"
@@ -234,8 +242,15 @@ do_deltav_images() {
     # standalone image, like db-init.
     do_flow_enricher_image
 
+    # --- Build prometheus-writer (standalone Spring Cloud Stream service) ---
+    # prometheus-writer consumes the Kafka Time Series topic and publishes
+    # samples via Prometheus Remote Write. Like flow-enricher, it has a
+    # dependency profile distinct from the horizon-derived daemons, so it is
+    # built as a standalone image rather than sharing daemon-base.
+    do_prometheus_writer_image
+
     log "Delta-V images built:"
-    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher" | sort | head -20
+    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer" | sort | head -25
 }
 
 
