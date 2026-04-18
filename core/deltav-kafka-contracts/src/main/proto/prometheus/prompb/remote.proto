@@ -1,0 +1,54 @@
+// Copyright 2017 Prometheus Team
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Vendored into delta-v for use by the prometheus-writer Remote Write client.
+// Source: github.com/prometheus/prometheus/prompb/remote.proto (Apache-2.0)
+
+syntax = "proto3";
+package prometheus;
+
+option go_package = "github.com/prometheus/prometheus/prompb";
+option java_package = "prometheus.prompb";
+option java_multiple_files = true;
+
+import "prometheus/prompb/types.proto";
+
+message WriteRequest {
+  repeated TimeSeries timeseries = 1;
+  reserved 2;  // formerly source
+  repeated MetricMetadata metadata = 3;
+}
+
+message ReadRequest {
+  repeated Query queries = 1;
+
+  enum ResponseType {
+    SAMPLES             = 0;
+    STREAMED_XOR_CHUNKS = 1;
+  }
+  repeated ResponseType accepted_response_types = 2;
+}
+
+message ReadResponse {
+  repeated QueryResult results = 1;
+}
+
+message Query {
+  int64 start_timestamp_ms = 1;
+  int64 end_timestamp_ms   = 2;
+  repeated LabelMatcher matchers = 3;
+  ReadHints hints          = 4;
+}
+
+message QueryResult {
+  repeated TimeSeries timeseries = 1;
+}
+
+message ChunkedReadResponse {
+  repeated ChunkedSeries chunked_series = 1;
+  int64 query_index = 2;
+}
