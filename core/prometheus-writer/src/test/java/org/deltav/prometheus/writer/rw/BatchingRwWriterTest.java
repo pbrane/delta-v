@@ -1,6 +1,8 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
 package org.deltav.prometheus.writer.rw;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.deltav.prometheus.writer.config.PrometheusWriterProperties;
 import org.deltav.prometheus.writer.translate.PromSample;
@@ -32,6 +34,10 @@ class BatchingRwWriterTest {
         return new PromSample(name, Map.of("k", "v"), 1.0, 1_700_000_000_000L);
     }
 
+    private CircuitBreaker breaker() {
+        return CircuitBreakerRegistry.ofDefaults().circuitBreaker("test");
+    }
+
     @Test
     void flushes_on_max_samples_threshold() throws Exception {
         WriteRequestBuilder builder = mock(WriteRequestBuilder.class);
@@ -39,7 +45,7 @@ class BatchingRwWriterTest {
         when(builder.build(any())).thenReturn(WriteRequest.newBuilder().build());
         when(http.post(any())).thenReturn(200);
         SimpleMeterRegistry reg = new SimpleMeterRegistry();
-        BatchingRwWriter w = new BatchingRwWriter(props(3, 100_000_000, 60_000), builder, http, reg);
+        BatchingRwWriter w = new BatchingRwWriter(props(3, 100_000_000, 60_000), builder, http, breaker(), reg);
 
         w.add(sample("a"));
         w.add(sample("b"));
@@ -57,7 +63,7 @@ class BatchingRwWriterTest {
         when(builder.build(any())).thenReturn(WriteRequest.newBuilder().build());
         when(http.post(any())).thenReturn(200);
         // Tiny maxBytes so a single sample will trigger
-        BatchingRwWriter w = new BatchingRwWriter(props(10_000, 5, 60_000), builder, http, new SimpleMeterRegistry());
+        BatchingRwWriter w = new BatchingRwWriter(props(10_000, 5, 60_000), builder, http, breaker(), new SimpleMeterRegistry());
         w.add(sample("metric_name_long_enough_to_exceed_5_bytes"));
         verify(http, times(1)).post(any());
     }
@@ -69,7 +75,7 @@ class BatchingRwWriterTest {
         WriteRequest stub = WriteRequest.newBuilder().build();
         when(builder.build(any())).thenReturn(stub);
         when(http.post(any())).thenReturn(200);
-        BatchingRwWriter w = new BatchingRwWriter(props(2, 100_000_000, 60_000), builder, http, new SimpleMeterRegistry());
+        BatchingRwWriter w = new BatchingRwWriter(props(2, 100_000_000, 60_000), builder, http, breaker(), new SimpleMeterRegistry());
         w.add(sample("a"));
         w.add(sample("b"));
         verify(builder, times(1)).build(argThat(list -> list.size() == 2));
@@ -83,7 +89,7 @@ class BatchingRwWriterTest {
         when(builder.build(any())).thenReturn(WriteRequest.newBuilder().build());
         when(http.post(any())).thenReturn(200);
         // Very short maxIntervalMs so the scheduled-check fires quickly
-        BatchingRwWriter w = new BatchingRwWriter(props(10_000, 100_000_000, 50), builder, http, new SimpleMeterRegistry());
+        BatchingRwWriter w = new BatchingRwWriter(props(10_000, 100_000_000, 50), builder, http, breaker(), new SimpleMeterRegistry());
         w.add(sample("a"));
         Thread.sleep(120);
         w.flushIfStale();  // simulate the @Scheduled tick
@@ -94,7 +100,7 @@ class BatchingRwWriterTest {
     void flush_empty_buffer_is_noop() {
         WriteRequestBuilder builder = mock(WriteRequestBuilder.class);
         RemoteWriteHttpClient http = mock(RemoteWriteHttpClient.class);
-        BatchingRwWriter w = new BatchingRwWriter(props(10, 100_000, 60_000), builder, http, new SimpleMeterRegistry());
+        BatchingRwWriter w = new BatchingRwWriter(props(10, 100_000, 60_000), builder, http, breaker(), new SimpleMeterRegistry());
         w.flushIfStale();   // empty
         w.flushNow();       // empty
         verifyNoInteractions(http);

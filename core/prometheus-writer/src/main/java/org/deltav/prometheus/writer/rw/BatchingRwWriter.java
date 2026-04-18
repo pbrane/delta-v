@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
 package org.deltav.prometheus.writer.rw;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -26,6 +27,7 @@ public class BatchingRwWriter {
     private final PrometheusWriterProperties props;
     private final WriteRequestBuilder builder;
     private final RemoteWriteHttpClient http;
+    private final CircuitBreaker breaker;
     private final Counter batchesSent;
     private final Counter samplesSent;
     private final DistributionSummary batchBytes;
@@ -38,8 +40,8 @@ public class BatchingRwWriter {
     private volatile long firstSampleAtMs = 0L;
 
     public BatchingRwWriter(PrometheusWriterProperties props, WriteRequestBuilder builder,
-                            RemoteWriteHttpClient http, MeterRegistry reg) {
-        this.props = props; this.builder = builder; this.http = http;
+                            RemoteWriteHttpClient http, CircuitBreaker breaker, MeterRegistry reg) {
+        this.props = props; this.builder = builder; this.http = http; this.breaker = breaker;
         String endpoint = props.remoteWrite().url();
         this.batchesSent = Counter.builder(PrometheusWriterMetrics.BATCHES_SENT)
                 .tag("endpoint", endpoint).register(reg);
@@ -83,7 +85,7 @@ public class BatchingRwWriter {
         try {
             WriteRequest req = builder.build(toSend);
             int bytesEstimate = req.getSerializedSize();
-            http.post(req);
+            breaker.executeCallable(() -> http.post(req));
             batchesSent.increment();
             samplesSent.increment(toSend.size());
             batchBytes.record(bytesEstimate);

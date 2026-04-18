@@ -3,7 +3,6 @@ package org.deltav.prometheus.writer.nodecontext;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -18,7 +17,9 @@ import org.deltav.timeseries.proto.NodeContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -63,7 +64,11 @@ public class NodeContextKafkaBootstrap implements Runnable {
         this.bootstrapServers = bootstrapServers;
     }
 
-    @PostConstruct
+    @EventListener
+    public void onAppReady(ApplicationReadyEvent event) {
+        start();
+    }
+
     public void start() {
         running.set(true);
         bootstrapSample = Timer.start(meterRegistry);
