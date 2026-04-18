@@ -22,8 +22,6 @@
 
     <properties>
         <java.version>21</java.version>
-        <resilience4j.version>2.2.0</resilience4j.version>
-        <snappy.version>1.1.10.5</snappy.version>
     </properties>
 
     <dependencies>
@@ -76,19 +74,16 @@
         <dependency>
             <groupId>org.xerial.snappy</groupId>
             <artifactId>snappy-java</artifactId>
-            <version>${snappy.version}</version>
         </dependency>
 
         <!-- Resilience4j for circuit breaker -->
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>${resilience4j.version}</version>
         </dependency>
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-micrometer</artifactId>
-            <version>${resilience4j.version}</version>
         </dependency>
 
         <!-- Micrometer Prometheus -->
@@ -153,13 +148,7 @@
                     <mainClass>org.deltav.prometheus.writer.PrometheusWriterApplication</mainClass>
                     <executable>true</executable>
                 </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <!-- repackage execution is inherited from spring-boot-starter-parent -->
             </plugin>
         </plugins>
     </build>
