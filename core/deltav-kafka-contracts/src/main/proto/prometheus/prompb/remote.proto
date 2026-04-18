@@ -7,6 +7,11 @@
 //
 // Vendored into delta-v for use by the prometheus-writer Remote Write client.
 // Source: github.com/prometheus/prometheus/prompb/remote.proto (Apache-2.0)
+// Snapshot taken 2026-04-17 from upstream prompb/main. NOTE: this is a
+// subset of upstream — the native-histogram fields (Histogram message,
+// TimeSeries.histograms) are intentionally omitted because Phase 2 does
+// not emit them. When upgrading, diff against the same upstream commit
+// to identify additions; do not re-derive a snapshot version.
 
 syntax = "proto3";
 package prometheus;
