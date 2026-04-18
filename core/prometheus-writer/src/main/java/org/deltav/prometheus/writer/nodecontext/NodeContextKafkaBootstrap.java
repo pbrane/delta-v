@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
 package org.deltav.prometheus.writer.nodecontext;
 
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PreDestroy;
@@ -62,6 +63,11 @@ public class NodeContextKafkaBootstrap implements Runnable {
         this.eventPublisher = eventPublisher;
         this.meterRegistry = meterRegistry;
         this.bootstrapServers = bootstrapServers;
+
+        Gauge.builder(PrometheusWriterMetrics.NC_CACHE_READY, cache, c -> c.isReady() ? 1.0 : 0.0)
+                .register(meterRegistry);
+        Gauge.builder(PrometheusWriterMetrics.NC_CACHE_SIZE, cache, c -> (double) c.size())
+                .register(meterRegistry);
     }
 
     @EventListener
