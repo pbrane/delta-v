@@ -16,6 +16,7 @@
  */
 package org.deltav.collectd.timeseries;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import java.time.Duration;
@@ -97,11 +98,16 @@ public class TimeseriesKafkaPublisherConfiguration {
     @Primary
     public PersisterFactory compositePersisterFactory(
             @Qualifier("timeseriesPersisterFactory") PersisterFactory innerFactory,
-            TimeseriesKafkaPublisher publisher) {
-        LOG.info("Creating compositePersisterFactory wrapping inner={}@{}",
+            TimeseriesKafkaPublisher publisher,
+            MeterRegistry meterRegistry,
+            @Value("${deltav.collectd.persister.inner.fail-fast:false}") boolean failFastInner,
+            @Value("${deltav.collectd.persister.kafka.fail-fast:false}") boolean failFastKafka) {
+        LOG.info("Creating compositePersisterFactory wrapping inner={}@{} (failFastInner={}, failFastKafka={})",
                 innerFactory.getClass().getName(),
-                System.identityHashCode(innerFactory));
-        return new FanoutPersisterFactory(innerFactory, publisher);
+                System.identityHashCode(innerFactory),
+                failFastInner, failFastKafka);
+        return new FanoutPersisterFactory(innerFactory, publisher, meterRegistry,
+                failFastInner, failFastKafka);
     }
 
     /**
@@ -111,17 +117,26 @@ public class TimeseriesKafkaPublisherConfiguration {
     static final class FanoutPersisterFactory implements PersisterFactory {
         private final PersisterFactory innerFactory;
         private final TimeseriesKafkaPublisher publisher;
+        private final MeterRegistry meterRegistry;
+        private final boolean failFastInner;
+        private final boolean failFastKafka;
 
-        FanoutPersisterFactory(PersisterFactory innerFactory, TimeseriesKafkaPublisher publisher) {
+        FanoutPersisterFactory(PersisterFactory innerFactory, TimeseriesKafkaPublisher publisher,
+                               MeterRegistry meterRegistry,
+                               boolean failFastInner, boolean failFastKafka) {
             this.innerFactory = innerFactory;
             this.publisher = publisher;
+            this.meterRegistry = meterRegistry;
+            this.failFastInner = failFastInner;
+            this.failFastKafka = failFastKafka;
         }
 
         @Override
         public Persister createPersister(ServiceParameters params, RrdRepository repository) {
             return new FanoutPersister(
                     innerFactory.createPersister(params, repository),
-                    new TimeseriesKafkaPersister(publisher, params));
+                    new TimeseriesKafkaPersister(publisher, params),
+                    meterRegistry, failFastInner, failFastKafka);
         }
 
         @Override
@@ -131,43 +146,87 @@ public class TimeseriesKafkaPublisherConfiguration {
             return new FanoutPersister(
                     innerFactory.createPersister(params, repository, dontPersistCounters,
                             forceStoreByGroup, dontReorderAttributes),
-                    new TimeseriesKafkaPersister(publisher, params));
+                    new TimeseriesKafkaPersister(publisher, params),
+                    meterRegistry, failFastInner, failFastKafka);
         }
     }
 
     /**
      * Forwards each visitor callback to both delegate persisters, inner first
      * then Kafka. Each delegate is invoked inside its own try/catch so that
-     * an exception in one does not prevent the other from running. This
-     * matters in practice: horizon's TimeseriesPersister has surfaced
-     * transaction-propagation failures in delta-v (MetaTagDataLoader marks
-     * a read-only transaction rollback-only on certain DB states), and
-     * without isolation a single inner failure would silently swallow every
-     * Kafka publish for the affected poll cycle. Exceptions are logged at
-     * WARN so they do not disappear without operator signal.
+     * an exception in one does not prevent the other from running.
+     *
+     * <p>Observability (added 2026-04-18 — see project_collectd_publisher_inert_investigation):
+     * <ul>
+     *   <li>{@code deltav.collectd.persister.inner.failures{step=<visitor-step>}}
+     *       — Micrometer counter, pre-registered for all 10 visitor steps at
+     *       construction so ops can alert on rate&gt;0 rather than missing-metric.</li>
+     *   <li>{@code deltav.collectd.persister.kafka.failures{step=<visitor-step>}}
+     *       — symmetric for the Kafka side.</li>
+     * </ul>
+     *
+     * <p>Fail-fast toggles (default false in production; CI/IT profiles enable):
+     * <ul>
+     *   <li>{@code deltav.collectd.persister.inner.fail-fast} — when true, inner
+     *       Throwable propagates as RuntimeException instead of being swallowed.</li>
+     *   <li>{@code deltav.collectd.persister.kafka.fail-fast} — symmetric.</li>
+     * </ul>
+     *
+     * <p>Phase 0 horizon-side inner-persister bugs (UnexpectedRollbackException
+     * in MetaTagDataLoader; NPE in TimeseriesPersistOperationBuilder.setAttributeValue;
+     * ClassCastException in TimeseriesPersister.getUserDefinedMetaTags) are still
+     * caught and WARN-logged here. They do not block the Kafka path. See memory
+     * project_phase0_inner_persister_bugs_followup for the dedicated fix queue.
      */
     static final class FanoutPersister implements Persister {
+        private static final String INNER_FAILURES_METER =
+                "deltav.collectd.persister.inner.failures";
+        private static final String KAFKA_FAILURES_METER =
+                "deltav.collectd.persister.kafka.failures";
+        private static final String[] STEPS = new String[]{
+                "visitCollectionSet", "visitResource", "visitGroup", "visitAttribute",
+                "completeAttribute", "completeGroup", "completeResource", "completeCollectionSet",
+                "persistNumericAttribute", "persistStringAttribute"
+        };
+
         private static final Logger LOG = LoggerFactory.getLogger(FanoutPersister.class);
 
         private final Persister innerPersister;
         private final TimeseriesKafkaPersister kafkaPersister;
+        private final MeterRegistry meterRegistry;
+        private final boolean failFastInner;
+        private final boolean failFastKafka;
 
-        FanoutPersister(Persister innerPersister, TimeseriesKafkaPersister kafkaPersister) {
+        FanoutPersister(Persister innerPersister, TimeseriesKafkaPersister kafkaPersister,
+                        MeterRegistry meterRegistry, boolean failFastInner, boolean failFastKafka) {
             this.innerPersister = innerPersister;
             this.kafkaPersister = kafkaPersister;
+            this.meterRegistry = meterRegistry;
+            this.failFastInner = failFastInner;
+            this.failFastKafka = failFastKafka;
+            preRegisterCounters();
+        }
+
+        private void preRegisterCounters() {
+            // Pre-register all 20 (2 sides × 10 steps) counter tag combinations at
+            // construction time so ops can alert on rate>0 rather than missing-metric
+            // (which would otherwise be ambiguous with "no failures occurred").
+            for (String step : STEPS) {
+                Counter.builder(INNER_FAILURES_METER).tag("step", step).register(meterRegistry);
+                Counter.builder(KAFKA_FAILURES_METER).tag("step", step).register(meterRegistry);
+            }
         }
 
         private void runInner(String step, Runnable task) {
             try {
                 task.run();
             } catch (Throwable e) {
-                // Catch Throwable (not just RuntimeException) because horizon's
-                // AbstractPersister has surfaced LinkageErrors (NoSuchMethodError
-                // on ResourceTypeUtils.getResourcePathWithRepository) in delta-v
-                // from pre-existing daemon-boot classpath mismatches. Kafka path
-                // isolation must hold for all failure modes, not just unchecked
-                // exceptions.
+                meterRegistry.counter(INNER_FAILURES_METER, "step", step).increment();
                 LOG.warn("Inner persister threw during {}; continuing with Kafka path", step, e);
+                if (failFastInner) {
+                    throw new RuntimeException(
+                            "Inner persister failed during " + step + " (fail-fast enabled)", e);
+                }
             }
         }
 
@@ -175,7 +234,12 @@ public class TimeseriesKafkaPublisherConfiguration {
             try {
                 task.run();
             } catch (Throwable e) {
+                meterRegistry.counter(KAFKA_FAILURES_METER, "step", step).increment();
                 LOG.warn("Kafka persister threw during {}; continuing", step, e);
+                if (failFastKafka) {
+                    throw new RuntimeException(
+                            "Kafka persister failed during " + step + " (fail-fast enabled)", e);
+                }
             }
         }
 

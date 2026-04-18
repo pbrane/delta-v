@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.deltav.collectd.timeseries.TimeseriesKafkaPublisherConfiguration.FanoutPersister;
 import org.deltav.collectd.timeseries.TimeseriesKafkaPublisherConfiguration.FanoutPersisterFactory;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,7 @@ class FanoutPersisterTest {
         ServiceParameters sp = mock(ServiceParameters.class);
         when(sp.getParameters()).thenReturn(new HashMap<>());
         TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, sp);
-        FanoutPersister fanout = new FanoutPersister(inner, kafka);
+        FanoutPersister fanout = new FanoutPersister(inner, kafka, new SimpleMeterRegistry(), false, false);
 
         CollectionSet set = mock(CollectionSet.class);
         fanout.visitCollectionSet(set);
@@ -70,7 +71,7 @@ class FanoutPersisterTest {
         ServiceParameters sp = mock(ServiceParameters.class);
         when(sp.getParameters()).thenReturn(new HashMap<>());
         TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, sp);
-        FanoutPersister fanout = new FanoutPersister(inner, kafka);
+        FanoutPersister fanout = new FanoutPersister(inner, kafka, new SimpleMeterRegistry(), false, false);
 
         CollectionSet set = mock(CollectionSet.class);
         doThrow(new RuntimeException("inner boom"))
@@ -93,7 +94,7 @@ class FanoutPersisterTest {
         ServiceParameters sp = mock(ServiceParameters.class);
         when(sp.getParameters()).thenReturn(new HashMap<>());
         TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, sp);
-        FanoutPersister fanout = new FanoutPersister(inner, kafka);
+        FanoutPersister fanout = new FanoutPersister(inner, kafka, new SimpleMeterRegistry(), false, false);
 
         CollectionSet set = mock(CollectionSet.class);
         doThrow(new NoSuchMethodError("simulated classpath mismatch"))
@@ -115,7 +116,7 @@ class FanoutPersisterTest {
                 .thenReturn(innerPersister1, innerPersister2);
 
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        FanoutPersisterFactory factory = new FanoutPersisterFactory(innerFactory, publisher);
+        FanoutPersisterFactory factory = new FanoutPersisterFactory(innerFactory, publisher, new SimpleMeterRegistry(), false, false);
 
         ServiceParameters paramsA = mock(ServiceParameters.class);
         Map<String, Object> mapA = new HashMap<>();
