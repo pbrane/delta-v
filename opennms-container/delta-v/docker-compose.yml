@@ -596,6 +596,41 @@ services:
       POLLING_INTERVAL: "10"
       TRAFFIC_INTERVAL: "2"
 
+  prometheus-writer:
+    image: opennms/prometheus-writer:${ONMS_DELTAV_VERSION:-latest}
+    profiles: [lite, full]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      provisiond:
+        condition: service_started
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PROMETHEUS_WRITER_REMOTE_WRITE_URL: http://victoriametrics:8428/api/v1/write
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx512m"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "18080:8080"
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.106.1
+    profiles: [metrics-e2e]
+    command:
+      - "-retentionPeriod=1h"
+      - "-storageDataPath=/tmp/vm"
+      - "-search.latencyOffset=1s"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8428/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "18428:8428"
+
 volumes:
   pgdata:
   kafkadata:
