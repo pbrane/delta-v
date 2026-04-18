@@ -55,9 +55,41 @@ public class NodeDaoJpa extends AbstractDaoJpa<OnmsNode, Integer> implements Nod
 
     // ---- NodeDao methods — not used by Alarmd core ----
 
+    /**
+     * Look up a node by string criteria. Mirrors the upstream NodeDaoHibernate
+     * behavior: try numeric node ID, then "&lt;foreign-source&gt;:&lt;foreign-id&gt;",
+     * then label fallback.
+     *
+     * <p>Required by Collectd: horizon's MetaTagDataLoader.load() (called from
+     * TimeseriesPersister.visitResource on every SNMP collection) passes the
+     * numeric node ID as a String. Throwing here marked the read-only tx as
+     * rollback-only and silently dropped every CollectionSet before the Kafka
+     * publisher could see it.</p>
+     */
     @Override
     public OnmsNode get(String lookupCriteria) {
-        throw new UnsupportedOperationException("get(String) is not used by Alarmd");
+        if (lookupCriteria == null || lookupCriteria.isEmpty()) {
+            return null;
+        }
+        // Try as numeric node ID — the MetaTagDataLoader case
+        try {
+            return get(Integer.valueOf(lookupCriteria));
+        } catch (NumberFormatException ignored) {
+            // Not a numeric ID — fall through to other lookups
+        }
+        // Try as <foreign-source>:<foreign-id>
+        int colon = lookupCriteria.indexOf(':');
+        if (colon > 0 && colon < lookupCriteria.length() - 1) {
+            String fs = lookupCriteria.substring(0, colon);
+            String fid = lookupCriteria.substring(colon + 1);
+            OnmsNode byFsFid = findByForeignId(fs, fid);
+            if (byFsFid != null) {
+                return byFsFid;
+            }
+        }
+        // Fall back to label lookup
+        List<OnmsNode> matches = findByLabel(lookupCriteria);
+        return matches != null && !matches.isEmpty() ? matches.get(0) : null;
     }
 
     @Override
