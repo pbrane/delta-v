@@ -18,6 +18,8 @@ package org.deltav.collectd.timeseries;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.deltav.collectd.identity.AgentIdentityCapturingCollectorClient;
+import org.deltav.collectd.identity.AgentIdentityHolder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -67,5 +69,20 @@ class TimeseriesPublisherFeatureFlagOffIT {
     @Test
     void newTopicBeansAreAbsentWhenFlagOff() {
         assertThat(ctx.getBeanNamesForType(org.apache.kafka.clients.admin.NewTopic.class)).isEmpty();
+    }
+
+    @Test
+    void agentIdentityCapturingClientBeanIsAbsentWhenFlagOff() {
+        // Feature-flag off ⇒ decorator not registered ⇒ horizon's raw
+        // LocationAwareCollectorClient wins. This test doesn't try to resolve
+        // LocationAwareCollectorClient directly (the CollectdRpcConfiguration
+        // bean isn't on this minimal test's classpath) — it just asserts the
+        // decorator type is not instantiated.
+        assertThat(ctx.getBeanNamesForType(AgentIdentityCapturingCollectorClient.class)).isEmpty();
+    }
+
+    @Test
+    void agentIdentityHolderBeanIsAbsentWhenFlagOff() {
+        assertThat(ctx.getBeanNamesForType(AgentIdentityHolder.class)).isEmpty();
     }
 }
