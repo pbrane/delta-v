@@ -18,6 +18,7 @@ class PrometheusWriterMetricsTest {
             "deltav.prometheus.writer.records.parse.errors",
             "deltav.prometheus.writer.enrichment.hit",
             "deltav.prometheus.writer.enrichment.missing",
+            "deltav.prometheus.writer.enrichment.lookup.fallback",
             "deltav.prometheus.writer.node.context.cache.size",
             "deltav.prometheus.writer.node.context.cache.ready",
             "deltav.prometheus.writer.node.context.bootstrap.duration",

@@ -68,4 +68,36 @@ class NodeContextCacheTest {
         cache.markReady();
         assertThat(cache.isReady()).isTrue();
     }
+
+    @Test
+    void findByNodeId_returns_empty_when_no_entry() {
+        NodeContextCache cache = new NodeContextCache();
+        assertThat(cache.findByNodeId(99)).isEmpty();
+    }
+
+    @Test
+    void findByNodeId_returns_entry_when_node_id_matches_regardless_of_location() {
+        NodeContextCache cache = new NodeContextCache();
+        NodeContext nc = NodeContext.newBuilder().setNodeId(5).setLocation("Default").setNodeLabel("server-01").build();
+        cache.put("Default@5", nc);
+        assertThat(cache.findByNodeId(5)).contains(nc);
+    }
+
+    @Test
+    void findByNodeId_returns_first_match_when_multiple_locations_share_node_id() {
+        // node_id is normally unique per OnmsNode but the cache is keyed by
+        // {location}@{node_id} which CAN collide if a node migrates location
+        // (relocation). Returning the first match is acceptable — the
+        // stream order is unspecified across HashMap implementations but the
+        // method exists primarily for the location-empty fallback case where
+        // there is exactly one matching entry in practice.
+        NodeContextCache cache = new NodeContextCache();
+        NodeContext nc1 = NodeContext.newBuilder().setNodeId(7).setLocation("a").build();
+        NodeContext nc2 = NodeContext.newBuilder().setNodeId(7).setLocation("b").build();
+        cache.put("a@7", nc1);
+        cache.put("b@7", nc2);
+        assertThat(cache.findByNodeId(7)).isPresent();
+        // either nc1 or nc2 is acceptable; just assert presence and node_id matches
+        assertThat(cache.findByNodeId(7).get().getNodeId()).isEqualTo(7);
+    }
 }

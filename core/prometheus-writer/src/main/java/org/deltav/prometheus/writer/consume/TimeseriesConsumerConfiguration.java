@@ -33,11 +33,22 @@ public class TimeseriesConsumerConfiguration {
         Counter consumed = metrics.counter(PrometheusWriterMetrics.RECORDS_CONSUMED);
         Counter samplesIn = metrics.counter(PrometheusWriterMetrics.SAMPLES_IN);
         Counter parseErrors = metrics.counter(PrometheusWriterMetrics.RECORDS_PARSE_ERRORS);
+        Counter lookupFallback = metrics.counter(PrometheusWriterMetrics.ENRICHMENT_LOOKUP_FALLBACK);
         return message -> {
             try {
                 TimeseriesBatch batch = TimeseriesBatch.parseFrom(message.getPayload());
                 String key = batch.getLocation() + "@" + batch.getNodeId();
                 Optional<NodeContext> nc = cache.get(key);
+                if (nc.isEmpty()) {
+                    // Phase 0 limitation: Collectd publishes with location="" so the
+                    // {location}@{node_id} lookup misses against provisiond's
+                    // {real-location}@{node_id} keys. Fall back to node_id-only.
+                    // See memory project_kafka_timeseries_producer_next_session.
+                    nc = cache.findByNodeId(batch.getNodeId());
+                    if (nc.isPresent()) {
+                        lookupFallback.increment();
+                    }
+                }
                 List<PromSample> samples = translator.translate(batch, nc);
                 consumed.increment();
                 samplesIn.increment(samples.size());

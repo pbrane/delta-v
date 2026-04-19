@@ -55,4 +55,23 @@ public class NodeContextCache {
     public void markReady() {
         ready.set(true);
     }
+
+    /**
+     * Finds a NodeContext by node_id alone, ignoring location. Used as a
+     * fallback when the primary {location}@{node_id} key lookup misses —
+     * specifically for the Phase 0 limitation where Delta-V Collectd
+     * publishes TimeseriesBatch records with location="" while NodeContext
+     * records carry real locations from provisiond. See memory
+     * project_kafka_timeseries_producer_next_session for context.
+     *
+     * <p>O(n) stream scan over the cache. Acceptable because the cache is
+     * bounded (~10K nodes max) and this fallback should be rare once
+     * Collectd populates location correctly. Returns the first match;
+     * deterministic order is not guaranteed across HashMap implementations.
+     */
+    public Optional<NodeContext> findByNodeId(int nodeId) {
+        return map.values().stream()
+                .filter(nc -> nc.getNodeId() == nodeId)
+                .findFirst();
+    }
 }
