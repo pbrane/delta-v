@@ -23,6 +23,7 @@ import java.time.Duration;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.config.TopicConfig;
+import org.deltav.collectd.identity.AgentIdentityHolder;
 import org.opennms.netmgt.collection.api.AttributeGroup;
 import org.opennms.netmgt.collection.api.CollectionAttribute;
 import org.opennms.netmgt.collection.api.CollectionResource;
@@ -59,6 +60,17 @@ public class TimeseriesKafkaPublisherConfiguration {
     @Bean
     public CollectionSetToProtobufTranslator collectionSetToProtobufTranslator() {
         return new CollectionSetToProtobufTranslator();
+    }
+
+    /**
+     * Per-scheduler-thread holder for the {@code nodeId} + {@code location}
+     * of the {@code CollectionAgent} currently being collected. Populated by
+     * {@link org.deltav.collectd.identity.AgentIdentityCapturingCollectorClient}
+     * at RPC dispatch and read by {@link TimeseriesKafkaPersister} at publish time.
+     */
+    @Bean
+    public AgentIdentityHolder agentIdentityHolder() {
+        return new AgentIdentityHolder();
     }
 
     @Bean
