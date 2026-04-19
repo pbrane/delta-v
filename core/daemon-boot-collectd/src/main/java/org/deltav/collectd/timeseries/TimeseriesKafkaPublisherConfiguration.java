@@ -107,6 +107,7 @@ public class TimeseriesKafkaPublisherConfiguration {
     public PersisterFactory compositePersisterFactory(
             @Qualifier("timeseriesPersisterFactory") PersisterFactory innerFactory,
             TimeseriesKafkaPublisher publisher,
+            AgentIdentityHolder agentIdentityHolder,
             MeterRegistry meterRegistry,
             @Value("${deltav.collectd.persister.inner.fail-fast:false}") boolean failFastInner,
             @Value("${deltav.collectd.persister.kafka.fail-fast:false}") boolean failFastKafka) {
@@ -114,7 +115,7 @@ public class TimeseriesKafkaPublisherConfiguration {
                 innerFactory.getClass().getName(),
                 System.identityHashCode(innerFactory),
                 failFastInner, failFastKafka);
-        return new FanoutPersisterFactory(innerFactory, publisher, meterRegistry,
+        return new FanoutPersisterFactory(innerFactory, publisher, agentIdentityHolder, meterRegistry,
                 failFastInner, failFastKafka);
     }
 
@@ -125,15 +126,18 @@ public class TimeseriesKafkaPublisherConfiguration {
     static final class FanoutPersisterFactory implements PersisterFactory {
         private final PersisterFactory innerFactory;
         private final TimeseriesKafkaPublisher publisher;
+        private final AgentIdentityHolder holder;
         private final MeterRegistry meterRegistry;
         private final boolean failFastInner;
         private final boolean failFastKafka;
 
         FanoutPersisterFactory(PersisterFactory innerFactory, TimeseriesKafkaPublisher publisher,
+                               AgentIdentityHolder holder,
                                MeterRegistry meterRegistry,
                                boolean failFastInner, boolean failFastKafka) {
             this.innerFactory = innerFactory;
             this.publisher = publisher;
+            this.holder = holder;
             this.meterRegistry = meterRegistry;
             this.failFastInner = failFastInner;
             this.failFastKafka = failFastKafka;
@@ -143,7 +147,7 @@ public class TimeseriesKafkaPublisherConfiguration {
         public Persister createPersister(ServiceParameters params, RrdRepository repository) {
             return new FanoutPersister(
                     innerFactory.createPersister(params, repository),
-                    new TimeseriesKafkaPersister(publisher, params),
+                    new TimeseriesKafkaPersister(publisher, extractCollection(params), holder),
                     meterRegistry, failFastInner, failFastKafka);
         }
 
@@ -154,8 +158,13 @@ public class TimeseriesKafkaPublisherConfiguration {
             return new FanoutPersister(
                     innerFactory.createPersister(params, repository, dontPersistCounters,
                             forceStoreByGroup, dontReorderAttributes),
-                    new TimeseriesKafkaPersister(publisher, params),
+                    new TimeseriesKafkaPersister(publisher, extractCollection(params), holder),
                     meterRegistry, failFastInner, failFastKafka);
+        }
+
+        private static String extractCollection(ServiceParameters params) {
+            Object raw = params.getParameters().get("collection");
+            return raw == null ? "default" : raw.toString();
         }
     }
 

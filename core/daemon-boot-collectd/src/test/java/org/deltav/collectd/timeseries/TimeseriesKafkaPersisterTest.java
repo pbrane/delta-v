@@ -16,100 +16,118 @@
  */
 package org.deltav.collectd.timeseries;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import org.deltav.collectd.identity.AgentIdentityHolder;
 import org.junit.jupiter.api.Test;
+import org.opennms.netmgt.collection.api.AttributeGroup;
+import org.opennms.netmgt.collection.api.CollectionAttribute;
+import org.opennms.netmgt.collection.api.CollectionResource;
 import org.opennms.netmgt.collection.api.CollectionSet;
-import org.opennms.netmgt.collection.api.ServiceParameters;
 
 class TimeseriesKafkaPersisterTest {
 
     @Test
-    void completeCollectionSetInvokesPublisherWithPackageAndServiceParamsIdentity() {
+    void populatedHolderCausesPublishWithCapturedIdentityAndClearsHolder() {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        ServiceParameters sp = mock(ServiceParameters.class);
-        Map<String, Object> params = new HashMap<>();
-        params.put("collection", "critical-infra");
-        params.put("node-id", "42");
-        params.put("location", "Site-A");
-        when(sp.getParameters()).thenReturn((Map) params);
-        TimeseriesKafkaPersister persister = new TimeseriesKafkaPersister(publisher, sp);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        holder.set(42, "Site-A");
+        TimeseriesKafkaPersister persister =
+                new TimeseriesKafkaPersister(publisher, "critical-infra", holder);
 
         CollectionSet set = mock(CollectionSet.class);
         persister.visitCollectionSet(set);
         persister.completeCollectionSet(set);
 
         verify(publisher).publish(eq(set), eq("critical-infra"), eq(42), eq("Site-A"));
+        assertThatThrownBy(holder::getOrThrow).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
-    void packageDefaultsToDefaultWhenServiceParameterMissing() {
+    void emptyHolderThrowsIllegalStateExceptionButStillClearsHolder() {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        ServiceParameters sp = mock(ServiceParameters.class);
-        when(sp.getParameters()).thenReturn(new HashMap<>());
-        TimeseriesKafkaPersister persister = new TimeseriesKafkaPersister(publisher, sp);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        TimeseriesKafkaPersister persister =
+                new TimeseriesKafkaPersister(publisher, "default", holder);
 
         CollectionSet set = mock(CollectionSet.class);
         persister.visitCollectionSet(set);
-        persister.completeCollectionSet(set);
 
-        verify(publisher).publish(eq(set), eq("default"), eq(0), eq(""));
+        assertThatThrownBy(() -> persister.completeCollectionSet(set))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("AgentIdentity not populated");
+        verifyNoInteractions(publisher);
+        // idempotent clear — must not throw on already-empty slot:
+        holder.clear();
     }
 
     @Test
-    void nodeIdAndLocationMissingFromParamsFallBackToZeroAndEmpty() {
+    void holderWithZeroNodeIdThrowsAndClearsHolder() {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        ServiceParameters sp = mock(ServiceParameters.class);
-        Map<String, Object> params = new HashMap<>();
-        params.put("collection", "default");
-        when(sp.getParameters()).thenReturn((Map) params);
-        TimeseriesKafkaPersister persister = new TimeseriesKafkaPersister(publisher, sp);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        holder.set(0, "Default");
+        TimeseriesKafkaPersister persister =
+                new TimeseriesKafkaPersister(publisher, "default", holder);
 
         CollectionSet set = mock(CollectionSet.class);
         persister.visitCollectionSet(set);
-        persister.completeCollectionSet(set);
 
-        verify(publisher).publish(eq(set), eq("default"), eq(0), eq(""));
+        assertThatThrownBy(() -> persister.completeCollectionSet(set))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("nodeId must be > 0, got 0");
+        verifyNoInteractions(publisher);
+        assertThatThrownBy(holder::getOrThrow).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
-    void malformedNodeIdParsesToZeroFallback() {
+    void holderWithNegativeNodeIdThrowsWithActualValueInMessage() {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        ServiceParameters sp = mock(ServiceParameters.class);
-        Map<String, Object> params = new HashMap<>();
-        params.put("collection", "default");
-        params.put("node-id", "not-a-number");
-        params.put("location", "Default");
-        when(sp.getParameters()).thenReturn((Map) params);
-        TimeseriesKafkaPersister persister = new TimeseriesKafkaPersister(publisher, sp);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        holder.set(-5, "Default");
+        TimeseriesKafkaPersister persister =
+                new TimeseriesKafkaPersister(publisher, "default", holder);
 
         CollectionSet set = mock(CollectionSet.class);
         persister.visitCollectionSet(set);
+
+        assertThatThrownBy(() -> persister.completeCollectionSet(set))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("got -5");
+    }
+
+    @Test
+    void completeCollectionSetWithoutVisitDoesNothingButStillClearsHolder() {
+        TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        holder.set(7, "X");
+        TimeseriesKafkaPersister persister =
+                new TimeseriesKafkaPersister(publisher, "default", holder);
+
+        CollectionSet set = mock(CollectionSet.class);
         persister.completeCollectionSet(set);
 
-        verify(publisher).publish(eq(set), eq("default"), eq(0), eq("Default"));
+        verifyNoInteractions(publisher);
+        assertThatThrownBy(holder::getOrThrow).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void visitResourceVisitGroupVisitAttributeAreNoOps() {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        ServiceParameters sp = mock(ServiceParameters.class);
-        when(sp.getParameters()).thenReturn(new HashMap<>());
-        TimeseriesKafkaPersister persister = new TimeseriesKafkaPersister(publisher, sp);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        TimeseriesKafkaPersister persister =
+                new TimeseriesKafkaPersister(publisher, "default", holder);
 
-        persister.visitResource(mock(org.opennms.netmgt.collection.api.CollectionResource.class));
-        persister.visitGroup(mock(org.opennms.netmgt.collection.api.AttributeGroup.class));
-        persister.visitAttribute(mock(org.opennms.netmgt.collection.api.CollectionAttribute.class));
-        persister.completeAttribute(mock(org.opennms.netmgt.collection.api.CollectionAttribute.class));
-        persister.completeGroup(mock(org.opennms.netmgt.collection.api.AttributeGroup.class));
-        persister.completeResource(mock(org.opennms.netmgt.collection.api.CollectionResource.class));
+        persister.visitResource(mock(CollectionResource.class));
+        persister.visitGroup(mock(AttributeGroup.class));
+        persister.visitAttribute(mock(CollectionAttribute.class));
+        persister.completeAttribute(mock(CollectionAttribute.class));
+        persister.completeGroup(mock(AttributeGroup.class));
+        persister.completeResource(mock(CollectionResource.class));
 
         verifyNoInteractions(publisher);
     }
@@ -117,12 +135,12 @@ class TimeseriesKafkaPersisterTest {
     @Test
     void persistNumericAttributeAndPersistStringAttributeAreNoOps() {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        ServiceParameters sp = mock(ServiceParameters.class);
-        when(sp.getParameters()).thenReturn(new HashMap<>());
-        TimeseriesKafkaPersister persister = new TimeseriesKafkaPersister(publisher, sp);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        TimeseriesKafkaPersister persister =
+                new TimeseriesKafkaPersister(publisher, "default", holder);
 
-        persister.persistNumericAttribute(mock(org.opennms.netmgt.collection.api.CollectionAttribute.class));
-        persister.persistStringAttribute(mock(org.opennms.netmgt.collection.api.CollectionAttribute.class));
+        persister.persistNumericAttribute(mock(CollectionAttribute.class));
+        persister.persistStringAttribute(mock(CollectionAttribute.class));
 
         verifyNoInteractions(publisher);
     }

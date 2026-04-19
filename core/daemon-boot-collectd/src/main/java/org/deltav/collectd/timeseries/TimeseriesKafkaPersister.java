@@ -16,56 +16,45 @@
  */
 package org.deltav.collectd.timeseries;
 
-import java.util.Map;
-
+import org.deltav.collectd.identity.AgentIdentity;
+import org.deltav.collectd.identity.AgentIdentityHolder;
 import org.opennms.netmgt.collection.api.AttributeGroup;
 import org.opennms.netmgt.collection.api.CollectionAttribute;
 import org.opennms.netmgt.collection.api.CollectionResource;
 import org.opennms.netmgt.collection.api.CollectionSet;
 import org.opennms.netmgt.collection.api.Persister;
-import org.opennms.netmgt.collection.api.ServiceParameters;
 
 /**
- * Thin horizon Persister adapter that hands every CollectionSet to the
- * shared TimeseriesKafkaPublisher once, at completeCollectionSet(). All
- * per-attribute visit/persistNumericAttribute/persistStringAttribute
- * callbacks are no-ops — the translator does its own walk.
+ * Thin horizon {@link Persister} adapter that hands every {@link CollectionSet}
+ * to the shared {@link TimeseriesKafkaPublisher} once, at
+ * {@link #completeCollectionSet(CollectionSet)}. All per-attribute callbacks
+ * are no-ops — the translator does its own walk.
  *
- * <p>nodeId and location are extracted from ServiceParameters at
- * construction time: keys {@code node-id} (parsed as int, falls back to 0
- * on parse failure) and {@code location} (defaults to empty string).
- * Collectd is responsible for populating these keys; when it doesn't,
- * the produced batch carries the defaults and consumers will fall back
- * to the deltav-node-context GlobalKTable lookup for identity.</p>
+ * <p>Identity ({@code nodeId} + {@code location}) is captured by
+ * {@code AgentIdentityCapturingCollectorClient} before each RPC dispatch and
+ * read from the injected {@link AgentIdentityHolder} at publish time. If the
+ * holder is empty (decorator not wired) or {@code nodeId <= 0}, this persister
+ * throws {@link IllegalStateException}; {@code FanoutPersister} catches it,
+ * increments {@code deltav.collectd.persister.kafka.failures{step=completeCollectionSet}},
+ * and logs WARN. The inner persister path is unaffected.</p>
+ *
+ * <p>{@code collectionPackage} is extracted once by
+ * {@code FanoutPersisterFactory.createPersister} from the horizon
+ * {@code ServiceParameters} and passed as an explicit constructor argument.</p>
  */
 public class TimeseriesKafkaPersister implements Persister {
 
     private final TimeseriesKafkaPublisher publisher;
     private final String collectionPackage;
-    private final int nodeId;
-    private final String location;
+    private final AgentIdentityHolder holder;
     private CollectionSet capturedSet;
 
     public TimeseriesKafkaPersister(TimeseriesKafkaPublisher publisher,
-                                     ServiceParameters serviceParameters) {
+                                     String collectionPackage,
+                                     AgentIdentityHolder holder) {
         this.publisher = publisher;
-        Map<String, Object> params = serviceParameters.getParameters();
-        this.collectionPackage = asString(params.get("collection"), "default");
-        this.nodeId = parseIntOrZero(asString(params.get("node-id"), ""));
-        this.location = asString(params.get("location"), "");
-    }
-
-    private static String asString(Object value, String fallback) {
-        return value == null ? fallback : value.toString();
-    }
-
-    private static int parseIntOrZero(String value) {
-        if (value == null || value.isEmpty()) return 0;
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
+        this.collectionPackage = collectionPackage;
+        this.holder = holder;
     }
 
     @Override
@@ -93,10 +82,21 @@ public class TimeseriesKafkaPersister implements Persister {
 
     @Override
     public void completeCollectionSet(CollectionSet set) {
-        if (capturedSet != null) {
-            publisher.publish(capturedSet, collectionPackage, nodeId, location);
+        try {
+            if (capturedSet != null) {
+                AgentIdentity identity = holder.getOrThrow();
+                if (identity.nodeId() <= 0) {
+                    throw new IllegalStateException(
+                            "Invalid agent identity for Kafka publish: nodeId must be > 0, got "
+                                    + identity.nodeId());
+                }
+                publisher.publish(capturedSet, collectionPackage,
+                        identity.nodeId(), identity.location());
+            }
+        } finally {
+            holder.clear();
+            capturedSet = null;
         }
-        capturedSet = null;
     }
 
     @Override

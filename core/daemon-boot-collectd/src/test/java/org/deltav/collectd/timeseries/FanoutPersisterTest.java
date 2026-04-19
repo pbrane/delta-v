@@ -33,6 +33,7 @@ import java.util.Map;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.deltav.collectd.identity.AgentIdentityHolder;
 import org.deltav.collectd.timeseries.TimeseriesKafkaPublisherConfiguration.FanoutPersister;
 import org.deltav.collectd.timeseries.TimeseriesKafkaPublisherConfiguration.FanoutPersisterFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,9 +51,9 @@ class FanoutPersisterTest {
     void completeCollectionSetCallsInnerThenKafkaInOrder() {
         Persister inner = mock(Persister.class);
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        ServiceParameters sp = mock(ServiceParameters.class);
-        when(sp.getParameters()).thenReturn(new HashMap<>());
-        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, sp);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        holder.set(1, "Default");
+        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, "default", holder);
         FanoutPersister fanout = new FanoutPersister(inner, kafka, new SimpleMeterRegistry(), false, false);
 
         CollectionSet set = mock(CollectionSet.class);
@@ -75,9 +76,9 @@ class FanoutPersisterTest {
         // survive all of them so consumers still receive the protobuf record.
         Persister inner = mock(Persister.class);
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        ServiceParameters sp = mock(ServiceParameters.class);
-        when(sp.getParameters()).thenReturn(new HashMap<>());
-        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, sp);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        holder.set(1, "Default");
+        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, "default", holder);
         FanoutPersister fanout = new FanoutPersister(inner, kafka, new SimpleMeterRegistry(), false, false);
 
         CollectionSet set = mock(CollectionSet.class);
@@ -98,9 +99,9 @@ class FanoutPersisterTest {
         // the inner persister must not kill the Kafka path either.
         Persister inner = mock(Persister.class);
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        ServiceParameters sp = mock(ServiceParameters.class);
-        when(sp.getParameters()).thenReturn(new HashMap<>());
-        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, sp);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        holder.set(1, "Default");
+        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, "default", holder);
         FanoutPersister fanout = new FanoutPersister(inner, kafka, new SimpleMeterRegistry(), false, false);
 
         CollectionSet set = mock(CollectionSet.class);
@@ -123,26 +124,27 @@ class FanoutPersisterTest {
                 .thenReturn(innerPersister1, innerPersister2);
 
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
-        FanoutPersisterFactory factory = new FanoutPersisterFactory(innerFactory, publisher, new SimpleMeterRegistry(), false, false);
+        AgentIdentityHolder holder = new AgentIdentityHolder();
+        FanoutPersisterFactory factory = new FanoutPersisterFactory(innerFactory, publisher, holder,
+                new SimpleMeterRegistry(), false, false);
 
         ServiceParameters paramsA = mock(ServiceParameters.class);
         Map<String, Object> mapA = new HashMap<>();
         mapA.put("collection", "pkg-A");
-        mapA.put("node-id", "1");
         when(paramsA.getParameters()).thenReturn((Map) mapA);
 
         ServiceParameters paramsB = mock(ServiceParameters.class);
         Map<String, Object> mapB = new HashMap<>();
         mapB.put("collection", "pkg-B");
-        mapB.put("node-id", "2");
         when(paramsB.getParameters()).thenReturn((Map) mapB);
 
         Persister pA = factory.createPersister(paramsA, null);
         Persister pB = factory.createPersister(paramsB, null);
 
         // Both are distinct FanoutPersister instances wrapping different inner persisters
-        // and different TimeseriesKafkaPersister instances (different nodeId/package).
+        // and different TimeseriesKafkaPersister instances (different package).
         CollectionSet setA = mock(CollectionSet.class);
+        holder.set(1, "");
         pA.visitCollectionSet(setA);
         pA.completeCollectionSet(setA);
 
