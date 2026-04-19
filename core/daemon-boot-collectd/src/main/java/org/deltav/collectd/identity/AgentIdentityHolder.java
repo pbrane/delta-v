@@ -51,7 +51,7 @@ public class AgentIdentityHolder {
         AgentIdentity id = current.get();
         if (id == null) {
             throw new IllegalStateException(
-                    "AgentIdentity not populated — LocationAwareCollectorClient decorator not wired?");
+                    "AgentIdentity not populated — AgentIdentityCapturingCollectorClient not wired?");
         }
         return id;
     }
