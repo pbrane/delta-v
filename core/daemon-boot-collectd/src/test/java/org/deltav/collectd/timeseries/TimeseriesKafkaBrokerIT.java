@@ -245,5 +245,16 @@ class TimeseriesKafkaBrokerIT {
         PersisterFactory stubInnerFactory() {
             return mock(PersisterFactory.class);
         }
+
+        /**
+         * M2 decorator's @Qualifier("locationAwareCollectorClient") references
+         * horizon's bean from CollectdRpcConfiguration, which is not imported
+         * here. Provide a mock under the expected name so the decorator can wrap
+         * it; this IT doesn't exercise the collect() path.
+         */
+        @Bean(name = "locationAwareCollectorClient")
+        org.opennms.netmgt.collection.api.LocationAwareCollectorClient innerCollectorClient() {
+            return mock(org.opennms.netmgt.collection.api.LocationAwareCollectorClient.class);
+        }
     }
 }
