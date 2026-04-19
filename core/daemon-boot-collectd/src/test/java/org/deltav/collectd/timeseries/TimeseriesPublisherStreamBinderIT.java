@@ -135,5 +135,16 @@ class TimeseriesPublisherStreamBinderIT {
         PersisterFactory stubInnerFactory() {
             return mock(PersisterFactory.class);
         }
+
+        /**
+         * The @Primary decorator bean in TimeseriesKafkaPublisherConfiguration
+         * requires a @Qualifier("locationAwareCollectorClient") delegate. The real
+         * bean is registered by CollectdRpcConfiguration which is not on this
+         * minimal test classpath, so provide a stub.
+         */
+        @Bean(name = "locationAwareCollectorClient")
+        org.opennms.netmgt.collection.api.LocationAwareCollectorClient stubCollectorClient() {
+            return mock(org.opennms.netmgt.collection.api.LocationAwareCollectorClient.class);
+        }
     }
 }
