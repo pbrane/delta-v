@@ -23,11 +23,13 @@ import java.time.Duration;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.config.TopicConfig;
+import org.deltav.collectd.identity.AgentIdentityCapturingCollectorClient;
 import org.deltav.collectd.identity.AgentIdentityHolder;
 import org.opennms.netmgt.collection.api.AttributeGroup;
 import org.opennms.netmgt.collection.api.CollectionAttribute;
 import org.opennms.netmgt.collection.api.CollectionResource;
 import org.opennms.netmgt.collection.api.CollectionSet;
+import org.opennms.netmgt.collection.api.LocationAwareCollectorClient;
 import org.opennms.netmgt.collection.api.Persister;
 import org.opennms.netmgt.collection.api.PersisterFactory;
 import org.opennms.netmgt.collection.api.ServiceParameters;
@@ -71,6 +73,27 @@ public class TimeseriesKafkaPublisherConfiguration {
     @Bean
     public AgentIdentityHolder agentIdentityHolder() {
         return new AgentIdentityHolder();
+    }
+
+    /**
+     * {@code @Primary} decorator over horizon's {@link LocationAwareCollectorClient}
+     * that captures {@code (nodeId, location)} into {@link AgentIdentityHolder}
+     * before every RPC dispatch, so {@link TimeseriesKafkaPersister} can read
+     * identity at publish time.
+     *
+     * <p>{@code CollectdRpcConfiguration} registers the original bean under the
+     * default name {@code locationAwareCollectorClient}; Spring Boot 4 disables
+     * bean-definition overriding, so the decorator uses a distinct method name
+     * and is made primary. The {@code @Qualifier} on the delegate parameter
+     * selects the horizon bean (not this decorator, which would cause infinite
+     * recursion).</p>
+     */
+    @Bean
+    @Primary
+    public LocationAwareCollectorClient agentIdentityCapturingCollectorClient(
+            @Qualifier("locationAwareCollectorClient") LocationAwareCollectorClient inner,
+            AgentIdentityHolder holder) {
+        return new AgentIdentityCapturingCollectorClient(inner, holder);
     }
 
     @Bean
