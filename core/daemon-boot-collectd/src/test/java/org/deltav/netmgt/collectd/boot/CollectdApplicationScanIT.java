@@ -134,7 +134,13 @@ class CollectdApplicationScanIT {
 
     // ---- Collection agent / RPC client chain ----
     @MockitoBean ServiceCollectorRegistry serviceCollectorRegistry;
-    @MockitoBean LocationAwareCollectorClient locationAwareCollectorClient;
+    // Explicit bean names below: the M2 decorator registers a @Primary
+    // AgentIdentityCapturingCollectorClient bean, so without explicit names,
+    // @MockitoBean's type-based matching replaces the @Primary decorator and
+    // leaves horizon's real bean to instantiate (failing on @Autowired
+    // RpcTargetHelper since opennms.rpc.kafka.enabled=false in this test).
+    @MockitoBean(name = "locationAwareCollectorClient") LocationAwareCollectorClient locationAwareCollectorClient;
+    @MockitoBean(name = "agentIdentityCapturingCollectorClient") LocationAwareCollectorClient agentIdentityCapturingCollectorClient;
     @MockitoBean RpcClientFactory rpcClientFactory;
     @MockitoBean EntityScopeProvider entityScopeProvider;
 
