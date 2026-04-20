@@ -59,6 +59,30 @@
           "text": ["All"],
           "value": ["$__all"]
         }
+      },
+      {
+        "name": "monitoring_location",
+        "label": "Monitoring location",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
+        "query": {
+          "query": "label_values(opennms_mib2_x_interfaces_ifhcinoctets_total, location)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": ["All"],
+          "value": ["$__all"]
+        }
       }
     ]
   },
@@ -75,7 +99,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, rate(opennms_mib2_x_interfaces_ifhcinoctets_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\"}[5m]) * 8)",
+          "expr": "topk(10, rate(opennms_mib2_x_interfaces_ifhcinoctets_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) * 8)",
           "legendFormat": "{{instance}} · ifIndex {{resource_instance}}"
         }
       ],
@@ -107,7 +131,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, rate(opennms_mib2_x_interfaces_ifhcoutoctets_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\"}[5m]) * 8)",
+          "expr": "topk(10, rate(opennms_mib2_x_interfaces_ifhcoutoctets_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) * 8)",
           "legendFormat": "{{instance}} · ifIndex {{resource_instance}}"
         }
       ],
@@ -139,7 +163,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(opennms_mib2_interface_errors_ifinerrors_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\"}[5m]) + rate(opennms_mib2_interface_errors_ifouterrors_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\"}[5m]) + rate(opennms_mib2_interface_errors_ifindiscards_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\"}[5m]) + rate(opennms_mib2_interface_errors_ifoutdiscards_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\"}[5m])",
+          "expr": "rate(opennms_mib2_interface_errors_ifinerrors_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) + rate(opennms_mib2_interface_errors_ifouterrors_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) + rate(opennms_mib2_interface_errors_ifindiscards_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) + rate(opennms_mib2_interface_errors_ifoutdiscards_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m])",
           "legendFormat": "{{instance}} · ifIndex {{resource_instance}}"
         }
       ],
@@ -179,7 +203,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "opennms_mib2_host_resources_processor_hrprocessorload{instance=~\"$instance\", foreign_source=~\"$foreign_source\"}",
+          "expr": "opennms_mib2_host_resources_processor_hrprocessorload{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}",
           "legendFormat": "{{instance}} · proc {{resource_instance}}"
         }
       ],
@@ -213,7 +237,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * opennms_mib2_host_resources_storage_hrstorageused{instance=~\"$instance\", foreign_source=~\"$foreign_source\"} / opennms_mib2_host_resources_storage_hrstoragesize{instance=~\"$instance\", foreign_source=~\"$foreign_source\"}",
+          "expr": "100 * opennms_mib2_host_resources_storage_hrstorageused{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"} / opennms_mib2_host_resources_storage_hrstoragesize{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}",
           "legendFormat": "{{instance}} · storage {{resource_instance}}",
           "instant": true
         }
@@ -252,7 +276,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count by (instance, foreign_source, snmp_syscontact, snmp_syslocation) (rate(opennms_mib2_x_interfaces_ifhcinoctets_total[5m]))",
+          "expr": "count by (instance, foreign_source, location, snmp_syscontact, snmp_syslocation) (rate(opennms_mib2_x_interfaces_ifhcinoctets_total[5m]))",
           "format": "table",
           "instant": true
         }
@@ -280,6 +304,7 @@
             "renameByName": {
               "instance": "Instance",
               "foreign_source": "Foreign source",
+              "location": "Monitoring location",
               "snmp_syscontact": "SNMP sysContact",
               "snmp_syslocation": "SNMP sysLocation"
             }
