@@ -106,6 +106,17 @@
          <parameter key="data-source" value="${requisition:data-source|detector:data-source|opennms-monitor}" />
       </service>
    </package>
+   <package name="l8opensim-lab" remote="false">
+      <filter>IPADDR != '0.0.0.0'</filter>
+      <include-range begin="10.0.0.1" end="10.0.0.255"/>
+      <!-- 30s interval matches example1 (set by delta-v#182). The l8opensim
+           devices' HC counter sine waves cycle on a 100-point timeline, so
+           30s is enough resolution to see realistic rate changes in Grafana. -->
+      <service name="SNMP" interval="30000" user-defined="false" status="on">
+         <parameter key="collection" value="default"/>
+         <parameter key="thresholding-enabled" value="false"/>
+      </service>
+   </package>
    <package name="example1" remote="false">
       <filter>IPADDR != '0.0.0.0'</filter>
       <include-range begin="1.1.1.1" end="254.254.254.254" />
