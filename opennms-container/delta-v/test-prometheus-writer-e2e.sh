@@ -129,7 +129,13 @@ assert_zero() {
 
 assert_zero 'deltav_prometheus_writer_batches_failed_total'
 assert_zero 'deltav_prometheus_writer_enrichment_missing_total'
-assert_zero 'deltav_prometheus_writer_samples_dropped_total'
+# samples_dropped_total: split by reason. "type_unspecified" must stay zero
+# (indicates a producer bug if it ever fires). "string_attribute" is expected
+# correct behavior when SNMP collection surfaces string OIDs (sysDescr,
+# sysName, sysContact, etc.) — Prometheus samples are float64, so the
+# translator drops strings by design. The rpc-canary data path produces a
+# handful of these on each poll.
+assert_zero 'deltav_prometheus_writer_samples_dropped_total\{reason="type_unspecified"\}'
 assert_zero 'deltav_prometheus_writer_dlq_records_total'
 
 # ── Step 6: Query VictoriaMetrics ─────────────────────────────────────────────

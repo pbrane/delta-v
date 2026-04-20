@@ -7,6 +7,23 @@
                    import-url-resource="file:///opt/deltav/etc/imports/delta-v.xml">
     <cron-schedule>0/30 * * * * ?</cron-schedule>
   </requisition-def>
+  <!--
+    rpc-canary: self-contained Default-location SNMP canary (node at 172.18.0.2
+    → the in-compose snmp-agent container). Imported here so Phase 2 E2E
+    (test-prometheus-writer-e2e.sh) has a working SNMP data path entirely
+    inside the delta-v_default Docker network, without requiring an external
+    labbox Minion at location=mhuot-labs.
+
+    History: originally added in commit 1f4bc22243c (Phase 3 gate canary),
+    removed in 3d3baf881fd during PerspectivePollerd E2E cleanup — removal
+    silently broke self-contained Phase 2 E2E runs. Restored so the E2E runs
+    on any workstation, labbox connected or not. The mhuot-labs cron below
+    remains for the labbox-connected developer path (parallel, no conflict).
+  -->
+  <requisition-def import-name="rpc-canary"
+                   import-url-resource="file:///opt/deltav/etc/imports/rpc-canary.xml">
+    <cron-schedule>0/30 * * * * ?</cron-schedule>
+  </requisition-def>
   <requisition-def import-name="cloud-services"
                    import-url-resource="file:///opt/deltav/etc/imports/cloud-services.xml">
     <cron-schedule>0/30 * * * * ?</cron-schedule>

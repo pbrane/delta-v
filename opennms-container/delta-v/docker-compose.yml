@@ -620,7 +620,11 @@ services:
     image: victoriametrics/victoria-metrics:v1.106.1
     profiles: [metrics-e2e]
     command:
-      - "-retentionPeriod=1h"
+      # VM v1.106.1 rejects retentionPeriod smaller than 1 day; "1h" causes
+      # exit code 255 at startup with fatal log:
+      #   -retentionPeriod cannot be smaller than a day; got 1h
+      # E2E only needs a few minutes of retention, but the floor is 1d.
+      - "-retentionPeriod=1d"
       - "-storageDataPath=/tmp/vm"
       - "-search.latencyOffset=1s"
     healthcheck:
