@@ -28,6 +28,9 @@ class PrometheusWriterPropertiesTest {
                 Map.entry("prometheus-writer.retry.max-backoff-ms", "30000"),
                 Map.entry("prometheus-writer.circuit-breaker.failure-rate-threshold", "50"),
                 Map.entry("prometheus-writer.labels.from-metadata[0]", "requisition:region"),
+                Map.entry("prometheus-writer.labels.instance-source", "FOREIGN_ID"),
+                Map.entry("prometheus-writer.metrics.cardinality-tracking.enabled", "false"),
+                Map.entry("prometheus-writer.metrics.cardinality-tracking.cap", "50000"),
                 Map.entry("prometheus-writer.startup-gate.enabled", "true")
         );
         ConfigurationPropertySource src = new MapConfigurationPropertySource(map);
@@ -42,6 +45,9 @@ class PrometheusWriterPropertiesTest {
         assertThat(props.batch().maxSamples()).isEqualTo(1000);
         assertThat(props.batch().maxBytes()).isEqualTo(1_048_576);
         assertThat(props.labels().fromMetadata()).containsExactly("requisition:region");
+        assertThat(props.labels().instanceSource()).isEqualTo(InstanceSource.FOREIGN_ID);
+        assertThat(props.metrics().cardinalityTracking().enabled()).isFalse();
+        assertThat(props.metrics().cardinalityTracking().cap()).isEqualTo(50_000);
         assertThat(props.startupGate().enabled()).isTrue();
     }
 
