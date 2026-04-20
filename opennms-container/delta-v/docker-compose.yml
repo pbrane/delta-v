@@ -96,6 +96,59 @@ services:
       interval: 10s
       retries: 3
 
+  l8opensim:
+    image: ghcr.io/labmonkeys-space/l8opensim:latest
+    container_name: delta-v-l8opensim
+    profiles: [lite, full, metrics]
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    devices:
+      - /dev/net/tun
+    # Start with no devices; the provisioner POSTs the 20-device mix from
+    # ./l8opensim/devices.json after this service is healthy.
+    # `-no-namespace` mode keeps the per-device TUN interfaces in this
+    # container's root netns so minion-lab (which shares the netns) can
+    # reach the device IPs at 10.0.0.1-20 directly.
+    command: ["-no-namespace"]
+    healthcheck:
+      # 127.0.0.1 not localhost — BusyBox wget IPv6 quirk per delta-v#182.
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    ports:
+      - "19161:161/udp"  # ad-hoc SNMP testing from the host
+      - "19081:8080/tcp" # web UI + REST API
+
+  l8opensim-provisioner:
+    image: curlimages/curl:8.10.1
+    container_name: delta-v-l8opensim-provisioner
+    profiles: [lite, full, metrics]
+    depends_on:
+      l8opensim:
+        condition: service_healthy
+    network_mode: "container:delta-v-l8opensim"
+    restart: "no"
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -eu
+        echo "provisioner: posting 20-device spec to l8opensim REST API"
+        # devices.json is a JSON array; pipe each entry as one line through
+        # post-each.sh which iterates and POSTs.
+        cat /seed/devices.json \
+            | sed -e 's/^\[//' -e 's/\]$//' -e 's/},/}\n/g' \
+            | sh /seed/post-each.sh http://127.0.0.1:8080
+        # Verify total count.
+        count=$$(wget -q -O- http://127.0.0.1:8080/api/v1/devices \
+                 | grep -o '"id"' | wc -l)
+        echo "provisioner: l8opensim now reports $$count devices"
+        [ "$$count" -ge 20 ] || { echo "FAIL expected >= 20 devices got $$count"; exit 1; }
+    volumes:
+      - ./l8opensim:/seed:ro
+
   minion:
     image: ${IMAGE_PREFIX:-opennms}/minion-boot:${VERSION}
     container_name: delta-v-minion
