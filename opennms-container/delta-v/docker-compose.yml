@@ -191,6 +191,37 @@ services:
       retries: 12
       start_period: 15s
 
+  minion-lab:
+    image: ${IMAGE_PREFIX:-opennms}/minion-boot:${VERSION}
+    container_name: delta-v-minion-lab
+    profiles: [lite, full, metrics]
+    network_mode: "container:delta-v-l8opensim"
+    cap_add:
+      - NET_RAW
+    depends_on:
+      kafka:
+        condition: service_healthy
+      l8opensim-provisioner:
+        condition: service_completed_successfully
+    environment:
+      MINION_ID: minion-l8opensim-lab-01
+      MINION_LOCATION: l8opensim-lab
+      KAFKA_IPC_BOOTSTRAP_SERVERS: kafka:9092
+      # Port-collision avoidance under shared netns: l8opensim binds 8080 for
+      # its REST API, Minion's actuator defaults to 8080 too. Move Minion's
+      # actuator to 8181.
+      SERVER_PORT: "8181"
+      JAVA_OPTS: >-
+        -Xms256m -Xmx512m
+        -Djava.security.egd=file:/dev/./urandom
+    healthcheck:
+      # Healthcheck targets the relocated actuator port (see SERVER_PORT above).
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8181/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
   pollerd:
     profiles: [lite, full]
     image: ${IMAGE_PREFIX:-opennms}/pollerd:${VERSION}
