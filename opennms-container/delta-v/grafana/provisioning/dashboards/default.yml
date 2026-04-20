@@ -1,0 +1,17 @@
+# Grafana dashboard provider — points at the bind-mounted directory where
+# JSON dashboard files live. Reloads every 30s, allows UI edits but they
+# don't persist across container restarts (the JSON file wins).
+apiVersion: 1
+
+providers:
+  - name: delta-v-bundled
+    orgId: 1
+    folder: Delta-V
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
