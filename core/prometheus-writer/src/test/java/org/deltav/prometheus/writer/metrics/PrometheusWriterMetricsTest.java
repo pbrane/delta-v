@@ -32,7 +32,9 @@ class PrometheusWriterMetricsTest {
             "deltav.prometheus.writer.retry.attempts",
             "deltav.prometheus.writer.dlq.records",
             "deltav.prometheus.writer.circuit.state",
-            "deltav.prometheus.writer.consumer.paused"
+            "deltav.prometheus.writer.consumer.paused",
+            "deltav.prometheus.writer.distinct.series",
+            "deltav.prometheus.writer.labels.per.sample"
     ));
 
     @Test

@@ -40,4 +40,8 @@ public final class PrometheusWriterMetrics {
     // circuit + consumer state
     public static final String CIRCUIT_STATE           = "deltav.prometheus.writer.circuit.state";
     public static final String CONSUMER_PAUSED         = "deltav.prometheus.writer.consumer.paused";
+
+    // cardinality observability
+    public static final String DISTINCT_SERIES         = "deltav.prometheus.writer.distinct.series";
+    public static final String LABELS_PER_SAMPLE       = "deltav.prometheus.writer.labels.per.sample";
 }
