@@ -15,6 +15,8 @@ import org.deltav.prometheus.writer.rw.RemoteWriteRetryPolicy;
 import org.deltav.prometheus.writer.rw.WriteRequestBuilder;
 import org.deltav.prometheus.writer.startup.TimeseriesBindingResumer;
 import org.deltav.prometheus.writer.startup.TimeseriesBindingStartupGate;
+import org.deltav.prometheus.writer.metrics.LabelCardinalityTracker;
+import org.deltav.prometheus.writer.translate.InstanceLabelResolver;
 import org.deltav.prometheus.writer.translate.LabelBuilder;
 import org.deltav.prometheus.writer.translate.NameSanitizer;
 import org.deltav.prometheus.writer.translate.TimeseriesToPromTranslator;
@@ -73,6 +75,8 @@ class PrometheusWriterApplicationScanIT {
         // Translation
         assertThat(ctx.getBean(NameSanitizer.class)).isNotNull();
         assertThat(ctx.getBean(LabelBuilder.class)).isNotNull();
+        assertThat(ctx.getBean(InstanceLabelResolver.class)).isNotNull();
+        assertThat(ctx.getBean(LabelCardinalityTracker.class)).isNotNull();
         assertThat(ctx.getBean(TimeseriesToPromTranslator.class)).isNotNull();
         // RW output
         assertThat(ctx.getBean(WriteRequestBuilder.class)).isNotNull();
