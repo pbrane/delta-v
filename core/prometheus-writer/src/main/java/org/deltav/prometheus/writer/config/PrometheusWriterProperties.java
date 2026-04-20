@@ -36,8 +36,7 @@ public record PrometheusWriterProperties(
         if (batch == null)          batch = new Batch(1000, 1_048_576, 1000);
         if (retry == null)          retry = new Retry(100, 30_000, 0.1);
         if (circuitBreaker == null) circuitBreaker = new CircuitBreaker(50, 20, 10, 30_000, 3);
-        if (labels == null)         labels = new Labels(InstanceSource.NODE_LABEL,
-                                                        List.of("snmp:sysContact", "snmp:sysLocation"));
+        if (labels == null)         labels = new Labels(null, null);
         if (metrics == null)        metrics = new Metrics(new CardinalityTracking(true, 100_000));
         if (startupGate == null)    startupGate = new StartupGate(true);
     }
@@ -88,7 +87,7 @@ public record PrometheusWriterProperties(
     ) {
         public Labels {
             if (instanceSource == null) instanceSource = InstanceSource.NODE_LABEL;
-            if (fromMetadata == null) fromMetadata = List.of();
+            if (fromMetadata == null) fromMetadata = List.of("snmp:sysContact", "snmp:sysLocation");
         }
     }
 

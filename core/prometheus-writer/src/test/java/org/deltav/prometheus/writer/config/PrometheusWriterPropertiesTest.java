@@ -96,4 +96,24 @@ class PrometheusWriterPropertiesTest {
         assertThat(props.metrics().cardinalityTracking().enabled()).isTrue();
         assertThat(props.metrics().cardinalityTracking().cap()).isEqualTo(100_000);
     }
+
+    @Test
+    void partial_labels_block_still_gets_populated_from_metadata_default() {
+        // Operator overrides instance-source but omits from-metadata.
+        // Per spec: the default from-metadata should still apply because the
+        // canonical default is "[snmp:sysContact, snmp:sysLocation]" — operators
+        // wanting zero metadata labels must explicitly set from-metadata: [].
+        Map<String, Object> map = Map.of(
+                "prometheus-writer.remote-write.url", "http://localhost/write",
+                "prometheus-writer.labels.instance-source", "FOREIGN_ID"
+        );
+        ConfigurationPropertySource src = new MapConfigurationPropertySource(map);
+        PrometheusWriterProperties props = new Binder(src)
+                .bind("prometheus-writer", Bindable.of(PrometheusWriterProperties.class))
+                .get();
+
+        assertThat(props.labels().instanceSource()).isEqualTo(InstanceSource.FOREIGN_ID);
+        assertThat(props.labels().fromMetadata())
+                .containsExactly("snmp:sysContact", "snmp:sysLocation");
+    }
 }

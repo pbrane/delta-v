@@ -43,6 +43,7 @@ class LabelCardinalityTrackerTest {
 
         Gauge g = registry.find("deltav.prometheus.writer.distinct.series").gauge();
         assertThat(g).isNotNull();
+        t.cleanUpForTesting();
         assertThat(g.value()).isEqualTo(3.0);
     }
 
@@ -54,6 +55,7 @@ class LabelCardinalityTrackerTest {
         t.record(Map.of("a", "1", "b", "x"));
 
         Gauge g = registry.find("deltav.prometheus.writer.distinct.series").gauge();
+        t.cleanUpForTesting();
         assertThat(g.value()).isEqualTo(1.0);
     }
 
@@ -136,6 +138,7 @@ class LabelCardinalityTrackerTest {
         t.record(sameInDifferentOrder);
 
         Gauge g = registry.find("deltav.prometheus.writer.distinct.series").gauge();
+        t.cleanUpForTesting();
         assertThat(g.value()).isEqualTo(1.0);
     }
 }
