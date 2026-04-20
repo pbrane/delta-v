@@ -207,5 +207,32 @@ if ! echo "$dash" | grep -q '"title":"SNMP Overview"'; then
 fi
 echo "==> Dashboard OK"
 
+# ── Step 10: Verify l8opensim-lab location is producing metrics ───────────────
+echo "==> Step 10: Verify l8opensim-lab location produces interface HC counters"
+deadline=$((SECONDS + VM_QUERY_TIMEOUT))
+lab_landed=false
+while (( SECONDS < deadline )); do
+    resp=$(curl -sGf "http://localhost:18428/api/v1/query" \
+            --data-urlencode 'query=opennms_mib2_x_interfaces_ifhcinoctets_total{foreign_source="l8opensim-lab"}' \
+            2>/dev/null || echo '{"data":{"result":[]}}')
+    count=$(echo "$resp" | python3 -c \
+            'import json,sys; d=json.load(sys.stdin); print(len(d.get("data",{}).get("result",[])))' \
+            2>/dev/null || echo "0")
+    if (( count > 0 )); then
+        echo "==> VM returned ${count} series for l8opensim-lab (Minion-lab is working)"
+        echo "$resp" | grep -q '"location":"l8opensim-lab"' || \
+            { echo "FAIL: series missing location label"; exit 1; }
+        lab_landed=true
+        break
+    fi
+    sleep 2
+done
+if [[ "$lab_landed" != "true" ]]; then
+    echo "FAIL: l8opensim-lab produced no interface HC metrics within ${VM_QUERY_TIMEOUT}s"
+    echo "Last VM response: $resp"
+    docker compose logs minion-lab | tail -30
+    exit 1
+fi
+
 echo "==> ALL ASSERTIONS PASSED"
 exit 0
