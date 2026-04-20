@@ -664,7 +664,10 @@ services:
       # Use 127.0.0.1 (not localhost) — BusyBox wget in the Grafana base
       # image resolves localhost to ::1 first, but Grafana listens on IPv4 by
       # default. Same fix as the victoriametrics healthcheck above.
-      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/api/health | grep -q '\"database\":\"ok\"'"]
+      # The grep pattern uses "database.*ok" because Grafana's JSON response
+      # is pretty-printed with a space after the colon ("database": "ok"),
+      # not the compact form expected by some other Grafana healthcheck examples.
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/api/health | grep -q 'database.*ok'"]
       interval: 5s
       timeout: 3s
       retries: 12
