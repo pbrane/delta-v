@@ -28,8 +28,19 @@
                    import-url-resource="file:///opt/deltav/etc/imports/cloud-services.xml">
     <cron-schedule>0/30 * * * * ?</cron-schedule>
   </requisition-def>
+  <!--
+    mhuot-labs auto-import disabled (delta-v#<this PR>): the requisition
+    references real lab devices at 172.20.20.x reachable only when the
+    operator's host has VPN/LAN connectivity to that subnet. Useful for
+    Enlinkd LLDP topology testing against real hardware. Uncomment to
+    re-enable. The imports/mhuot-labs.xml file is preserved on disk.
   <requisition-def import-name="mhuot-labs"
                    import-url-resource="file:///opt/deltav/etc/imports/mhuot-labs.xml">
+    <cron-schedule>0/30 * * * * ?</cron-schedule>
+  </requisition-def>
+  -->
+  <requisition-def import-name="l8opensim-lab"
+                   import-url-resource="file:///opt/deltav/etc/imports/l8opensim-lab.xml">
     <cron-schedule>0/30 * * * * ?</cron-schedule>
   </requisition-def>
   <requisition-def import-name="perspective-test" import-url-resource="file:///opt/deltav/etc/imports/perspective-test.xml">
