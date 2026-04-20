@@ -38,12 +38,12 @@ VM_QUERY_TIMEOUT=30
 
 cleanup() {
     echo "==> Tearing down stack"
-    docker compose --profile lite --profile metrics-e2e down -v --remove-orphans || true
+    docker compose --profile lite --profile metrics down -v --remove-orphans || true
 }
 trap cleanup EXIT
 
-echo "==> Starting delta-v Docker Compose (lite + metrics-e2e profiles)"
-docker compose --profile lite --profile metrics-e2e up -d --build
+echo "==> Starting delta-v Docker Compose (lite + metrics profiles)"
+docker compose --profile lite --profile metrics up -d --build
 
 # ── Step 1: Wait for prometheus-writer readiness ──────────────────────────────
 echo "==> Step 1: Wait for prometheus-writer /actuator/health/readiness"
@@ -141,6 +141,7 @@ assert_zero 'deltav_prometheus_writer_dlq_records_total'
 # ── Step 6: Query VictoriaMetrics ─────────────────────────────────────────────
 echo "==> Step 6: Query VictoriaMetrics for the landed series"
 deadline=$((SECONDS + VM_QUERY_TIMEOUT))
+vm_landed=false
 while (( SECONDS < deadline )); do
     resp=$(curl -sf "http://localhost:18428/api/v1/query?query=opennms_mib2_interface_errors_ifindiscards_total" \
             || echo '{"data":{"result":[]}}')
@@ -153,12 +154,58 @@ while (( SECONDS < deadline )); do
         echo "$resp" | grep -E '"location":' > /dev/null || { echo "FAIL: missing location label"; exit 1; }
         echo "$resp" | grep -E '"foreign_source":' > /dev/null || { echo "FAIL: missing foreign_source label"; exit 1; }
         echo "$resp" | grep -E '"resource_instance":' > /dev/null || { echo "FAIL: missing resource_instance label"; exit 1; }
-        echo "==> ALL ASSERTIONS PASSED"
-        exit 0
+        vm_landed=true
+        break
     fi
     sleep 2
 done
+if [[ "$vm_landed" != "true" ]]; then
+    echo "FAIL: VictoriaMetrics returned no results within ${VM_QUERY_TIMEOUT}s"
+    echo "Last VM response: $resp"
+    exit 1
+fi
 
-echo "FAIL: VictoriaMetrics returned no results within ${VM_QUERY_TIMEOUT}s"
-echo "Last VM response: $resp"
-exit 1
+# ── Step 7: Wait for Grafana readiness ────────────────────────────────────────
+echo "==> Step 7: Wait for Grafana /api/health"
+deadline=$((SECONDS + STACK_READY_TIMEOUT))
+gf_ready=false
+GF_PASS="${GF_ADMIN_PASSWORD:-admin}"
+while (( SECONDS < deadline )); do
+    health=$(curl -sf -u "admin:${GF_PASS}" http://localhost:13000/api/health 2>/dev/null || true)
+    if echo "$health" | grep -q 'database.*ok'; then
+        echo "==> Grafana ready"
+        gf_ready=true
+        break
+    fi
+    sleep 3
+done
+if [[ "$gf_ready" != "true" ]]; then
+    echo "FAIL: Grafana readiness timeout"
+    docker compose logs grafana | tail -50
+    exit 1
+fi
+
+# ── Step 8: Verify VictoriaMetrics datasource is reachable from Grafana ───────
+echo "==> Step 8: Verify VictoriaMetrics datasource health"
+ds_health=$(curl -sf -u "admin:${GF_PASS}" \
+    http://localhost:13000/api/datasources/uid/victoriametrics/health 2>/dev/null || true)
+if ! echo "$ds_health" | grep -q '"status":"OK"'; then
+    echo "FAIL: VictoriaMetrics datasource health check failed"
+    echo "Response: $ds_health"
+    exit 1
+fi
+echo "==> Datasource OK"
+
+# ── Step 9: Verify the snmp-overview dashboard is provisioned ─────────────────
+echo "==> Step 9: Verify snmp-overview dashboard is loaded"
+dash=$(curl -sf -u "admin:${GF_PASS}" \
+    http://localhost:13000/api/dashboards/uid/snmp-overview 2>/dev/null || true)
+if ! echo "$dash" | grep -q '"title":"SNMP Overview"'; then
+    echo "FAIL: snmp-overview dashboard not loaded"
+    echo "Response: $dash"
+    exit 1
+fi
+echo "==> Dashboard OK"
+
+echo "==> ALL ASSERTIONS PASSED"
+exit 0
