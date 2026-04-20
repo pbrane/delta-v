@@ -1,0 +1,22 @@
+[
+  {"start_ip":"10.0.0.1","device_count":1,"netmask":"24","resource_file":"cisco_crs_x.json"},
+  {"start_ip":"10.0.0.2","device_count":1,"netmask":"24","resource_file":"nokia_7750_sr12.json"},
+  {"start_ip":"10.0.0.3","device_count":1,"netmask":"24","resource_file":"juniper_mx240.json"},
+  {"start_ip":"10.0.0.4","device_count":1,"netmask":"24","resource_file":"juniper_mx960.json"},
+  {"start_ip":"10.0.0.5","device_count":1,"netmask":"24","resource_file":"arista_7280r3.json"},
+  {"start_ip":"10.0.0.6","device_count":1,"netmask":"24","resource_file":"cisco_nexus_9500.json"},
+  {"start_ip":"10.0.0.7","device_count":1,"netmask":"24","resource_file":"cisco_catalyst_9500.json"},
+  {"start_ip":"10.0.0.8","device_count":1,"netmask":"24","resource_file":"extreme_vsp4450.json"},
+  {"start_ip":"10.0.0.9","device_count":1,"netmask":"24","resource_file":"dlink_dgs3630.json"},
+  {"start_ip":"10.0.0.10","device_count":1,"netmask":"24","resource_file":"palo_alto_pa3220.json"},
+  {"start_ip":"10.0.0.11","device_count":1,"netmask":"24","resource_file":"fortinet_fortigate_600e.json"},
+  {"start_ip":"10.0.0.12","device_count":1,"netmask":"24","resource_file":"dell_poweredge_r750.json"},
+  {"start_ip":"10.0.0.13","device_count":1,"netmask":"24","resource_file":"hpe_proliant_dl380.json"},
+  {"start_ip":"10.0.0.14","device_count":1,"netmask":"24","resource_file":"ibm_power_s922.json"},
+  {"start_ip":"10.0.0.15","device_count":1,"netmask":"24","resource_file":"linux_server.json"},
+  {"start_ip":"10.0.0.16","device_count":1,"netmask":"24","resource_file":"nvidia_dgx_h100.json"},
+  {"start_ip":"10.0.0.17","device_count":1,"netmask":"24","resource_file":"nvidia_hgx_h200.json"},
+  {"start_ip":"10.0.0.18","device_count":1,"netmask":"24","resource_file":"netapp_ontap.json"},
+  {"start_ip":"10.0.0.19","device_count":1,"netmask":"24","resource_file":"dell_emc_unity.json"},
+  {"start_ip":"10.0.0.20","device_count":1,"netmask":"24","resource_file":"pure_storage_flasharray.json"}
+]
