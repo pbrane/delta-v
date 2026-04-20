@@ -19,7 +19,7 @@ class PrometheusWriterCircuitBreakerTest {
                     new PrometheusWriterProperties.Auth(PrometheusWriterProperties.AuthType.NONE, null, null, null), Map.of()),
                 null, null,
                 new PrometheusWriterProperties.CircuitBreaker(failureRate, window, minCalls, waitOpenMs, halfOpenCalls),
-                null, null);
+                null, null, null);
     }
 
     private CircuitBreaker fresh(PrometheusWriterProperties p) {

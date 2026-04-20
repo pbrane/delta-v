@@ -30,7 +30,7 @@ class TimeseriesToPromTranslatorTest {
         NameSanitizer sanitizer = new NameSanitizer();
         LabelBuilder labelBuilder = new LabelBuilder(sanitizer);
         PrometheusWriterProperties props = new PrometheusWriterProperties(null, null, null, null,
-                new PrometheusWriterProperties.Labels(List.of()), null);
+                new PrometheusWriterProperties.Labels(InstanceSource.NODE_LABEL, List.of()), null, null);
         meterRegistry = new SimpleMeterRegistry();
         translator = new TimeseriesToPromTranslator(sanitizer, labelBuilder, props, meterRegistry);
     }

@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
 package org.deltav.prometheus.writer.config;
 
+import org.deltav.prometheus.writer.translate.InstanceSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -59,5 +60,34 @@ class PrometheusWriterPropertiesTest {
         assertThat(props.batch().maxIntervalMs()).isEqualTo(1000);
         assertThat(props.remoteWrite().auth().type()).isEqualTo(PrometheusWriterProperties.AuthType.NONE);
         assertThat(props.startupGate().enabled()).isTrue();
+    }
+
+    @Test
+    void defaults_include_new_instance_source_and_metadata_keys() {
+        Map<String, Object> map = Map.of(
+                "prometheus-writer.remote-write.url", "http://localhost/write"
+        );
+        ConfigurationPropertySource src = new MapConfigurationPropertySource(map);
+        PrometheusWriterProperties props = new Binder(src)
+                .bind("prometheus-writer", Bindable.of(PrometheusWriterProperties.class))
+                .get();
+
+        assertThat(props.labels().instanceSource()).isEqualTo(InstanceSource.NODE_LABEL);
+        assertThat(props.labels().fromMetadata())
+                .containsExactly("snmp:sysContact", "snmp:sysLocation");
+    }
+
+    @Test
+    void defaults_include_metrics_cardinality_tracking_enabled_with_default_cap() {
+        Map<String, Object> map = Map.of(
+                "prometheus-writer.remote-write.url", "http://localhost/write"
+        );
+        ConfigurationPropertySource src = new MapConfigurationPropertySource(map);
+        PrometheusWriterProperties props = new Binder(src)
+                .bind("prometheus-writer", Bindable.of(PrometheusWriterProperties.class))
+                .get();
+
+        assertThat(props.metrics().cardinalityTracking().enabled()).isTrue();
+        assertThat(props.metrics().cardinalityTracking().cap()).isEqualTo(100_000);
     }
 }

@@ -27,7 +27,7 @@ class BatchingRwWriterTest {
                 new PrometheusWriterProperties.RemoteWrite("http://test/write",
                     new PrometheusWriterProperties.Auth(PrometheusWriterProperties.AuthType.NONE, null, null, null), Map.of()),
                 new PrometheusWriterProperties.Batch(maxSamples, maxBytes, maxIntervalMs),
-                null, null, null, null);
+                null, null, null, null, null);
     }
 
     private PromSample sample(String name) {

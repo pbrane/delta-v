@@ -30,7 +30,7 @@ class RemoteWriteHttpClientTest {
         PrometheusWriterProperties props = new PrometheusWriterProperties(
                 new PrometheusWriterProperties.RemoteWrite(server.url("/api/v1/write").toString(),
                         new PrometheusWriterProperties.Auth(auth, tok, user, pass), extra),
-                null, null, null, null, null);
+                null, null, null, null, null, null);
         return new RemoteWriteHttpClient(RestClient.builder(), props);
     }
 

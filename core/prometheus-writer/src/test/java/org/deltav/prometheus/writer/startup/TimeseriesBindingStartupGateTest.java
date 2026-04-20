@@ -27,7 +27,7 @@ class TimeseriesBindingStartupGateTest {
 
     private static PrometheusWriterProperties props(boolean enabled) {
         return new PrometheusWriterProperties(
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 new PrometheusWriterProperties.StartupGate(enabled));
     }
 

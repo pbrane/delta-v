@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import org.deltav.prometheus.writer.translate.InstanceSource;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -27,6 +28,7 @@ public record PrometheusWriterProperties(
         @NotNull Retry retry,
         @NotNull CircuitBreaker circuitBreaker,
         @NotNull Labels labels,
+        @NotNull Metrics metrics,
         @NotNull StartupGate startupGate
 ) {
     public PrometheusWriterProperties {
@@ -34,7 +36,9 @@ public record PrometheusWriterProperties(
         if (batch == null)          batch = new Batch(1000, 1_048_576, 1000);
         if (retry == null)          retry = new Retry(100, 30_000, 0.1);
         if (circuitBreaker == null) circuitBreaker = new CircuitBreaker(50, 20, 10, 30_000, 3);
-        if (labels == null)         labels = new Labels(List.of());
+        if (labels == null)         labels = new Labels(InstanceSource.NODE_LABEL,
+                                                        List.of("snmp:sysContact", "snmp:sysLocation"));
+        if (metrics == null)        metrics = new Metrics(new CardinalityTracking(true, 100_000));
         if (startupGate == null)    startupGate = new StartupGate(true);
     }
 
@@ -79,7 +83,24 @@ public record PrometheusWriterProperties(
     ) {}
 
     public record Labels(
+            @NotNull InstanceSource instanceSource,
             List<String> fromMetadata
+    ) {
+        public Labels {
+            if (instanceSource == null) instanceSource = InstanceSource.NODE_LABEL;
+            if (fromMetadata == null) fromMetadata = List.of();
+        }
+    }
+
+    public record Metrics(@NotNull CardinalityTracking cardinalityTracking) {
+        public Metrics {
+            if (cardinalityTracking == null) cardinalityTracking = new CardinalityTracking(true, 100_000);
+        }
+    }
+
+    public record CardinalityTracking(
+            boolean enabled,
+            @Positive int cap
     ) {}
 
     public record StartupGate(
