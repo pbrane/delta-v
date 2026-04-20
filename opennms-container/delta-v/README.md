@@ -343,8 +343,10 @@ Prometheus Remote Write protobuf batches to a configurable endpoint.
   at your TSDB (Mimir, VictoriaMetrics, Cortex, Thanos Receive, Prometheus with
   `--web.enable-remote-write-receiver`). Without a reachable target, the writer
   starts healthy, opens its circuit on first POST failure, and stays paused.
-- **metrics-e2e** — adds a pinned `victoriametrics:v1.106.1` container for E2E.
-  Not intended for production.
+- **metrics** (alias: **metrics-e2e**) — adds a pinned `victoriametrics:v1.106.1`
+  container plus a Grafana service with a starter SNMP dashboard. The canonical
+  demo command is `docker compose --profile lite --profile metrics up`. See the
+  "Grafana access" section below.
 
 ### Configuration
 
@@ -397,6 +399,21 @@ deltav_prometheus_writer_node_context_cache_size
 
 As of Phase 2 GA, both `deltav-timeseries` and `deltav-node-context` protobuf
 schemas are frozen. Only forward-compatible additions (new tag numbers) permitted.
+
+## Grafana access (demo mode)
+
+After `docker compose --profile lite --profile metrics up -d`, open
+`http://localhost:13000/d/snmp-overview`. Anonymous Viewer access is on by
+default (no login required) and the SNMP Overview dashboard is pre-provisioned
+with VictoriaMetrics as the datasource.
+
+The first poll cycle takes ~30 seconds; allow ~90 seconds after `up` for
+panels to populate with data from the bundled mock SNMP agent.
+
+To log in as admin (e.g. to create custom dashboards):
+
+- Username: `admin`
+- Password: `admin` (override via `GF_ADMIN_PASSWORD` environment variable).
 
 ## Troubleshooting
 
