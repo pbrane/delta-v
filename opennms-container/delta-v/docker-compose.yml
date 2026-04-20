@@ -628,7 +628,10 @@ services:
       - "-storageDataPath=/tmp/vm"
       - "-search.latencyOffset=1s"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8428/health"]
+      # Use 127.0.0.1 — BusyBox wget resolves "localhost" to ::1 first, but
+      # VM listens on 0.0.0.0:8428 (IPv4 only), so localhost fails Connection
+      # refused. 127.0.0.1 forces IPv4 and matches the listening socket.
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8428/health"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -658,7 +661,10 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafanadata:/var/lib/grafana
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/api/health | grep -q '\"database\":\"ok\"'"]
+      # Use 127.0.0.1 (not localhost) — BusyBox wget in the Grafana base
+      # image resolves localhost to ::1 first, but Grafana listens on IPv4 by
+      # default. Same fix as the victoriametrics healthcheck above.
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/api/health | grep -q '\"database\":\"ok\"'"]
       interval: 5s
       timeout: 3s
       retries: 12
