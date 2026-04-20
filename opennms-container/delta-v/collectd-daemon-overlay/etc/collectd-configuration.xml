@@ -110,7 +110,13 @@
       <filter>IPADDR != '0.0.0.0'</filter>
       <include-range begin="1.1.1.1" end="254.254.254.254" />
       <include-range begin="::1" end="ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff" />
-      <service name="SNMP" interval="300000" user-defined="false" status="on">
+      <!-- 30-second interval matches both OpenNMS's standard production default
+           and the E2E test's 90s wait (2-3 poll cycles). The inherited 300000ms
+           (5 minute) default is too slow for demo/dev usage: the first poll
+           happens before OnmsSnmpInterface is populated (no interface metrics)
+           and the second poll wouldn't fire for another 5 minutes, so the
+           extended pipeline never reaches the interface-table data path. -->
+      <service name="SNMP" interval="30000" user-defined="false" status="on">
          <parameter key="collection" value="${requisition:collection|detector:collection|default}" />
          <parameter key="thresholding-enabled" value="true" />
       </service>

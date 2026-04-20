@@ -105,6 +105,19 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+    # Stub reverse-DNS entries for the mhuot-labs requisition's 172.20.20.x
+    # addresses. Without these, getnameinfo() times out ~20s per interface,
+    # serialized through provisiond's scheduler thread → ~100s before any
+    # node finishes importing → collectd never schedules → E2E fails at
+    # step 4 (records_consumed=0). The lookup may dispatch via RPC to this
+    # Minion (the location's closest Minion), so mirror the fix here as well
+    # as on provisiond. See memory project_e2e_hostname_resolution_timeout.
+    extra_hosts:
+      - "mhuot-lab-2:172.20.20.2"
+      - "mhuot-lab-3:172.20.20.3"
+      - "mhuot-lab-4:172.20.20.4"
+      - "mhuot-lab-5:172.20.20.5"
+      - "mhuot-lab-6:172.20.20.6"
     environment:
       MINION_ID: minion-default-01
       MINION_LOCATION: Default
@@ -346,6 +359,17 @@ services:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
+    # Stub reverse-DNS entries for the mhuot-labs requisition's 172.20.20.x
+    # addresses — same mirror as on the Minion service above. Provisiond's
+    # DnsLookupClientRpcModule has a 4-thread pool that may execute the
+    # InetAddress.getCanonicalHostName() locally when no Minion registered
+    # at the requisition's location; these entries make that path instant.
+    extra_hosts:
+      - "mhuot-lab-2:172.20.20.2"
+      - "mhuot-lab-3:172.20.20.3"
+      - "mhuot-lab-4:172.20.20.4"
+      - "mhuot-lab-5:172.20.20.5"
+      - "mhuot-lab-6:172.20.20.6"
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1g -XX:MaxMetaspaceSize=256m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
