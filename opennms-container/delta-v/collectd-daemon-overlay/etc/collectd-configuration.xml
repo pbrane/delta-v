@@ -109,9 +109,9 @@
    <package name="l8opensim-lab" remote="false">
       <filter>IPADDR != '0.0.0.0'</filter>
       <include-range begin="10.0.0.1" end="10.0.0.255"/>
-      <!-- 30s interval matches example1 (set by delta-v#182). The l8opensim
-           devices' HC counter sine waves cycle on a 100-point timeline, so
-           30s is enough resolution to see realistic rate changes in Grafana. -->
+      <!-- 30s interval matches example1 (set by delta-v#182). Fast enough
+           to see HC counter rate changes in Grafana without overloading the
+           simulator. -->
       <service name="SNMP" interval="30000" user-defined="false" status="on">
          <parameter key="collection" value="default"/>
          <parameter key="thresholding-enabled" value="false"/>
@@ -121,6 +121,7 @@
       <filter>IPADDR != '0.0.0.0'</filter>
       <include-range begin="1.1.1.1" end="254.254.254.254" />
       <include-range begin="::1" end="ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff" />
+      <exclude-range begin="10.0.0.1" end="10.0.0.255"/>
       <!-- 30-second interval matches both OpenNMS's standard production default
            and the E2E test's 90s wait (2-3 poll cycles). The inherited 300000ms
            (5 minute) default is too slow for demo/dev usage: the first poll
