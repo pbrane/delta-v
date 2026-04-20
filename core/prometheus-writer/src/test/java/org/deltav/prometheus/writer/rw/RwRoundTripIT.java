@@ -83,6 +83,7 @@ class RwRoundTripIT {
         // Speed batch flushes for the test
         reg.add("prometheus-writer.batch.max-interval-ms", () -> "200");
         reg.add("prometheus-writer.batch.max-samples", () -> "1");
+        reg.add("prometheus-writer.labels.from-metadata[0]", () -> "snmp:sysContact");
     }
 
     private static void ensureTopicsStatic() {
@@ -107,7 +108,9 @@ class RwRoundTripIT {
 
     @Test
     void end_to_end_sample_lands_at_rw_target() throws Exception {
-        publishNodeContext(5, "Default", "server-01", List.of("production", "critical"));
+        publishNodeContext(5, "Default", "server-01", "node-server-01",
+                List.of("production", "critical"),
+                Map.of("snmp:sysContact", "noc@example.com"));
         // Wait for cache to bootstrap + binding to resume
         Thread.sleep(3000);
         mockRw.enqueue(new MockResponse().setResponseCode(200));
@@ -131,18 +134,25 @@ class RwRoundTripIT {
         assertThat(labels).containsEntry("node_label", "server-01");
         assertThat(labels).containsEntry("location", "Default");
         assertThat(labels).containsEntry("categories", "critical,production");
+        assertThat(labels).containsEntry("instance", "server-01");
+        assertThat(labels).containsEntry("foreign_source", "provision-prod");
+        assertThat(labels).containsEntry("foreign_id", "node-server-01");
+        assertThat(labels).containsEntry("snmp_syscontact", "noc@example.com");
         assertThat(ts.getSamples(0).getValue()).isEqualTo(42.0);
     }
 
     // --- helpers ---
-    private void publishNodeContext(int nodeId, String location, String label, List<String> categories) throws Exception {
-        NodeContext nc = NodeContext.newBuilder()
+    private void publishNodeContext(int nodeId, String location, String label, String foreignId,
+                                    List<String> categories, Map<String, String> metadata) throws Exception {
+        NodeContext.Builder b = NodeContext.newBuilder()
                 .setNodeId(nodeId).setLocation(location).setNodeLabel(label)
+                .setForeignSource("provision-prod")
+                .setForeignId(foreignId)
                 .addAllCategories(categories)
-                .setUpdatedAtMs(System.currentTimeMillis())
-                .build();
+                .setUpdatedAtMs(System.currentTimeMillis());
+        b.putAllMetadata(metadata);
         try (KafkaProducer<String, byte[]> prod = newProducer()) {
-            prod.send(new ProducerRecord<>("deltav-node-context", location + "@" + nodeId, nc.toByteArray())).get();
+            prod.send(new ProducerRecord<>("deltav-node-context", location + "@" + nodeId, b.build().toByteArray())).get();
         }
     }
 
