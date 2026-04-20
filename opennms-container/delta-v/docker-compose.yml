@@ -97,7 +97,8 @@ services:
       retries: 3
 
   l8opensim:
-    image: ghcr.io/labmonkeys-space/l8opensim:latest
+    # Pinned to the digest validated in Task 1 spike. Update deliberately.
+    image: ghcr.io/labmonkeys-space/l8opensim@sha256:714b83cbdda904dd748bc850cb6f6977815dbfece0ca1393ded22eb24fe61b07
     container_name: delta-v-l8opensim
     profiles: [lite, full, metrics]
     cap_add:
