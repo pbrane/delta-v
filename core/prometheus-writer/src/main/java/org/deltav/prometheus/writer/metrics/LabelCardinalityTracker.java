@@ -98,6 +98,10 @@ public class LabelCardinalityTracker {
     }
 
     private static String canonicalize(Map<String, String> labels) {
+        // Invariant: label values do not contain '\n'. Current sources (LabelBuilder
+        // populating from proto string fields + sanitized metadata keys) honor this.
+        // If a future label source can carry newlines in values, escape them here
+        // or pick a separator that cannot appear in values.
         return labels.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(e -> e.getKey() + "=" + e.getValue())

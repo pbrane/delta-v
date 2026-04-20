@@ -112,8 +112,8 @@ class LabelCardinalityTrackerTest {
         throwing.record(Map.of("a", "1"));   // must NOT throw
         throwing.record(Map.of("b", "2"));   // must NOT throw
 
-        // DistributionSummary record happens AFTER the cache put per record() implementation.
-        // So if the cache throws, the summary is NOT recorded — confirm zero count here:
+        // record() puts to cache BEFORE recording to summary — when recordToCache throws,
+        // labelsPerSample.record(...) is never reached. Confirm zero count.
         DistributionSummary s = registry.find("deltav.prometheus.writer.labels.per.sample").summary();
         assertThat(s.count()).isEqualTo(0);
     }
