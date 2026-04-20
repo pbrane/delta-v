@@ -1,0 +1,19 @@
+# Grafana datasource provisioning — auto-loaded at startup via the
+# /etc/grafana/provisioning/datasources/ bind mount.
+apiVersion: 1
+
+datasources:
+  - name: VictoriaMetrics
+    uid: victoriametrics
+    type: prometheus
+    access: proxy
+    url: http://victoriametrics:8428
+    isDefault: true
+    editable: false
+    jsonData:
+      # Match VictoriaMetrics's ingest cadence; collectd-default polls at 30s.
+      timeInterval: 30s
+      httpMethod: POST
+      manageAlerts: false
+      prometheusType: Prometheus
+      prometheusVersion: 2.40.0
