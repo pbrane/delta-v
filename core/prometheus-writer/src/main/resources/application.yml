@@ -46,7 +46,46 @@ prometheus-writer:
     wait-duration-open-ms: 30000
     half-open-permitted-calls: 3
   labels:
-    from-metadata: []
+    # Source policy for the Prometheus-ecosystem `instance` label.
+    # NODE_LABEL  — use the human-readable node label (default; matches Grafana
+    #               convention but is mutable — series rename when a node is renamed).
+    # FOREIGN_ID  — use "{foreign_source}:{foreign_id}" — stable across renames
+    #               but less recognizable in dashboards. Falls back to "node:{node_id}"
+    #               when foreign_source or foreign_id is empty.
+    # NODE_ID     — use "node:{node_id}" — pure stable integer key; ugliest but never
+    #               mutates.
+    # In all cases, when the chosen source produces an empty string, falls back to
+    # "node:{node_id}" so the `instance` label is never empty.
+    instance-source: NODE_LABEL
+
+    # Top-level NodeContext metadata keys to promote to Prometheus labels.
+    # Each entry adds one label per series. CARDINALITY WARNING: a key whose
+    # values are mostly unique (e.g. per-node free-form text) multiplies series
+    # cardinality. A key with <=10 distinct values across the deployment is
+    # essentially free. Watch the deltav_prometheus_writer_distinct_series gauge
+    # to validate. The two defaults below are universally low-cardinality on
+    # SNMP-managed devices.
+    from-metadata:
+      - snmp:sysContact
+      - snmp:sysLocation
+  metrics:
+    cardinality-tracking:
+      # Toggles the Caffeine-backed distinct-series tracker. When true, observe
+      # each emitted label tuple in a capped cache and expose the gauge
+      # deltav_prometheus_writer_distinct_series at /actuator/prometheus. When
+      # false, the cache and gauge are skipped (extreme-throughput deployments
+      # where the per-sample canonicalize+put overhead matters). The companion
+      # DistributionSummary deltav_prometheus_writer_labels_per_sample is
+      # always emitted regardless of this flag — its overhead is a single
+      # atomic increment.
+      enabled: true
+
+      # Maximum distinct label tuples held in the cardinality cache. When the
+      # cache fills, oldest entries are evicted (Caffeine LRU); the gauge
+      # reports cache.estimatedSize(), so a steady reading of `cap` means
+      # "cardinality has exceeded the budget — prune your `from-metadata`
+      # allowlist." Sized for ~1000 nodes * 50 resources per node * ~2x slack.
+      cap: 100000
   startup-gate:
     enabled: true
 
