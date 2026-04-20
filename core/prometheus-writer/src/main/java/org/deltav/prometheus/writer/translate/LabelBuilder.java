@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
 package org.deltav.prometheus.writer.translate;
 
+import org.deltav.prometheus.writer.metrics.LabelCardinalityTracker;
 import org.deltav.timeseries.proto.NodeContext;
 import org.deltav.timeseries.proto.ProducerType;
 import org.deltav.timeseries.proto.Resource;
@@ -18,15 +19,26 @@ import java.util.Optional;
 @Component
 public class LabelBuilder {
     private final NameSanitizer sanitizer;
-    public LabelBuilder(NameSanitizer sanitizer) { this.sanitizer = sanitizer; }
+    private final InstanceLabelResolver instanceResolver;
+    private final LabelCardinalityTracker tracker;
+
+    public LabelBuilder(NameSanitizer sanitizer,
+                        InstanceLabelResolver instanceResolver,
+                        LabelCardinalityTracker tracker) {
+        this.sanitizer = sanitizer;
+        this.instanceResolver = instanceResolver;
+        this.tracker = tracker;
+    }
 
     public Map<String, String> build(TimeseriesBatch batch, Resource resource,
                                      Optional<NodeContext> nc, List<String> metadataAllowlist) {
         Map<String, String> labels = new LinkedHashMap<>();
         labels.put("node_id", Integer.toString(batch.getNodeId()));
+        labels.put("instance", instanceResolver.resolve(batch, nc));
         labels.put("location", nullToEmpty(batch.getLocation()));
         labels.put("node_label", nc.map(NodeContext::getNodeLabel).orElse(""));
         labels.put("foreign_source", nc.map(NodeContext::getForeignSource).orElse(""));
+        labels.put("foreign_id", nc.map(NodeContext::getForeignId).orElse(""));
         labels.put("categories", nc.map(x -> {
             List<String> sorted = new ArrayList<>(x.getCategoriesList());
             Collections.sort(sorted);
@@ -42,6 +54,8 @@ public class LabelBuilder {
             String value = nc.map(n -> n.getMetadataMap().getOrDefault(metaKey, "")).orElse("");
             labels.put(labelName, value);
         }
+
+        tracker.record(labels);
         return labels;
     }
 

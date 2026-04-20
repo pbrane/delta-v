@@ -4,6 +4,7 @@ package org.deltav.prometheus.writer.translate;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.deltav.prometheus.writer.config.PrometheusWriterProperties;
+import org.deltav.prometheus.writer.metrics.LabelCardinalityTracker;
 import org.deltav.timeseries.proto.Attribute;
 import org.deltav.timeseries.proto.AttributeGroup;
 import org.deltav.timeseries.proto.AttributeType;
@@ -28,9 +29,14 @@ class TimeseriesToPromTranslatorTest {
     @BeforeEach
     void setUp() {
         NameSanitizer sanitizer = new NameSanitizer();
-        LabelBuilder labelBuilder = new LabelBuilder(sanitizer);
         PrometheusWriterProperties props = new PrometheusWriterProperties(null, null, null, null,
-                new PrometheusWriterProperties.Labels(InstanceSource.NODE_LABEL, List.of()), null, null);
+                new PrometheusWriterProperties.Labels(InstanceSource.NODE_LABEL, List.of()),
+                new PrometheusWriterProperties.Metrics(
+                        new PrometheusWriterProperties.CardinalityTracking(false, 100)),
+                null);
+        InstanceLabelResolver resolver = new InstanceLabelResolver(props);
+        LabelCardinalityTracker tracker = new LabelCardinalityTracker(props, new SimpleMeterRegistry());
+        LabelBuilder labelBuilder = new LabelBuilder(sanitizer, resolver, tracker);
         meterRegistry = new SimpleMeterRegistry();
         translator = new TimeseriesToPromTranslator(sanitizer, labelBuilder, props, meterRegistry);
     }
@@ -169,8 +175,8 @@ class TimeseriesToPromTranslatorTest {
         assertThat(samples).hasSize(1);
         Map<String, String> labels = samples.get(0).labels();
         assertThat(labels.keySet()).containsExactlyInAnyOrder(
-                "node_id", "location", "node_label", "foreign_source", "categories",
-                "resource_type", "resource_instance", "collection_package", "producer");
-        assertThat(labels).hasSize(9);
+                "node_id", "instance", "location", "node_label", "foreign_source", "foreign_id",
+                "categories", "resource_type", "resource_instance", "collection_package", "producer");
+        assertThat(labels).hasSize(11);
     }
 }
