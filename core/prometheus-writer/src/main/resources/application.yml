@@ -46,6 +46,9 @@ prometheus-writer:
     wait-duration-open-ms: 30000
     half-open-permitted-calls: 3
   labels:
+    # NOTE: defaults now include snmp:sysContact and snmp:sysLocation (additive
+    # change at upgrade — see PR description for cardinality implications).
+
     # Source policy for the Prometheus-ecosystem `instance` label.
     # NODE_LABEL  — use the human-readable node label (default; matches Grafana
     #               convention but is mutable — series rename when a node is renamed).
@@ -61,10 +64,11 @@ prometheus-writer:
     # Top-level NodeContext metadata keys to promote to Prometheus labels.
     # Each entry adds one label per series. CARDINALITY WARNING: a key whose
     # values are mostly unique (e.g. per-node free-form text) multiplies series
-    # cardinality. A key with <=10 distinct values across the deployment is
-    # essentially free. Watch the deltav_prometheus_writer_distinct_series gauge
-    # to validate. The two defaults below are universally low-cardinality on
-    # SNMP-managed devices.
+    # cardinality. Example: a key with 1000 unique values across 1000 nodes
+    # multiplies your distinct-series count by 1000x. A key with <=10 distinct
+    # values across the deployment is essentially free. Watch the
+    # deltav_prometheus_writer_distinct_series gauge to validate. The two
+    # defaults below are universally low-cardinality on SNMP-managed devices.
     from-metadata:
       - snmp:sysContact
       - snmp:sysLocation
