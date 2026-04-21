@@ -269,5 +269,38 @@ if [[ "$flows_landed" != "true" ]]; then
     exit 1
 fi
 
+# ── Step 12: Verify flows-forensic dashboard provisioned + flows-overview regression ──
+echo "==> Step 12: Verify flows-forensic dashboard provisioned with 9 panels"
+dash=$(curl -sf -u "admin:${GF_PASS}" \
+       http://localhost:13000/api/dashboards/uid/flows-forensic 2>/dev/null || true)
+if ! echo "$dash" | grep -q '"title":"Flows Forensic"'; then
+    echo "FAIL: flows-forensic dashboard not loaded"
+    echo "Response: $dash"
+    exit 1
+fi
+forensic_panels=$(echo "$dash" | python3 -c \
+                  'import json,sys; d=json.load(sys.stdin); print(len(d.get("dashboard",{}).get("panels",[])))')
+if [[ "$forensic_panels" != "9" ]]; then
+    echo "FAIL: flows-forensic has ${forensic_panels} panels, expected 9"
+    exit 1
+fi
+echo "==> flows-forensic loaded with 9 panels"
+
+# Regression: flows-overview still loads after data-link additions
+dash2=$(curl -sf -u "admin:${GF_PASS}" \
+        http://localhost:13000/api/dashboards/uid/flows-overview 2>/dev/null || true)
+if ! echo "$dash2" | grep -q '"title":"Flows Overview"'; then
+    echo "FAIL: flows-overview regression after data-link edits"
+    echo "Response: $dash2"
+    exit 1
+fi
+overview_panels=$(echo "$dash2" | python3 -c \
+                  'import json,sys; d=json.load(sys.stdin); print(len(d.get("dashboard",{}).get("panels",[])))')
+if [[ "$overview_panels" != "6" ]]; then
+    echo "FAIL: flows-overview has ${overview_panels} panels, expected 6 (regression)"
+    exit 1
+fi
+echo "==> flows-overview regression OK (still 6 panels)"
+
 echo "==> ALL ASSERTIONS PASSED"
 exit 0
