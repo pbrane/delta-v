@@ -122,4 +122,20 @@
          <monitored-service service-name="SNMP"/>
       </interface>
    </node>
+   <!--
+     Aggregate flow exporter node. l8opensim's 20 simulated devices share a
+     single Go process; flow packets exit via 127.0.0.2 (loopback inside the
+     l8opensim+minion-lab shared netns). Collector is 127.0.0.2 (not 127.0.0.1)
+     so this node has a unique loopback IP that doesn't collide with
+     delta-v/localhost. Provisiond's IP-based flow attribution lookup matches
+     127.0.0.2 → this node, giving the Grafana flow sources inventory +
+     per-exporter rate panels a canonical foreign-source/foreign-id for the
+     l8opensim-lab origin. Per-device source/destination IP detail is still
+     visible inside flow records (Top conversations panel).
+   -->
+   <node location="l8opensim-lab" foreign-id="l8opensim-aggregate" node-label="l8opensim-aggregate-flow-exporter">
+      <interface ip-addr="127.0.0.2" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+      </interface>
+   </node>
 </model-import>

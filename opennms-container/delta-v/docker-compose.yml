@@ -117,7 +117,17 @@ services:
     # containers at Default location (NetFlow v5/v9 + sFlow), all 4 flow
     # protocols reach the Minion dispatcher and exercise all flow-enricher
     # parser paths.
-    command: ["-no-namespace", "-flow-protocol", "ipfix", "-flow-collector", "127.0.0.1:4729"]
+    # `-flow-source-per-device` makes each simulated device send flow packets
+    # from its own TUN-interface IP (10.0.0.1-20) instead of all flows
+    # appearing to come from one process source IP (127.0.0.1). This gives
+    # provisiond the correct per-device exporter IP for foreign-source /
+    # foreign-id attribution in the Grafana flow sources inventory.
+    # Collector on 127.0.0.2 (not 127.0.0.1) so the aggregate exporter node in
+    # the l8opensim-lab requisition has a unique loopback address that doesn't
+    # collide with delta-v/localhost (also at 127.0.0.1). Linux loopback covers
+    # 127.0.0.0/8 — minion-lab listens on 0.0.0.0:4729 in the shared netns and
+    # receives packets to any 127.x.x.x address.
+    command: ["-no-namespace", "-flow-protocol", "ipfix", "-flow-collector", "127.0.0.2:4729", "-flow-source-per-device"]
     healthcheck:
       # 127.0.0.1 not localhost — BusyBox wget IPv6 quirk per delta-v#182.
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/health"]
@@ -692,6 +702,9 @@ services:
       NETFLOW_COLLECTOR: minion:4729
       NETFLOW_VERSION: "9"
       TRAFFIC_INTERVAL: "5"
+    networks:
+      default:
+        ipv4_address: 172.18.0.21
 
   flow-sflow-testnode-1:
     profiles: [lite, full, metrics]
@@ -710,6 +723,9 @@ services:
       SAMPLING_RATE: "1"
       POLLING_INTERVAL: "10"
       TRAFFIC_INTERVAL: "2"
+    networks:
+      default:
+        ipv4_address: 172.18.0.20
 
   flow-v5-testnode-1:
     profiles: [lite, full, metrics]
@@ -725,6 +741,9 @@ services:
       NETFLOW_COLLECTOR: minion:4729
       NETFLOW_VERSION: "5"
       TRAFFIC_INTERVAL: "5"
+    networks:
+      default:
+        ipv4_address: 172.18.0.22
 
   prometheus-writer:
     image: opennms/prometheus-writer:${ONMS_DELTAV_VERSION:-latest}
@@ -816,3 +835,19 @@ volumes:
   collectd-data:
   clickhouse-data:
   grafanadata:
+
+networks:
+  # Explicit subnet so the test-node containers can be pinned to predictable
+  # IPs that match the foreign-source/foreign-id assignments in the
+  # flow-test requisition. Without this, Docker assigns IPs from an
+  # auto-generated subnet in arrival order, which means the requisition's
+  # static IP-to-node mapping fails to attribute flows correctly in the
+  # Grafana flow sources inventory panel. Subnet matches the historical
+  # Docker default (172.18.0.0/16) so existing services aren't disturbed.
+  default:
+    name: delta-v_default
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.0.0/16
+          gateway: 172.18.0.1
