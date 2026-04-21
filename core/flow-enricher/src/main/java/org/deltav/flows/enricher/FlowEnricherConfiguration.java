@@ -333,10 +333,19 @@ public class FlowEnricherConfiguration {
     SFlowUdpParser sflowUdpParser(
             ThreadLocalDispatcher threadLocalDispatcher,
             DnsResolver flowParserDnsResolver) {
-        return new SFlowUdpParser(
+        final SFlowUdpParser parser = new SFlowUdpParser(
                 "SFlow",
                 threadLocalDispatcher,
                 flowParserDnsResolver);
+        // Disable reverse-DNS lookups on the sFlow parser. Per memory
+        // project_flow_enricher_sflow_silent_drop (PR #156): horizon's
+        // SFlowUdpParser silently drops every flow when DNS lookups are
+        // enabled and the resolver can't resolve the source — the Docker
+        // bridge IPs (172.18.x) lack PTR records, which trips this code
+        // path and makes every sFlow record disappear without an error
+        // log. Disabling the lookup short-circuits the broken branch.
+        parser.setDnsLookupsEnabled(false);
+        return parser;
     }
 
     @Bean

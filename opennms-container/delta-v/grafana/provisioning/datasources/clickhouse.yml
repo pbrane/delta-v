@@ -11,6 +11,11 @@ datasources:
     isDefault: false
     editable: false
     jsonData:
+      # grafana-clickhouse-datasource v4+ requires host + port inside jsonData
+      # (not the top-level url field). Top-level url retained for backward
+      # compatibility with any older plugin version.
+      host: clickhouse
+      port: 8123
       defaultDatabase: deltav
       protocol: http
       username: deltav
