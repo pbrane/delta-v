@@ -10,7 +10,9 @@ Delta-V has removed Apache Karaf/OSGi from the runtime architecture. All 12 serv
 
 Delta-V code lives in the `org.deltav` package namespace with `org.deltav.core` Maven groupIds. Horizon-derived entity classes (`opennms-model-jakarta`) remain at `org.opennms` since horizon JARs reference them by FQN. Horizon dependencies are pre-built in the [delta-v-horizon](https://github.com/pbrane/delta-v-horizon) repository and consumed as Maven artifacts from GitHub Packages.
 
-**Where we are:** All 12 daemons + Minion migrated to Spring Boot 4. The legacy `opennms-config` and `opennms-model` modules are fully decoupled from the daemon stack — all XML config loading uses Jackson XmlMapper with `defaultUseWrapper(false)`. Layered JAR deduplication extracts shared dependencies (~80% overlap) into a common `daemon-base` Docker image (~415MB), with per-daemon overlay images adding only unique libraries. Each daemon starts in 2-4 seconds. **98 E2E tests pass** across 8 test suites.
+**Where we are:** All 12 daemons + Minion migrated to Spring Boot 4. The legacy `opennms-config` and `opennms-model` modules are fully decoupled from the daemon stack — all XML config loading uses Jackson XmlMapper with `defaultUseWrapper(false)`. Layered JAR deduplication extracts shared dependencies (~80% overlap) into a common `daemon-base` Docker image (~415MB), with per-daemon overlay images adding only unique libraries. Each daemon starts in 2-4 seconds.
+
+**Flow & metrics pipeline:** Full 4-protocol flow coverage (NetFlow v5, NetFlow v9, IPFIX, sFlow) lands in ClickHouse `deltav.flows_raw` via Minion → Kafka Sink → flow-enricher → `deltav-flows` topic; four dimension materialized views drive the Grafana **Flows Overview** + **Flows Forensic** dashboards. Collectd and Provisiond publish metrics and node context to a `deltav-timeseries` Kafka topic; a Spring Cloud Stream `prometheus-writer` consumer remote-writes to VictoriaMetrics for Prometheus-compatible time-series storage and Grafana visualisation. The flow-enricher exposes 41 Dropwizard-sourced meters at `/actuator/prometheus` via a dedicated bridge. **12 E2E test suites pass** including flows, time-series, prometheus-writer, and node-context pipelines.
 
 ---
 
@@ -145,6 +147,10 @@ Minion → Kafka Sink → Trapd/Syslogd
 | clickhouse | clickhouse/clickhouse-server | Flow storage: `deltav.flows_raw` + 4 dimension materialized views (application, source_ip, conversation, dscp) |
 | clickhouse-init | one-shot | ClickHouse DDL bootstrap for `deltav.flows_raw` and dimension MVs |
 | kafka | Apache Kafka | Event transport backbone |
+| prometheus-writer | Spring Boot 4 + Spring Cloud Stream | Consumes `deltav-timeseries` Kafka topic; enriches samples with node context and remote-writes to VictoriaMetrics |
+| victoriametrics | victoriametrics/victoria-metrics | Prometheus-compatible time-series store (remote-write sink for Collectd metrics) |
+| grafana | grafana/grafana | Dashboards: Flows Overview, Flows Forensic, plus provisioned VictoriaMetrics + ClickHouse datasources |
+| l8opensim / minion-lab | Mock lab | 20-device simulated monitoring location with its own Minion; exercises IPFIX + metric pipelines end-to-end |
 
 ### Kafka Topics
 
@@ -156,6 +162,8 @@ Minion → Kafka Sink → Trapd/Syslogd
 | `OpenNMS.Sink.Syslog` | Minion → Syslogd raw syslog forwarding |
 | `OpenNMS.Sink.Telemetry-*` | Minion → flow-enricher per-protocol flow forwarding (Netflow5/9, IPFIX, sFlow) |
 | `deltav-flows` | flow-enricher → ClickHouse enriched flow records (ClickHouse Kafka engine table consumes this topic) |
+| `deltav-timeseries` | Collectd + Provisiond → prometheus-writer (metric samples + node-context stream for label enrichment) |
+| `deltav-prometheus-writer-dlq` | prometheus-writer dead-letter queue for samples that failed VictoriaMetrics remote-write |
 | `OpenNMS.twin.response` | Pollerd → Minion Twin API state sync (passive status, SNMPv3 users) |
 | `OpenNMS.twin.request` | Minion → Pollerd Twin API subscription requests |
 
@@ -164,28 +172,34 @@ Minion → Kafka Sink → Trapd/Syslogd
 ```bash
 cd opennms-container/delta-v
 
-# Start all 16 services
+# Start everything (all daemons + webapp + full observability stack)
 ./deploy.sh up full
+
+# Or for a lighter-weight demo (core daemons + flows + metrics stack):
+docker compose --profile lite --profile metrics up -d
 
 # Check service health
 ./deploy.sh status
 
 # Run E2E tests
-./test-e2e.sh              # Core: trap → provision → alarm lifecycle
-./test-minion-e2e.sh       # Minion: trap → Kafka Sink → alarm lifecycle
-./test-minion-rpc-e2e.sh   # Minion RPC: provision → detect → poll
-./test-syslog-e2e.sh       # Syslog: Cisco syslog → alarm lifecycle
-./test-passive-e2e.sh      # Passive: syslog → EventTranslator → Twin API → outage
-./test-collectd-e2e.sh     # Collectd: SNMP collection health
-./test-perspective-e2e.sh  # Perspective: remote-location polling + outage lifecycle
-./test-enlinkd-e2e.sh      # Enlinkd: LLDP topology via Containerlab cEOS
-./test-flows-e2e.sh        # Flows: softflowd + hsflowd → Minion → flow-enricher → ClickHouse (18 assertions across 4 phases)
+./test-e2e.sh                    # Core: trap → provision → alarm lifecycle
+./test-minion-e2e.sh             # Minion: trap → Kafka Sink → alarm lifecycle
+./test-minion-rpc-e2e.sh         # Minion RPC: provision → detect → poll
+./test-syslog-e2e.sh             # Syslog: Cisco syslog → alarm lifecycle
+./test-passive-e2e.sh            # Passive: syslog → EventTranslator → Twin API → outage
+./test-collectd-e2e.sh           # Collectd: SNMP collection health
+./test-perspective-e2e.sh        # Perspective: remote-location polling + outage lifecycle
+./test-enlinkd-e2e.sh            # Enlinkd: LLDP topology via Containerlab cEOS
+./test-flows-e2e.sh              # Flows: softflowd + hsflowd → Minion → flow-enricher → ClickHouse
+./test-timeseries-e2e.sh         # Time-series: Collectd → Kafka → prometheus-writer → VictoriaMetrics
+./test-node-context-e2e.sh       # Node context: Provisiond → Kafka → prometheus-writer label enrichment
+./test-prometheus-writer-e2e.sh  # End-to-end metrics + 4-protocol flow coverage + Grafana dashboards
 ```
 
 ### Prerequisites
 
 - **JDK 21** (daemon/minion build and runtime)
-- Docker Desktop with **16 GB memory** (16 containers in full profile)
+- Docker Desktop with **16 GB memory** (full profile runs 20+ containers; `lite + metrics` profile is lighter)
 - `snmptrap` (net-snmp) for E2E tests
 
 ## Building
