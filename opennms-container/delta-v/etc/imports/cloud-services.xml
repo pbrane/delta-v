@@ -1,9 +1,0 @@
-<model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import" date-stamp="2026-03-21T15:20:00.000Z" foreign-source="cloud-services" last-import="2026-03-21T16:27:30.025Z">
-   <node foreign-id="the-internet" node-label="The Internet">
-      <interface ip-addr="172.18.0.1" managed="true" status="1" snmp-primary="N">
-         <monitored-service service-name="GoogleCloud"/>
-         <monitored-service service-name="Azure"/>
-         <monitored-service service-name="AWS"/>
-      </interface>
-   </node>
-</model-import>

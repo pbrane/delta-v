@@ -450,6 +450,34 @@ services:
       kafka:
         condition: service_started
 
+  # One-shot sidecar that seeds the provisiond_imports named volume from
+  # the committed imports-seed/ directory on first boot. Provisiond runs as
+  # uid 100 (opennms), but Docker creates new named volumes root-owned;
+  # the sidecar runs as root to both copy the seed files in and chown the
+  # volume so the subsequent provisiond container can write `last-import`
+  # timestamps without tripping permission errors. When the volume is
+  # already populated the sidecar is a no-op.
+  provisiond-imports-init:
+    profiles: [lite, passive, full]
+    image: busybox:1.36
+    container_name: delta-v-provisiond-imports-init
+    user: "0:0"
+    volumes:
+      - ./provisiond-overlay/etc/imports-seed:/seed:ro
+      - provisiond_imports:/runtime
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        if [ -z "$$(ls -A /runtime 2>/dev/null)" ]; then
+            echo "[provisiond-imports-init] Seeding /runtime from /seed"
+            cp -R /seed/. /runtime/
+        else
+            echo "[provisiond-imports-init] /runtime already populated — leaving alone"
+        fi
+        chown -R 100:101 /runtime
+
   provisiond:
     profiles: [lite, passive, full]
     image: ${IMAGE_PREFIX:-opennms}/provisiond:${VERSION}
@@ -460,6 +488,8 @@ services:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
+      provisiond-imports-init:
+        condition: service_completed_successfully
     # Stub reverse-DNS entries for the mhuot-labs requisition's 172.20.20.x
     # addresses — same mirror as on the Minion service above. Provisiond's
     # DnsLookupClientRpcModule has a 4-thread pool that may execute the
@@ -484,8 +514,12 @@ services:
       RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       RPC_KAFKA_FORCE_REMOTE: "true"
     volumes:
-      - ./provisiond-overlay/etc:/opt/deltav/etc
-      - ./etc/imports:/opt/deltav/etc/imports
+      # Parent overlay is read-only: provisiond only ever mutates imports/ at
+      # runtime. The nested named volume below holds the mutating subdirectory
+      # so working-tree drift is eliminated. The provisiond-imports-init
+      # sidecar seeds the named volume from imports-seed/ on first boot.
+      - ./provisiond-overlay/etc:/opt/deltav/etc:ro
+      - provisiond_imports:/opt/deltav/etc/imports
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -835,6 +869,12 @@ volumes:
   collectd-data:
   clickhouse-data:
   grafanadata:
+  # Holds provisiond's requisition XML at /opt/deltav/etc/imports/. The
+  # provisiond-imports-init sidecar copies provisiond-overlay/etc/imports-seed/
+  # into this volume on first start; subsequent mutations (last-import
+  # timestamps, runtime edits) persist here across container restarts
+  # without touching the host working tree.
+  provisiond_imports:
 
 networks:
   # Explicit subnet so the test-node containers can be pinned to predictable
