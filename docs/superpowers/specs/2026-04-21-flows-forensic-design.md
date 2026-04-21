@@ -17,8 +17,8 @@ This PR's value is the **investigative workflow**: top-N aggregations orient the
 
 - **New dashboard** `opennms-container/delta-v/grafana/dashboards/flows-forensic.json`:
   - UID: `flows-forensic`. Title: `Flows Forensic`.
-  - 8 panels: volume timeline (stacked by app), top src IPs, top dst IPs, top conversations (with protocol+ports), L4 protocol + DSCP mix, TCP flag distribution, locality matrix, raw flow records.
-  - 9 template variables: `monitoring_location`, `exporter_instance`, `application`, `src_address`, `dst_address`, `l4_protocol`, `src_port`, `dst_port`, plus dashboard time range.
+  - 9 panels: volume timeline (stacked by app), top src IPs, top dst IPs, top conversations (with protocol+ports), L4 protocol mix, DSCP mix, TCP flag distribution, locality matrix, raw flow records. (Protocol and DSCP as two separate panels — combining different dimensions in one pie chart produces confusing tooltips and legends per review feedback.)
+  - 9 template variables: `monitoring_location`, `exporter_instance`, `application`, `src_address`, `dst_address`, `l4_protocol`, `src_port`, `dst_port`, plus dashboard time range. All variables set `allowCustomValue: true` so operators can type IPs/ports not in the top-100 populating-query result.
   - Default time range: `Last 1 hour`. Refresh: `30s`.
 
 - **Drill-OUT data links on `flows-overview.json`** (4 panels gain `links: [{...}]`):
@@ -36,7 +36,7 @@ This PR's value is the **investigative workflow**: top-N aggregations orient the
 
 - **Raw records bounded to last 60 minutes via panel-level `relativeTimeRange` override** (independent of dashboard time range — the records table stays cheap even if the dashboard time range is wider).
 
-- **E2E Step 12** asserts forensic dashboard provisions cleanly (`GET /api/dashboards/uid/flows-forensic` returns title + 8 panels) AND verifies `flows-overview.json` regression (still loads after data-link edits).
+- **E2E Step 12** asserts forensic dashboard provisions cleanly (`GET /api/dashboards/uid/flows-forensic` returns title + 9 panels) AND verifies `flows-overview.json` regression (still loads after data-link edits).
 
 ### Out of Scope
 
@@ -103,6 +103,8 @@ Same URL-param form, but the data link's URL is `/d/flows-forensic?var-src_addre
 
 Variables that don't chain on time (`monitoring_location`, `l4_protocol`) pull from the dashboard's full time range. Variables that chain narrow as filters tighten — keeps dropdowns small even at high cardinality.
 
+**All variables set `allowCustomValue: true`** (Grafana 11+ feature). When an operator needs to filter by an IP or port not in the top-100 populating-query result, they can type or paste it into the dropdown and the WHERE clause's `match(field, :regex)` or `IN (:csv)` picks it up. Mitigates the `LIMIT 100` tradeoff in the populating queries.
+
 ### Filter strategy
 
 Every panel's WHERE clause uses the same template-variable chain so all panels respect all filters consistently:
@@ -123,17 +125,18 @@ The `match() + :regex` pattern (per `feedback_grafana_clickhouse_dashboard_patte
 
 This shared `WHERE` is referred to as `${WHERE}` in the panel SQL below.
 
-## Panel design (8 panels)
+## Panel design (9 panels)
 
-24-column Grafana grid layout:
+24-column Grafana grid layout (9 panels):
 
-- Row 1 (y=0, h=8): Panel 1 (24w)
-- Row 2 (y=8, h=8): Panel 2 (12w) | Panel 3 (12w)
-- Row 3 (y=16, h=8): Panel 4 (12w) | Panel 5 (12w)
-- Row 4 (y=24, h=8): Panel 6 (12w) | Panel 7 (12w)
-- Row 5 (y=32, h=12): Panel 8 (24w)
+- Row 1 (y=0, h=8): Panel 1 — Volume timeline (24w)
+- Row 2 (y=8, h=8): Panel 2 — Top src IPs (12w) | Panel 3 — Top dst IPs (12w)
+- Row 3 (y=16, h=8): Panel 4 — Top conversations (12w) | Panel 5 — L4 protocol mix (12w)
+- Row 4 (y=24, h=8): Panel 6 — DSCP mix (12w) | Panel 7 — TCP flag distribution (12w)
+- Row 5 (y=32, h=8): Panel 8 — Locality matrix (24w)
+- Row 6 (y=40, h=12): Panel 9 — Raw flow records (24w)
 
-Total dashboard height: ~44 rows × 30px = ~1320px. Long but matches forensic intent (scroll to records).
+Total dashboard height: ~52 rows × 30px = ~1560px. Long but matches forensic intent (scroll to records).
 
 ### Panel 1 — Volume timeline, stacked by application (24w × 8h, hero)
 
@@ -190,9 +193,8 @@ ORDER BY "Bytes" DESC LIMIT 20
 
 Self-pivot data link: clicking a row sets `var-src_address` + `var-dst_address` + `var-application`.
 
-### Panel 5 — L4 protocol & DSCP mix (12w × 8h, donut with 2 queries)
+### Panel 5 — L4 protocol mix (12w × 8h, donut)
 
-Query A (L4 protocol):
 ```sql
 SELECT
   countIf(protocol = 6)  AS "TCP",
@@ -203,7 +205,8 @@ SELECT
 FROM deltav.flows_raw WHERE ${WHERE}
 ```
 
-Query B (DSCP):
+### Panel 6 — DSCP mix (12w × 8h, donut)
+
 ```sql
 SELECT
   countIf(dscp = 0)  AS "BE (0)",
@@ -215,9 +218,9 @@ SELECT
 FROM deltav.flows_raw WHERE ${WHERE} AND dscp IS NOT NULL
 ```
 
-Two pie charts side-by-side OR one panel with grouped donut depending on Grafana's render. Plan implementation can split if cluttered.
+Kept as two separate panels (not combined) — per review feedback, combining two different aggregation dimensions in a single pie chart produces confusing tooltips and legends. Two donuts side-by-side read cleanly.
 
-### Panel 6 — TCP flag distribution (12w × 8h, bar chart)
+### Panel 7 — TCP flag distribution (12w × 8h, bar chart)
 
 Only meaningful for TCP-filtered queries but works without:
 ```sql
@@ -235,7 +238,7 @@ FROM deltav.flows_raw WHERE ${WHERE} AND protocol = 6 AND tcp_flags IS NOT NULL
 
 TCP flag bit positions per RFC 793. Wide-pivot for bar chart. Empty when no TCP traffic in filter.
 
-### Panel 7 — Locality matrix (12w × 8h, table)
+### Panel 8 — Locality matrix (24w × 8h, table)
 
 ```sql
 SELECT src_locality AS "Src locality",
@@ -249,7 +252,7 @@ ORDER BY "Bytes" DESC
 
 Field overrides: Bytes → `bytes`, Flow records → `short`.
 
-### Panel 8 — Raw flow records (24w × 12h, table, panel-level time override)
+### Panel 9 — Raw flow records (24w × 12h, table, panel-level time override)
 
 `relativeTimeRange: { from: 3600, to: 0 }` = last 60 minutes regardless of dashboard time.
 
@@ -334,28 +337,53 @@ Each affected panel gains a `links` array.
 
 ### Self-pivot — links inline in `flows-forensic.json` panels
 
-**Panel 2 (Top src IPs)** — clicking a row narrows `src_address`:
+**Critical**: Grafana data-link URLs **replace** the query string on navigation — they don't merge with existing `var-*` params. To safely accumulate filters (click Top src IPs, then click Top dst IPs, and preserve both), every self-pivot URL must explicitly re-pass all currently-selected variables via `${variable_name}` Grafana syntax. Each URL below carries the full 9-variable set: the one being newly narrowed plus the other eight preserved from current state.
+
+**Panel 2 (Top src IPs)** — clicking a row narrows `src_address` while preserving all others:
 ```json
 "links": [
-  {"title": "Pivot: filter to this source", "url": "/d/flows-forensic?var-src_address=${__data.fields.Source}&from=${__from}&to=${__to}", "targetBlank": false}
+  {
+    "title": "Pivot: filter to this source",
+    "url": "/d/flows-forensic?var-src_address=${__data.fields.Source}&var-monitoring_location=${monitoring_location:queryparam}&var-exporter_instance=${exporter_instance:queryparam}&var-application=${application:queryparam}&var-l4_protocol=${l4_protocol:queryparam}&var-dst_address=${dst_address:queryparam}&var-src_port=${src_port:queryparam}&var-dst_port=${dst_port:queryparam}&from=${__from}&to=${__to}",
+    "targetBlank": false
+  }
 ]
 ```
 
-**Panel 3 (Top dst IPs)** — similar, sets `dst_address`.
-
-**Panel 4 (Top conversations)** — clicking sets src+dst+application:
+**Panel 3 (Top dst IPs)** — symmetric pattern, narrows `dst_address`:
 ```json
 "links": [
-  {"title": "Pivot: filter to this conversation", "url": "/d/flows-forensic?var-src_address=${__data.fields.Source}&var-dst_address=${__data.fields.Destination}&var-application=${__data.fields.App}&from=${__from}&to=${__to}", "targetBlank": false}
+  {
+    "title": "Pivot: filter to this destination",
+    "url": "/d/flows-forensic?var-dst_address=${__data.fields.Destination}&var-monitoring_location=${monitoring_location:queryparam}&var-exporter_instance=${exporter_instance:queryparam}&var-application=${application:queryparam}&var-l4_protocol=${l4_protocol:queryparam}&var-src_address=${src_address:queryparam}&var-src_port=${src_port:queryparam}&var-dst_port=${dst_port:queryparam}&from=${__from}&to=${__to}",
+    "targetBlank": false
+  }
 ]
 ```
 
-**Panel 8 (Raw records)** — clicking sets src+dst:
+**Panel 4 (Top conversations)** — clicking narrows src+dst+application together:
 ```json
 "links": [
-  {"title": "Pivot: filter to this src↔dst pair", "url": "/d/flows-forensic?var-src_address=${__data.fields.Src}&var-dst_address=${__data.fields.Dst}&from=${__from}&to=${__to}", "targetBlank": false}
+  {
+    "title": "Pivot: filter to this conversation",
+    "url": "/d/flows-forensic?var-src_address=${__data.fields.Source}&var-dst_address=${__data.fields.Destination}&var-application=${__data.fields.App}&var-monitoring_location=${monitoring_location:queryparam}&var-exporter_instance=${exporter_instance:queryparam}&var-l4_protocol=${l4_protocol:queryparam}&var-src_port=${src_port:queryparam}&var-dst_port=${dst_port:queryparam}&from=${__from}&to=${__to}",
+    "targetBlank": false
+  }
 ]
 ```
+
+**Panel 9 (Raw records)** — clicking narrows src+dst:
+```json
+"links": [
+  {
+    "title": "Pivot: filter to this src↔dst pair",
+    "url": "/d/flows-forensic?var-src_address=${__data.fields.Src}&var-dst_address=${__data.fields.Dst}&var-monitoring_location=${monitoring_location:queryparam}&var-exporter_instance=${exporter_instance:queryparam}&var-application=${application:queryparam}&var-l4_protocol=${l4_protocol:queryparam}&var-src_port=${src_port:queryparam}&var-dst_port=${dst_port:queryparam}&from=${__from}&to=${__to}",
+    "targetBlank": false
+  }
+]
+```
+
+The `${var:queryparam}` formatter correctly serializes multi-value variables (e.g., multiple locations selected) as repeated `var-X=A&var-X=B` URL params. Used throughout for consistency.
 
 ### Variable preservation
 
@@ -380,7 +408,7 @@ When Grafana navigates from `/d/flows-overview?var-X=...` to `/d/flows-forensic?
 | Dashboard panels per query | <100ms at demo volumes (~1500 flows/sec for 1-hour = 5.4M rows; ClickHouse partition-pruning + ORDER BY clause = sub-second). |
 | Raw records table query | Bounded to 60 min × LIMIT 1000 — fast regardless of total table size. |
 | Template-variable populating queries | LIMIT 100 each; <50ms. |
-| Browser dashboard load time | ~2s for first render (8 panels parallel-query). Subsequent variable-change re-render: ~500ms. |
+| Browser dashboard load time | ~2s for first render (9 panels parallel-query; bounded by Grafana's default concurrent-query limit of 6). Subsequent variable-change re-render: ~500ms. |
 | ClickHouse memory | Each panel query: ~10-50 MB peak. 8 panels parallel: bounded by Grafana's per-dashboard concurrent-query limit (default 6). |
 
 ## Backward compatibility
@@ -426,11 +454,11 @@ if ! echo "$dash" | grep -q '"title":"Flows Forensic"'; then
 fi
 panels=$(echo "$dash" | python3 -c \
          'import json,sys; d=json.load(sys.stdin); print(len(d.get("dashboard",{}).get("panels",[])))')
-if [ "$panels" != "8" ]; then
-    echo "FAIL: flows-forensic has ${panels} panels, expected 8"
+if [ "$panels" != "9" ]; then
+    echo "FAIL: flows-forensic has ${panels} panels, expected 9"
     exit 1
 fi
-echo "==> flows-forensic loaded with 8 panels"
+echo "==> flows-forensic loaded with 9 panels"
 
 # Sanity check that flows-overview still loads (regression for the data-link edits)
 dash2=$(curl -sf -u "admin:${GF_PASS}" \
@@ -464,9 +492,9 @@ Inserted between Step 11 (l8opensim-lab flows in ClickHouse) and the final `echo
 
 3. **`${__data.fields[...]}` URL-template syntax in Grafana 11.4.0.** Documented for 9.5+ but version-specific quirks possible. Plan Task 4 (verification gate) clicks each drill-link manually before commit; if any link doesn't substitute variables correctly, fall back to `${__cell:N}` (column-index form) which is more universally supported.
 
-4. **Self-pivot variable accumulation.** Clicking Top src IPs row → adds `var-src_address` to URL. Then clicking Top dst IPs row → would the new URL preserve `var-src_address` or replace it? Grafana behavior: navigating to the same dashboard preserves existing variables AND adds the new one. Verified via manual test in plan Task 4. If Grafana clears existing vars on click, fallback: data link URL includes ALL current variables explicitly.
+4. **Self-pivot variable accumulation — RESOLVED by explicit URL re-passing.** Grafana data-link URLs replace the query string on navigation rather than merging. Each self-pivot URL in Section "Drill-link wiring" explicitly re-passes all 8 other template variables via `${var_name:queryparam}` so subsequent clicks accumulate filters correctly. Plan Task 4 verification still clicks each link manually to confirm the pattern works on Grafana 11.4.0.
 
-5. **High-cardinality template variable queries** — `src_address`/`dst_address`/`src_port`/`dst_port` use `LIMIT 100` in their populating queries. If real flow volumes exceed 100 distinct IPs per filter window, the dropdown is incomplete. Operator can still type/paste the missing IP into the variable text box (Grafana feature). Documented but not fixed in v1.
+5. **High-cardinality template variable queries — MITIGATED by `allowCustomValue: true`.** Populating queries use `LIMIT 100`; if an operator needs to filter by an IP/port outside the top-100, they can type or paste it into the variable dropdown (Grafana 11+ feature). The WHERE clause's `match(field, :regex)` or `IN (:csv)` picks up the typed value. Still worth noting: operators may not discover this UX without documentation in the dashboard description panel.
 
 ## Success criteria
 
