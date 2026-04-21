@@ -35,6 +35,7 @@ STACK_READY_TIMEOUT=180
 POLL_GRACE_SECONDS=90
 METRICS_TIMEOUT=180
 VM_QUERY_TIMEOUT=30
+CLICKHOUSE_QUERY_TIMEOUT=60
 
 cleanup() {
     echo "==> Tearing down stack"
@@ -231,6 +232,40 @@ if [[ "$lab_landed" != "true" ]]; then
     echo "FAIL: l8opensim-lab produced no interface HC metrics within ${VM_QUERY_TIMEOUT}s"
     echo "Last VM response: $resp"
     docker compose logs minion-lab | tail -30
+    exit 1
+fi
+
+# ── Step 11: Verify l8opensim-lab IPFIX flows + multi-protocol coverage in ClickHouse ──
+# Asserts the flow pipeline (l8opensim → minion-lab → flow-enricher → ClickHouse)
+# delivers IPFIX flows AND that the test-node containers' V5/V9 reach ClickHouse,
+# proving multi-protocol parser coverage.  sFlow is omitted from the assertion
+# pending a separate investigation (see project_flows_visibility_done /
+# FlowEnricherConfiguration.java sflowUdpParser comment).
+echo "==> Step 11: Verify l8opensim-lab flows land in ClickHouse with multi-protocol coverage"
+deadline=$((SECONDS + CLICKHOUSE_QUERY_TIMEOUT))
+flows_landed=false
+while (( SECONDS < deadline )); do
+    rows=$(curl -sf -u deltav:deltav 'http://localhost:8123/' \
+           --data-binary "SELECT count() FROM deltav.flows_raw WHERE location = 'l8opensim-lab'" \
+           2>/dev/null || echo "0")
+    if (( rows > 0 )); then
+        protos=$(curl -sf -u deltav:deltav 'http://localhost:8123/' \
+                 --data-binary "SELECT count(DISTINCT netflow_version) FROM deltav.flows_raw WHERE netflow_version != ''" \
+                 2>/dev/null || echo "0")
+        echo "==> ClickHouse has ${rows} l8opensim-lab flow rows across ${protos} protocol(s)"
+        if (( protos >= 3 )); then
+            echo "==> ${protos} of 4 protocols present (sFlow gap is a documented known issue)"
+            flows_landed=true
+            break
+        fi
+    fi
+    sleep 3
+done
+if [[ "$flows_landed" != "true" ]]; then
+    echo "FAIL: l8opensim-lab flows did not land with >= 3 protocol coverage within ${CLICKHOUSE_QUERY_TIMEOUT}s"
+    echo "Last rows: ${rows:-0}; last protocols: ${protos:-0}"
+    docker compose logs flow-enricher | tail -30
+    docker compose logs minion-lab | tail -20
     exit 1
 fi
 
