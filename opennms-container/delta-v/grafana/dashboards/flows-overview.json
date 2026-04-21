@@ -60,7 +60,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT $__timeInterval(timestamp) AS time, location, sum(num_bytes) * 8 / ($__interval_ms / 1000) AS bps FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY time, location ORDER BY time",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS time, sumIf(num_bytes, location='Default') * 8 / ($__interval_ms / 1000) AS \"Default\", sumIf(num_bytes, location='l8opensim-lab') * 8 / ($__interval_ms / 1000) AS \"l8opensim-lab\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY time ORDER BY time",
           "format": 1
         }
       ]
@@ -72,7 +72,12 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
       "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
-      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": { "values": true, "calcs": ["sum"], "fields": "/^bytes$/" }
+      },
       "targets": [
         {
           "refId": "A",
@@ -87,6 +92,23 @@
       "title": "Top conversations",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Bytes"},
+            "properties": [{"id": "unit", "value": "bytes"}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Packets"},
+            "properties": [{"id": "unit", "value": "short"}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Flow records"},
+            "properties": [{"id": "unit", "value": "short"}]
+          }
+        ]
+      },
       "targets": [
         {
           "refId": "A",
@@ -131,6 +153,15 @@
       "title": "Flow sources inventory",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Flows in window"},
+            "properties": [{"id": "unit", "value": "short"}]
+          }
+        ]
+      },
       "transformations": [
         {
           "id": "organize",
