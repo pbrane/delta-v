@@ -1,3 +1,0 @@
-[
-  {"flow_collector":"127.0.0.1:4729","flow_protocol":"netflow9","flow_active_timeout":30,"flow_inactive_timeout":15,"flow_template_interval":60,"flow_tick_interval":5,"flow_source_per_device":true}
-]
