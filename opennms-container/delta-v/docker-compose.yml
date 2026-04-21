@@ -595,7 +595,7 @@ services:
       start_period: 20s
 
   clickhouse:
-    profiles: [full]
+    profiles: [lite, full, metrics]
     image: clickhouse/clickhouse-server:25.8
     container_name: delta-v-clickhouse
     hostname: clickhouse
@@ -625,7 +625,7 @@ services:
       start_period: 15s
 
   clickhouse-init:
-    profiles: [full]
+    profiles: [lite, full, metrics]
     image: clickhouse/clickhouse-server:25.8
     container_name: delta-v-clickhouse-init
     hostname: clickhouse-init
@@ -647,7 +647,7 @@ services:
     entrypoint: ["/bin/bash", "/usr/local/bin/init-runner.sh"]
 
   flow-enricher:
-    profiles: [full]
+    profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-opennms}/flow-enricher:${VERSION}
     container_name: delta-v-flow-enricher
     hostname: flow-enricher
@@ -673,7 +673,7 @@ services:
       start_period: 30s
 
   flow-default-testnode-1:
-    profiles: [full]
+    profiles: [lite, full, metrics]
     build: ./flow-exporter
     container_name: flow-default-testnode-1
     hostname: flow-default-testnode-1
@@ -688,7 +688,7 @@ services:
       TRAFFIC_INTERVAL: "5"
 
   flow-sflow-testnode-1:
-    profiles: [full]
+    profiles: [lite, full, metrics]
     build: ./sflow-exporter
     container_name: flow-sflow-testnode-1
     hostname: flow-sflow-testnode-1
@@ -704,6 +704,21 @@ services:
       SAMPLING_RATE: "1"
       POLLING_INTERVAL: "10"
       TRAFFIC_INTERVAL: "2"
+
+  flow-v5-testnode-1:
+    profiles: [lite, full, metrics]
+    build: ./flow-exporter
+    container_name: flow-v5-testnode-1
+    hostname: flow-v5-testnode-1
+    cap_add:
+      - NET_RAW
+    depends_on:
+      minion:
+        condition: service_healthy
+    environment:
+      NETFLOW_COLLECTOR: minion:4729
+      NETFLOW_VERSION: "5"
+      TRAFFIC_INTERVAL: "5"
 
   prometheus-writer:
     image: opennms/prometheus-writer:${ONMS_DELTAV_VERSION:-latest}
