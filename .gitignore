@@ -100,3 +100,6 @@ _bmad-output/
 *.p12
 auth.json
 
+
+# Superpowers brainstorming session artifacts (ephemeral)
+.superpowers/
