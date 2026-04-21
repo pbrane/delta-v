@@ -337,13 +337,21 @@ public class FlowEnricherConfiguration {
                 "SFlow",
                 threadLocalDispatcher,
                 flowParserDnsResolver);
-        // Disable reverse-DNS lookups on the sFlow parser. Per memory
-        // project_flow_enricher_sflow_silent_drop (PR #156): horizon's
-        // SFlowUdpParser silently drops every flow when DNS lookups are
-        // enabled and the resolver can't resolve the source — the Docker
-        // bridge IPs (172.18.x) lack PTR records, which trips this code
-        // path and makes every sFlow record disappear without an error
-        // log. Disabling the lookup short-circuits the broken branch.
+        // Defensive: disable reverse-DNS lookups on the sFlow parser. The
+        // memory project_flow_enricher_sflow_silent_drop (PR #156) recorded
+        // a prior bug where horizon's SFlowUdpParser would drop flows when
+        // unresolvable Docker-bridge IPs tripped a DNS code path. PR #156
+        // resolved the issue at that time. We re-enable the same defensive
+        // setting here so the latent code path stays short-circuited.
+        //
+        // KNOWN GAP (delta-v#TBD followup): with this defensive setting in
+        // place, sFlow messages reach Kafka and are consumed (lag = 0), the
+        // SFlowMessageProcessor bean is wired correctly, and SFlowAdapter
+        // starts up successfully — but zero rows materialize in
+        // deltav.flows_raw with netflow_version='SFlow'. Root cause is
+        // distinct from the PR #156 bug and requires deeper investigation
+        // (likely in CapturingDispatcher / SFlowAdapter BSON-vs-FlowMessage
+        // boundary). NetFlow v5/v9 + IPFIX are unaffected.
         parser.setDnsLookupsEnabled(false);
         return parser;
     }
