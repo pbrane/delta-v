@@ -780,6 +780,11 @@ services:
       # Disable telemetry phone-home and update checks — this is a demo container.
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # Auto-install grafana-clickhouse-datasource plugin on first boot.
+      # First-boot ~10-15s download; subsequent boots cache in the grafana volume.
+      # Healthcheck start_period may need to bump to 60s if Task 7 measurement
+      # shows races with readiness — defer to that task's verification gate.
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
