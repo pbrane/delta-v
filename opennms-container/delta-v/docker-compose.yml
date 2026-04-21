@@ -111,7 +111,13 @@ services:
     # `-no-namespace` mode keeps the per-device TUN interfaces in this
     # container's root netns so minion-lab (which shares the netns) can
     # reach the device IPs at 10.0.0.1-20 directly.
-    command: ["-no-namespace"]
+    # `-flow-protocol ipfix -flow-collector 127.0.0.1:4729`: l8opensim's flow
+    # config is process-wide (no per-device REST API), so all 20 devices emit
+    # IPFIX to the loopback minion-lab listener. Together with the test-node
+    # containers at Default location (NetFlow v5/v9 + sFlow), all 4 flow
+    # protocols reach the Minion dispatcher and exercise all flow-enricher
+    # parser paths.
+    command: ["-no-namespace", "-flow-protocol", "ipfix", "-flow-collector", "127.0.0.1:4729"]
     healthcheck:
       # 127.0.0.1 not localhost — BusyBox wget IPv6 quirk per delta-v#182.
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/health"]
