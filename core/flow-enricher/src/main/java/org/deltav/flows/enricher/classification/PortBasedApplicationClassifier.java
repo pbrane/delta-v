@@ -35,6 +35,7 @@ public class PortBasedApplicationClassifier implements ApplicationClassifier {
     private static final String UNKNOWN = "unknown";
 
     private static final Map<Integer, String> WELL_KNOWN_PORTS = Map.ofEntries(
+            // Standard IANA application ports
             Map.entry(20, "FTP-data"),
             Map.entry(21, "FTP"),
             Map.entry(22, "SSH"),
@@ -50,6 +51,7 @@ public class PortBasedApplicationClassifier implements ApplicationClassifier {
             Map.entry(143, "IMAP"),
             Map.entry(161, "SNMP"),
             Map.entry(162, "SNMP-trap"),
+            Map.entry(179, "BGP"),
             Map.entry(389, "LDAP"),
             Map.entry(443, "HTTPS"),
             Map.entry(445, "SMB"),
@@ -61,8 +63,17 @@ public class PortBasedApplicationClassifier implements ApplicationClassifier {
             Map.entry(995, "POP3S"),
             Map.entry(1433, "MSSQL"),
             Map.entry(1521, "Oracle"),
+            // Delta-V / Minion ports (high ports because Minion runs as non-root)
+            Map.entry(1162, "SNMP-trap"),
+            Map.entry(1514, "Syslog"),
+            // Datacenter storage + RDMA + tunneling
+            Map.entry(2049, "NFS"),
+            Map.entry(3260, "iSCSI"),
             Map.entry(3306, "MySQL"),
             Map.entry(3389, "RDP"),
+            Map.entry(4729, "Flow-telemetry"),
+            Map.entry(4789, "VXLAN"),
+            Map.entry(4791, "RoCE-v2"),
             Map.entry(5432, "PostgreSQL"),
             Map.entry(5672, "AMQP"),
             Map.entry(6379, "Redis"),
