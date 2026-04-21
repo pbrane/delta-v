@@ -4,45 +4,84 @@
   "schemaVersion": 39,
   "version": 1,
   "refresh": "30s",
-  "time": { "from": "now-15m", "to": "now" },
-  "tags": ["delta-v", "flows"],
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "tags": [
+    "delta-v",
+    "flows"
+  ],
   "templating": {
     "list": [
       {
         "name": "monitoring_location",
         "label": "Monitoring location",
         "type": "query",
-        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "clickhouse"
+        },
         "query": "SELECT DISTINCT location FROM deltav.flows_raw WHERE $__timeFilter(timestamp)",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
         "allValue": ".*",
-        "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
       },
       {
         "name": "exporter_instance",
         "label": "Exporter",
         "type": "query",
-        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "clickhouse"
+        },
         "query": "SELECT DISTINCT concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}')",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
         "allValue": ".*",
-        "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
       },
       {
         "name": "application",
         "label": "Application",
         "type": "query",
-        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "clickhouse"
+        },
         "query": "SELECT DISTINCT application FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}')",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
         "allValue": ".*",
-        "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
       }
     ]
   },
@@ -51,10 +90,27 @@
       "id": 1,
       "type": "timeseries",
       "title": "Bandwidth over time, stacked by location",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
       "fieldConfig": {
-        "defaults": { "unit": "bps", "custom": { "drawStyle": "line", "fillOpacity": 40, "stacking": { "mode": "normal" } } },
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 40,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
         "overrides": []
       },
       "targets": [
@@ -67,16 +123,80 @@
     },
     {
       "id": 2,
-      "type": "bargauge",
+      "type": "table",
       "title": "Top applications by bandwidth",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
-      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "links": [
+            {
+              "title": "Drill into forensic view",
+              "url": "/d/flows-forensic?var-application=${__data.fields.application}&${monitoring_location:queryparam}&var-l4_protocol=$__all&var-src_address=$__all&var-dst_address=$__all&var-src_port=$__all&var-dst_port=$__all&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bytes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "application"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          }
+        ]
+      },
       "options": {
-        "orientation": "horizontal",
-        "displayMode": "gradient",
-        "showUnfilled": true,
-        "reduceOptions": { "values": true, "calcs": ["sum"], "fields": "/^bytes$/" }
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "bytes",
+            "desc": true
+          }
+        ]
       },
       "targets": [
         {
@@ -84,35 +204,68 @@
           "rawSql": "SELECT application, sum(num_bytes) AS bytes FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') GROUP BY application ORDER BY bytes DESC LIMIT 10",
           "format": 0
         }
-      ],
-      "links": [
-        {
-          "title": "Drill into forensic view",
-          "url": "/d/flows-forensic?var-application=${__data.fields.application}&var-monitoring_location=${monitoring_location:queryparam}&from=${__from}&to=${__to}",
-          "targetBlank": false
-        }
       ]
     },
     {
       "id": 3,
       "type": "table",
       "title": "Top conversations",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Drill into forensic view",
+              "url": "/d/flows-forensic?var-src_address=${__data.fields.Source}&var-dst_address=${__data.fields.Destination}&var-application=${__data.fields.Application}&${monitoring_location:queryparam}&var-l4_protocol=$__all&var-src_port=$__all&var-dst_port=$__all&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": [
           {
-            "matcher": {"id": "byName", "options": "Bytes"},
-            "properties": [{"id": "unit", "value": "bytes"}]
+            "matcher": {
+              "id": "byName",
+              "options": "Bytes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
           },
           {
-            "matcher": {"id": "byName", "options": "Packets"},
-            "properties": [{"id": "unit", "value": "short"}]
+            "matcher": {
+              "id": "byName",
+              "options": "Packets"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
           },
           {
-            "matcher": {"id": "byName", "options": "Flow records"},
-            "properties": [{"id": "unit", "value": "short"}]
+            "matcher": {
+              "id": "byName",
+              "options": "Flow records"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
           }
         ]
       },
@@ -122,34 +275,40 @@
           "rawSql": "SELECT IPv6NumToString(src_address) AS \"Source\", IPv6NumToString(dst_address) AS \"Destination\", application AS \"Application\", sum(num_bytes) AS \"Bytes\", sum(num_packets) AS \"Packets\", count() AS \"Flow records\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY src_address, dst_address, application ORDER BY \"Bytes\" DESC LIMIT 20",
           "format": 0
         }
-      ],
-      "links": [
-        {
-          "title": "Drill into forensic view",
-          "url": "/d/flows-forensic?var-src_address=${__data.fields.Source}&var-dst_address=${__data.fields.Destination}&var-application=${__data.fields.Application}&var-monitoring_location=${monitoring_location:queryparam}&from=${__from}&to=${__to}",
-          "targetBlank": false
-        }
       ]
     },
     {
       "id": 4,
       "type": "timeseries",
       "title": "Per-exporter flow rate",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
-      "fieldConfig": { "defaults": { "unit": "flows/sec" }, "overrides": [] },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "flows/sec",
+          "links": [
+            {
+              "title": "Drill into forensic view",
+              "url": "/d/flows-forensic?var-exporter_instance=${__series.name}&${monitoring_location:queryparam}&var-l4_protocol=$__all&var-src_address=$__all&var-dst_address=$__all&var-src_port=$__all&var-dst_port=$__all&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": []
+      },
       "targets": [
         {
           "refId": "A",
           "rawSql": "SELECT $__timeInterval(timestamp) AS time, concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) AS exporter, count() / ($__interval_ms / 1000) AS flows_per_sec FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(concat(exporter_node_foreign_source, '/', exporter_node_foreign_id), '${exporter_instance:regex}') GROUP BY time, exporter ORDER BY time",
           "format": 1
-        }
-      ],
-      "links": [
-        {
-          "title": "Drill into forensic view",
-          "url": "/d/flows-forensic?var-exporter_instance=${__field.labels.exporter}&var-monitoring_location=${monitoring_location:queryparam}&from=${__from}&to=${__to}",
-          "targetBlank": false
         }
       ]
     },
@@ -157,9 +316,27 @@
       "id": 5,
       "type": "piechart",
       "title": "Protocol mix",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
-      "options": { "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] }, "pieType": "donut" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut"
+      },
       "targets": [
         {
           "refId": "A",
@@ -172,14 +349,38 @@
       "id": 6,
       "type": "table",
       "title": "Flow sources inventory",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Drill into forensic view",
+              "url": "/d/flows-forensic?var-exporter_instance=${__data.fields[\"Foreign source\"]}/${__data.fields[\"Foreign ID\"]}&var-monitoring_location=${__data.fields[\"Monitoring location\"]}&var-l4_protocol=$__all&var-src_address=$__all&var-dst_address=$__all&var-src_port=$__all&var-dst_port=$__all&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": [
           {
-            "matcher": {"id": "byName", "options": "Flows in window"},
-            "properties": [{"id": "unit", "value": "short"}]
+            "matcher": {
+              "id": "byName",
+              "options": "Flows in window"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
           }
         ]
       },
@@ -203,13 +404,6 @@
           "refId": "A",
           "rawSql": "SELECT exporter_node_foreign_source, exporter_node_foreign_id, location, host, formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS last_seen, count() AS flow_count FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') GROUP BY exporter_node_foreign_source, exporter_node_foreign_id, location, host ORDER BY flow_count DESC",
           "format": 0
-        }
-      ],
-      "links": [
-        {
-          "title": "Drill into forensic view",
-          "url": "/d/flows-forensic?var-exporter_instance=${__data.fields[\"Foreign source\"]}/${__data.fields[\"Foreign ID\"]}&var-monitoring_location=${__data.fields[\"Monitoring location\"]}&from=${__from}&to=${__to}",
-          "targetBlank": false
         }
       ]
     }
