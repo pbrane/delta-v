@@ -17,7 +17,7 @@
         "refresh": 1,
         "multi": true,
         "includeAll": true,
-        "allValue": "%",
+        "allValue": ".*",
         "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
       },
       {
@@ -25,11 +25,11 @@
         "label": "Exporter",
         "type": "query",
         "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
-        "query": "SELECT DISTINCT concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND location IN (${monitoring_location:sqlstring})",
+        "query": "SELECT DISTINCT concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}')",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
-        "allValue": "%",
+        "allValue": ".*",
         "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
       },
       {
@@ -37,11 +37,11 @@
         "label": "Application",
         "type": "query",
         "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
-        "query": "SELECT DISTINCT application FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND location IN (${monitoring_location:sqlstring})",
+        "query": "SELECT DISTINCT application FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}')",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
-        "allValue": "%",
+        "allValue": ".*",
         "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
       }
     ]
@@ -60,7 +60,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT $__timeInterval(timestamp) AS time, location, sum(num_bytes) * 8 / ($__interval_ms / 1000) AS bps FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND location IN (${monitoring_location:sqlstring}) AND application IN (${application:sqlstring}) GROUP BY time, location ORDER BY time",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS time, location, sum(num_bytes) * 8 / ($__interval_ms / 1000) AS bps FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY time, location ORDER BY time",
           "format": 1
         }
       ]
@@ -76,7 +76,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT application, sum(num_bytes) AS bytes FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND location IN (${monitoring_location:sqlstring}) GROUP BY application ORDER BY bytes DESC LIMIT 10",
+          "rawSql": "SELECT application, sum(num_bytes) AS bytes FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') GROUP BY application ORDER BY bytes DESC LIMIT 10",
           "format": 0
         }
       ]
@@ -90,7 +90,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT IPv6NumToString(src_address) AS \"Source\", IPv6NumToString(dst_address) AS \"Destination\", application AS \"Application\", sum(num_bytes) AS \"Bytes\", sum(num_packets) AS \"Packets\", count() AS \"Flow records\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND location IN (${monitoring_location:sqlstring}) AND application IN (${application:sqlstring}) GROUP BY src_address, dst_address, application ORDER BY \"Bytes\" DESC LIMIT 20",
+          "rawSql": "SELECT IPv6NumToString(src_address) AS \"Source\", IPv6NumToString(dst_address) AS \"Destination\", application AS \"Application\", sum(num_bytes) AS \"Bytes\", sum(num_packets) AS \"Packets\", count() AS \"Flow records\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY src_address, dst_address, application ORDER BY \"Bytes\" DESC LIMIT 20",
           "format": 0
         }
       ]
@@ -105,7 +105,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT $__timeInterval(timestamp) AS time, concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) AS exporter, count() / ($__interval_ms / 1000) AS flows_per_sec FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND location IN (${monitoring_location:sqlstring}) AND concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) IN (${exporter_instance:sqlstring}) GROUP BY time, exporter ORDER BY time",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS time, concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) AS exporter, count() / ($__interval_ms / 1000) AS flows_per_sec FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(concat(exporter_node_foreign_source, '/', exporter_node_foreign_id), '${exporter_instance:regex}') GROUP BY time, exporter ORDER BY time",
           "format": 1
         }
       ]
@@ -113,19 +113,14 @@
     {
       "id": 5,
       "type": "piechart",
-      "title": "Protocol & DSCP mix",
+      "title": "Protocol mix",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse" },
-      "options": { "legend": { "displayMode": "table", "placement": "right" }, "pieType": "donut" },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] }, "pieType": "donut" },
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT netflow_version AS label, count() AS records FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND location IN (${monitoring_location:sqlstring}) GROUP BY netflow_version",
-          "format": 0
-        },
-        {
-          "refId": "B",
-          "rawSql": "SELECT concat('DSCP=', toString(dscp)) AS label, count() AS records FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND location IN (${monitoring_location:sqlstring}) AND dscp IS NOT NULL GROUP BY dscp",
+          "rawSql": "SELECT countIf(netflow_version = 'Netflow5') + countIf(netflow_version = 'V5') AS \"NetFlow v5\", countIf(netflow_version = 'Netflow9') + countIf(netflow_version = 'V9') AS \"NetFlow v9\", countIf(netflow_version = 'IPFIX') AS \"IPFIX\", countIf(netflow_version = 'SFlow') + countIf(netflow_version = 'Sflow') AS \"sFlow\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}')",
           "format": 0
         }
       ]
@@ -154,7 +149,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT exporter_node_foreign_source, exporter_node_foreign_id, location, host, max(timestamp) AS last_seen, count() AS flow_count FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND location IN (${monitoring_location:sqlstring}) GROUP BY exporter_node_foreign_source, exporter_node_foreign_id, location, host ORDER BY flow_count DESC",
+          "rawSql": "SELECT exporter_node_foreign_source, exporter_node_foreign_id, location, host, formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS last_seen, count() AS flow_count FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') GROUP BY exporter_node_foreign_source, exporter_node_foreign_id, location, host ORDER BY flow_count DESC",
           "format": 0
         }
       ]
