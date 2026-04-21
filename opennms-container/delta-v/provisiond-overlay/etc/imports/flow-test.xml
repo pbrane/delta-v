@@ -9,4 +9,9 @@
          <monitored-service service-name="ICMP"/>
       </interface>
    </node>
+   <node foreign-id="flow-v5-testnode-1" node-label="flow-v5-testnode-1">
+      <interface descr="eth0" ip-addr="172.18.0.22" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+      </interface>
+   </node>
 </model-import>
