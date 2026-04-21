@@ -1,0 +1,18 @@
+# Grafana datasource provisioning — auto-loaded at startup via the
+# /etc/grafana/provisioning/datasources/ bind mount.
+apiVersion: 1
+
+datasources:
+  - name: ClickHouse
+    uid: clickhouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    url: http://clickhouse:8123
+    isDefault: false
+    editable: false
+    jsonData:
+      defaultDatabase: deltav
+      protocol: http
+      username: deltav
+    secureJsonData:
+      password: deltav
