@@ -83,11 +83,22 @@ ok()   { echo "  [PASS] $*"; PASS=$((PASS + 1)); }
 fail() { echo "  [FAIL] $*"; FAIL=$((FAIL + 1)); }
 err()  { echo "ERROR: $*" >&2; exit 2; }
 
+PROVISIOND_CONFIG="provisiond-overlay/etc/provisiond-configuration.xml"
+PROVISIOND_CONFIG_BACKUP="$(mktemp -t enlinkd-provisiond-config.XXXXXX.xml)"
+
 cleanup() {
     if $POST_CLEANUP; then
         log "Post-run cleanup (--post-cleanup): removing test data..."
         clean_all_nodes
         clean_all_alarms
+    fi
+    # Restore provisiond-configuration.xml from the committed state (captured
+    # in Phase 0 before any mutation) so this test never leaves the working
+    # tree mutilated for subsequent E2E runs that depend on the full set of
+    # requisition-defs.
+    if [ -f "${PROVISIOND_CONFIG_BACKUP}" ]; then
+        cp "${PROVISIOND_CONFIG_BACKUP}" "${PROVISIOND_CONFIG}"
+        rm -f "${PROVISIOND_CONFIG_BACKUP}"
     fi
 }
 trap cleanup EXIT
@@ -293,36 +304,40 @@ else
 fi
 
 # ── Provisiond config: provisiond-overlay/etc/provisiond-configuration.xml ──
-# Ensure the mhuot-labs requisition-def is present. If the file doesn't exist
-# or doesn't contain a mhuot-labs entry, write the full config.
-if [ ! -f "provisiond-overlay/etc/provisiond-configuration.xml" ] || \
-   ! grep -q 'import-name="mhuot-labs"' "provisiond-overlay/etc/provisiond-configuration.xml"; then
-    log "  Writing provisiond-configuration.xml with mhuot-labs requisition-def"
-    cat > "provisiond-overlay/etc/provisiond-configuration.xml" <<'PROVEOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<provisiond-configuration xmlns="http://xmlns.opennms.org/xsd/config/provisiond-configuration"
-  foreign-source-dir="/opt/deltav/etc/foreign-sources"
-  requistion-dir="/opt/deltav/etc/imports"
-  importThreads="4" scanThreads="4" rescanThreads="4" writeThreads="4" >
-  <requisition-def import-name="delta-v"
-                   import-url-resource="file:///opt/deltav/etc/imports/delta-v.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
-  </requisition-def>
-  <requisition-def import-name="cloud-services"
-                   import-url-resource="file:///opt/deltav/etc/imports/cloud-services.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
-  </requisition-def>
-  <requisition-def import-name="mhuot-labs"
-                   import-url-resource="file:///opt/deltav/etc/imports/mhuot-labs.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
-  </requisition-def>
-</provisiond-configuration>
-PROVEOF
-    PROVISIOND_NEEDS_RESTART=true
-    ok "Provisiond configuration written with mhuot-labs requisition-def"
-else
-    ok "Provisiond configuration already contains mhuot-labs"
-fi
+# Ensure the mhuot-labs requisition-def is an *active* (uncommented) entry.
+# The committed config has mhuot-labs wrapped in an XML comment block because
+# the real lab devices at 172.20.20.x require VPN connectivity that most
+# developers don't have. This test IS the labbox-dependent path, so we
+# temporarily activate the requisition-def here and restore the committed
+# state on EXIT (cleanup() trap).
+cp "${PROVISIOND_CONFIG}" "${PROVISIOND_CONFIG_BACKUP}"
+log "  Ensuring active mhuot-labs requisition-def in ${PROVISIOND_CONFIG}"
+python3 - "${PROVISIOND_CONFIG}" <<'PYEOF'
+import re, sys
+path = sys.argv[1]
+with open(path) as f: content = f.read()
+active_pattern = re.compile(
+    r'<requisition-def\s+import-name="mhuot-labs"[\s\S]+?</requisition-def>')
+# Strip from any XML comment blocks so we can detect commented-out entries
+stripped = re.sub(r'<!--[\s\S]*?-->', '', content)
+if active_pattern.search(stripped):
+    print("  (mhuot-labs already active — no change needed)")
+    sys.exit(0)
+snippet = (
+    '  <requisition-def import-name="mhuot-labs"\n'
+    '                   import-url-resource="file:///opt/deltav/etc/imports/mhuot-labs.xml">\n'
+    '    <cron-schedule>0/30 * * * * ?</cron-schedule>\n'
+    '  </requisition-def>\n'
+)
+marker = '</provisiond-configuration>'
+if marker not in content:
+    sys.exit(f"marker {marker!r} not found in {path}")
+new_content = content.replace(marker, snippet + marker, 1)
+with open(path, 'w') as f: f.write(new_content)
+print("  (mhuot-labs requisition-def injected active)")
+PYEOF
+PROVISIOND_NEEDS_RESTART=true
+ok "Provisiond configuration has active mhuot-labs requisition-def"
 
 # ══════════════════════════════════════════════════════════════════
 # Phase 0b: Clean ALL prior node data (lightweight — skipped if --pre-clean already ran)

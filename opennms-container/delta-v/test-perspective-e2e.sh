@@ -145,12 +145,22 @@ show_diagnostics() {
     docker logs delta-v-perspectivepollerd 2>&1 | tail -30 || true
 }
 
+PROVISIOND_CONFIG="${SCRIPT_DIR}/provisiond-overlay/etc/provisiond-configuration.xml"
+PROVISIOND_CONFIG_BACKUP="$(mktemp -t perspective-provisiond-config.XXXXXX.xml)"
+
 cleanup() {
     docker compose exec -T kafka sh -c 'for p in $(ps -eo pid,args 2>/dev/null | grep kafka-console-consumer | grep -v grep | awk "{print \$1}"); do kill "$p" 2>/dev/null; done' || true
     rm -rf "$TEST_TMPDIR"
     # Always undo /etc/hosts override on Default Minion (safety net for early exit)
     docker exec -u root delta-v-minion sh -c \
         'grep -v "192.0.2.1" /etc/hosts > /tmp/h && cat /tmp/h > /etc/hosts && rm /tmp/h' 2>/dev/null || true
+    # Restore provisiond-configuration.xml from the committed state (captured
+    # before the mhuot-labs inject) so the working tree stays clean for other
+    # E2E tests that depend on the canonical committed config.
+    if [ -f "${PROVISIOND_CONFIG_BACKUP}" ]; then
+        cp "${PROVISIOND_CONFIG_BACKUP}" "${PROVISIOND_CONFIG}"
+        rm -f "${PROVISIOND_CONFIG_BACKUP}"
+    fi
     if $POST_CLEANUP; then
         log "Post-run cleanup..."
         psql_query "DELETE FROM application_perspective_location_map WHERE appid IN (SELECT id FROM applications WHERE name = '${APP_NAME}')" || true
@@ -207,6 +217,42 @@ for svc in postgres kafka provisiond perspectivepollerd minion; do
     fi
 done
 ok "Required services running (postgres, kafka, provisiond, perspectivepollerd, minion)"
+
+# The committed provisiond-configuration.xml has the mhuot-labs requisition-def
+# commented out (lab devices at 172.20.20.x need VPN). This test is the labbox-
+# dependent path, so we inject the requisition-def as active, then restore the
+# committed state on EXIT. Provisiond's import of mhuot-labs.xml (which has
+# nodes with location="mhuot-labs") is what populates monitoringlocations with
+# the mhuot-labs row — without this step, the LOC_COUNT check below would fail
+# because only Default (+ l8opensim-lab) get registered.
+cp "${PROVISIOND_CONFIG}" "${PROVISIOND_CONFIG_BACKUP}"
+python3 - "${PROVISIOND_CONFIG}" <<'PYEOF'
+import re, sys
+path = sys.argv[1]
+with open(path) as f: content = f.read()
+active_pattern = re.compile(
+    r'<requisition-def\s+import-name="mhuot-labs"[\s\S]+?</requisition-def>')
+stripped = re.sub(r'<!--[\s\S]*?-->', '', content)
+if active_pattern.search(stripped):
+    sys.exit(0)
+snippet = (
+    '  <requisition-def import-name="mhuot-labs"\n'
+    '                   import-url-resource="file:///opt/deltav/etc/imports/mhuot-labs.xml">\n'
+    '    <cron-schedule>0/30 * * * * ?</cron-schedule>\n'
+    '  </requisition-def>\n'
+)
+marker = '</provisiond-configuration>'
+with open(path, 'w') as f: f.write(content.replace(marker, snippet + marker, 1))
+PYEOF
+docker restart delta-v-provisiond >/dev/null 2>&1
+log "  Waiting up to 60s for provisiond to re-import mhuot-labs and register monitoringlocation..."
+deadline=$(( $(date +%s) + 60 ))
+while (( $(date +%s) < deadline )); do
+    if [ "$(psql_query "SELECT count(*) FROM monitoringlocations WHERE id='${LOCATION_B}'" || echo 0)" = "1" ]; then
+        break
+    fi
+    sleep 3
+done
 
 # Verify both monitoring locations exist
 LOC_COUNT=$(psql_query "SELECT count(*) FROM monitoringlocations WHERE id IN ('${LOCATION_A}', '${LOCATION_B}')")
@@ -270,23 +316,52 @@ cat > "$REQUISITION_FILE" <<EOF
 EOF
 ok "Requisition and foreign source written (no detectors)"
 
-# Ensure provisiond-configuration.xml includes this foreign source
-PROVISIOND_CONFIG="${SCRIPT_DIR}/provisiond-overlay/etc/provisiond-configuration.xml"
-if ! grep -q "${FOREIGN_SOURCE}" "$PROVISIOND_CONFIG" 2>/dev/null; then
-    # Add requisition-def before closing tag
-    sed -i.bak "s|</provisiond-configuration>|  <requisition-def import-name=\"${FOREIGN_SOURCE}\" import-url-resource=\"file:///opt/deltav/etc/imports/${FOREIGN_SOURCE}.xml\">\n    <cron-schedule>0 0/1 * * * ? *</cron-schedule>\n  </requisition-def>\n</provisiond-configuration>|" "$PROVISIOND_CONFIG"
-    rm -f "${PROVISIOND_CONFIG}.bak"
-    ok "Provisiond configuration updated with ${FOREIGN_SOURCE} import"
-    docker restart delta-v-provisiond >/dev/null 2>&1
-    sleep 15
-    if docker compose ps --status running | grep -q provisiond; then
-        ok "Provisiond restarted and healthy"
-    else
-        fail "Provisiond failed to restart"
-        show_diagnostics
+# Ensure provisiond-configuration.xml has an *active* (uncommented)
+# requisition-def for ${FOREIGN_SOURCE}. The committed config already
+# includes perspective-test so the inject is a no-op in the happy path;
+# the Python check skips comment blocks so a commented-out entry
+# wouldn't fool us into leaving it inactive. PROVISIOND_CONFIG_BACKUP
+# was already captured before the mhuot-labs inject, so cleanup()
+# restores both injects in one shot.
+python3 - "${PROVISIOND_CONFIG}" "${FOREIGN_SOURCE}" <<'PYEOF'
+import re, sys
+path, fs = sys.argv[1], sys.argv[2]
+with open(path) as f: content = f.read()
+active = re.compile(
+    rf'<requisition-def\s+import-name="{re.escape(fs)}"[\s\S]+?</requisition-def>')
+stripped = re.sub(r'<!--[\s\S]*?-->', '', content)
+if active.search(stripped):
+    sys.exit(0)
+snippet = (
+    f'  <requisition-def import-name="{fs}" import-url-resource="file:///opt/deltav/etc/imports/{fs}.xml">\n'
+    f'    <cron-schedule>0 0/1 * * * ? *</cron-schedule>\n'
+    f'  </requisition-def>\n'
+)
+marker = '</provisiond-configuration>'
+with open(path, 'w') as f: f.write(content.replace(marker, snippet + marker, 1))
+PYEOF
+# Restart provisiond to pick up the config change. `docker compose ps
+# --status running` shows the container even in its "restarting" state,
+# which fooled the previous check into passing prematurely; instead we
+# poll the /actuator/health endpoint until it returns 200 (or give up
+# at 60s). The first restart for mhuot-labs inject already waited for
+# the monitoringlocations row, so provisiond is known-healthy before we
+# enter this block.
+docker restart delta-v-provisiond >/dev/null 2>&1 || true
+deadline=$(( $(date +%s) + 60 ))
+prov_healthy=false
+while (( $(date +%s) < deadline )); do
+    if docker compose exec -T provisiond curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1; then
+        prov_healthy=true
+        break
     fi
+    sleep 3
+done
+if $prov_healthy; then
+    ok "Provisiond has active ${FOREIGN_SOURCE} requisition-def and restarted healthy"
 else
-    ok "Provisiond configuration already includes ${FOREIGN_SOURCE}"
+    fail "Provisiond failed to become healthy within 60s after restart"
+    show_diagnostics
 fi
 
 # Wait for node to be provisioned
