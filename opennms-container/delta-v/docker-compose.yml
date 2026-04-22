@@ -445,10 +445,10 @@ services:
     volumes:
       - ./enlinkd-overlay/etc:/opt/deltav/etc:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
       kafka:
-        condition: service_started
+        condition: service_healthy
 
   # One-shot sidecar that seeds the provisiond_imports named volume from
   # the committed imports-seed/ directory on first boot. Provisiond runs as
@@ -797,6 +797,8 @@ services:
     image: opennms/prometheus-writer:${ONMS_DELTAV_VERSION:-latest}
     profiles: [lite, full, metrics]
     depends_on:
+      db-init:
+        condition: service_completed_successfully
       kafka:
         condition: service_healthy
       provisiond:
