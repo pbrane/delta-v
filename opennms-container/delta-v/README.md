@@ -46,7 +46,7 @@ All 12 daemons share infrastructure from `core/daemon-common`:
 
 ### Karaf Image Retirement
 
-With all 12 daemons on Spring Boot, the Karaf-based Sentinel image (`opennms/daemon-deltav`) can be retired. The only Karaf component remaining is the Minion, which runs the standard OpenNMS Minion distribution.
+With all 12 daemons on Spring Boot, the Karaf-based Sentinel image (`deltav/daemon-deltav`) can be retired. The only Karaf component remaining is the Minion, which runs the standard OpenNMS Minion distribution.
 
 ## Services
 
@@ -54,26 +54,26 @@ With all 12 daemons on Spring Boot, the Karaf-based Sentinel image (`opennms/dae
 |--------------------|-------------------------------|--------------------------------------------------------------------------|-----------|
 | postgres           | postgres:15                   | Shared database (alarms only)                                            | 5432      |
 | kafka              | apache/kafka                  | Event bus (KRaft mode)                                                   | 19092     |
-| db-init            | opennms/db-init               | One-shot PostgreSQL schema migration (exits after init)                  | —         |
+| db-init            | deltav/db-init               | One-shot PostgreSQL schema migration (exits after init)                  | —         |
 | clickhouse         | clickhouse/clickhouse-server  | Flow storage: `deltav.flows_raw` + 4 dimension MVs                       | 8123      |
 | clickhouse-init    | one-shot                      | One-shot ClickHouse DDL bootstrap                                         | —         |
-| minion             | opennms/minion-boot           | Spring Boot 4 distributed data collection agent + UDP flow listener      | 4729/udp  |
+| minion             | deltav/minion-boot           | Spring Boot 4 distributed data collection agent + UDP flow listener      | 4729/udp  |
 | snmp-agent         | tandrup/netsnmp               | Local SNMP test target for Collectd / detectors                          | —         |
-| alarmd             | opennms/alarmd                | Alarm processing (Kafka consumer)                                        | —         |
-| pollerd            | opennms/pollerd               | Service polling via Minion RPC                                           | —         |
-| collectd           | opennms/collectd              | SNMP data collection via Minion SNMP proxy                               | —         |
-| discovery          | opennms/discovery             | Network discovery via Minion RPC                                         | —         |
-| provisiond         | opennms/provisiond            | Node provisioning and detection                                          | —         |
-| trapd              | opennms/trapd                 | SNMP trap reception (Kafka Sink)                                         | —         |
-| syslogd            | opennms/syslogd               | Syslog reception (Kafka Sink)                                            | —         |
-| eventtranslator    | opennms/eventtranslator       | Event transformation rules                                               | —         |
-| enlinkd            | opennms/enlinkd               | Link discovery (CDP, LLDP, OSPF, IS-IS, Bridge)                          | —         |
-| bsmd               | opennms/bsmd                  | Business Service Monitor                                                 | 8180      |
-| perspectivepollerd | opennms/perspectivepollerd    | Perspective polling from remote locations                                | —         |
-| telemetryd         | opennms/telemetryd            | Non-flow telemetry ingestion (OpenConfig via Twin API)                   | —         |
-| flow-enricher      | opennms/flow-enricher         | Flow decode (horizon UDP parsers) + enrich + publish to ClickHouse       | 8080      |
+| alarmd             | deltav/alarmd                | Alarm processing (Kafka consumer)                                        | —         |
+| pollerd            | deltav/pollerd               | Service polling via Minion RPC                                           | —         |
+| collectd           | deltav/collectd              | SNMP data collection via Minion SNMP proxy                               | —         |
+| discovery          | deltav/discovery             | Network discovery via Minion RPC                                         | —         |
+| provisiond         | deltav/provisiond            | Node provisioning and detection                                          | —         |
+| trapd              | deltav/trapd                 | SNMP trap reception (Kafka Sink)                                         | —         |
+| syslogd            | deltav/syslogd               | Syslog reception (Kafka Sink)                                            | —         |
+| eventtranslator    | deltav/eventtranslator       | Event transformation rules                                               | —         |
+| enlinkd            | deltav/enlinkd               | Link discovery (CDP, LLDP, OSPF, IS-IS, Bridge)                          | —         |
+| bsmd               | deltav/bsmd                  | Business Service Monitor                                                 | 8180      |
+| perspectivepollerd | deltav/perspectivepollerd    | Perspective polling from remote locations                                | —         |
+| telemetryd         | deltav/telemetryd            | Non-flow telemetry ingestion (OpenConfig via Twin API)                   | —         |
+| flow-enricher      | deltav/flow-enricher         | Flow decode (horizon UDP parsers) + enrich + publish to ClickHouse       | 8080      |
 
-All daemon containers extend a shared `opennms/daemon-base` image built on top of `opennms/jre-deltav:21` (a jlink custom JRE on `alpine:3.21`). Each per-daemon image adds only the libraries unique to that daemon via layered Docker image deduplication.
+All daemon containers extend a shared `deltav/daemon-base` image built on top of `deltav/jre-deltav:21` (a jlink custom JRE on `alpine:3.21`). Each per-daemon image adds only the libraries unique to that daemon via layered Docker image deduplication.
 
 ## Quick Start
 

@@ -11,7 +11,7 @@
 #
 # Environment:
 #   DOCKER_REGISTRY   Docker registry (default: docker.io)
-#   DOCKER_ORG        Docker org/user (default: opennms)
+#   DOCKER_ORG        Docker org/user (default: deltav)
 #   SKIP_TESTS        Set to "false" to run tests (default: true)
 #   JAVA_HOME         JDK 21 path (auto-detected if unset)
 #
@@ -21,7 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SKIP_TESTS="${SKIP_TESTS:-true}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-docker.io}"
-DOCKER_ORG="${DOCKER_ORG:-opennms}"
+DOCKER_ORG="${DOCKER_ORG:-deltav}"
 
 # Detect version from POM (skip parent version, get project version)
 VERSION="$(cd "$REPO_ROOT" && ./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout 2>/dev/null || grep '<version>0\.' "$REPO_ROOT/pom.xml" | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
@@ -130,38 +130,38 @@ do_assemble() {
 }
 
 do_db_init_image() {
-    log "Building db-init image (opennms/db-init:$VERSION)..."
+    log "Building db-init image (deltav/db-init:$VERSION)..."
     cd "$REPO_ROOT"
     ./mvnw -B -f core/db-init/pom.xml -DskipTests package
     cd "$REPO_ROOT/core/db-init"
-    docker build -t "opennms/db-init:$VERSION" -t "opennms/db-init:latest" .
+    docker build -t "deltav/db-init:$VERSION" -t "deltav/db-init:latest" .
 }
 
 do_flow_enricher_image() {
-    log "Building flow-enricher image (opennms/flow-enricher:$VERSION)..."
+    log "Building flow-enricher image (deltav/flow-enricher:$VERSION)..."
     cd "$REPO_ROOT"
     ./mvnw -B -f core/flow-enricher/pom.xml -DskipTests package
     cd "$REPO_ROOT/core/flow-enricher"
-    docker build -t "opennms/flow-enricher:$VERSION" -t "opennms/flow-enricher:latest" .
+    docker build -t "deltav/flow-enricher:$VERSION" -t "deltav/flow-enricher:latest" .
 }
 
 do_prometheus_writer_image() {
-    log "Building prometheus-writer image (opennms/prometheus-writer:$VERSION)..."
+    log "Building prometheus-writer image (deltav/prometheus-writer:$VERSION)..."
     cd "$REPO_ROOT"
     ./mvnw -B -f core/prometheus-writer/pom.xml -DskipTests package
     cd "$REPO_ROOT/core/prometheus-writer"
-    docker build -t "opennms/prometheus-writer:$VERSION" -t "opennms/prometheus-writer:latest" .
+    docker build -t "deltav/prometheus-writer:$VERSION" -t "deltav/prometheus-writer:latest" .
 }
 
 do_jre_image() {
-    log "Building opennms/jre-deltav:21..."
+    log "Building deltav/jre-deltav:21..."
     cd "$SCRIPT_DIR"
     docker build -f Dockerfile.jre \
-        -t "opennms/jre-deltav:21" \
-        -t "opennms/jre-deltav:latest" \
+        -t "deltav/jre-deltav:21" \
+        -t "deltav/jre-deltav:latest" \
         .
     log "JRE image built:"
-    docker images opennms/jre-deltav --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}"
+    docker images deltav/jre-deltav --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}"
 }
 
 do_images() {
@@ -173,8 +173,8 @@ do_deltav_images() {
     log "Building Delta-V layered images..."
 
     # Check that JRE base image exists
-    if ! docker image inspect opennms/jre-deltav:21 >/dev/null 2>&1; then
-        err "opennms/jre-deltav:21 not found — run './build.sh jre' first"
+    if ! docker image inspect deltav/jre-deltav:21 >/dev/null 2>&1; then
+        err "deltav/jre-deltav:21 not found — run './build.sh jre' first"
     fi
 
     # Phase 0: Self-heal stale daemon-boot JARs before staging. If any
@@ -190,11 +190,11 @@ do_deltav_images() {
     cd "$SCRIPT_DIR"
 
     # Phase 2: Build daemon-base image
-    log "Building opennms/daemon-base:$VERSION..."
+    log "Building deltav/daemon-base:$VERSION..."
     docker build --no-cache \
         -f Dockerfile.daemon-base \
-        -t "opennms/daemon-base:$VERSION" \
-        -t "opennms/daemon-base:latest" \
+        -t "deltav/daemon-base:$VERSION" \
+        -t "deltav/daemon-base:latest" \
         .
 
     # Phase 3: Build per-daemon images
@@ -202,14 +202,14 @@ do_deltav_images() {
     for name in $daemon_names; do
         local main_class
         main_class=$(cat "staging/$name/.main_class")
-        log "Building opennms/$name:$VERSION (main: $main_class)..."
+        log "Building deltav/$name:$VERSION (main: $main_class)..."
         docker build \
             -f Dockerfile.daemon-per \
             --build-arg "VERSION=$VERSION" \
             --build-arg "DAEMON_NAME=$name" \
             --build-arg "MAIN_CLASS=$main_class" \
-            -t "opennms/$name:$VERSION" \
-            -t "opennms/$name:latest" \
+            -t "deltav/$name:$VERSION" \
+            -t "deltav/$name:latest" \
             .
     done
 
@@ -223,16 +223,24 @@ do_deltav_images() {
         -exec cp {} "$SCRIPT_DIR/staging/minion-boot/daemon-boot-minion.jar" \;
 
     # --- Build Minion Boot image ---
-    log "Building opennms/minion-boot:$VERSION..."
+    log "Building deltav/minion-boot:$VERSION..."
     docker build \
         --build-arg "VERSION=$VERSION" \
         -f Dockerfile.minion-boot \
-        -t "opennms/minion-boot:$VERSION" \
-        -t "opennms/minion-boot:latest" \
+        -t "deltav/minion-boot:$VERSION" \
+        -t "deltav/minion-boot:latest" \
         .
 
     # Clean up staging
     rm -rf "$SCRIPT_DIR/staging"
+
+    # --- Build db-init (one-shot PostgreSQL schema migration) ---
+    # db-init is a small standalone image used once at stack startup to
+    # run Liquibase against postgres. Included in `./build.sh deltav`
+    # so a single command produces every image docker-compose.yml
+    # references. Otherwise a freshly-cloned workspace would fail its
+    # first deploy with "pull access denied for deltav/db-init".
+    do_db_init_image
 
     # --- Build flow-enricher (standalone Spring Cloud Stream service) ---
     # flow-enricher does not share daemon-base because its dependency
@@ -263,7 +271,7 @@ Commands:
   compile   Compile only (Maven)
   assemble  Assemble distributions (Daemon + Alarmd + Minion + Sentinel)
   images    Build base Docker images only (requires prior assembly)
-  jre       Build JRE base image (opennms/jre-deltav:21, rarely needed)
+  jre       Build JRE base image (deltav/jre-deltav:21, rarely needed)
   deltav    Build Delta-V layered images (stages JARs into derived images)
   push      Build and push images to registry
   clean     Remove named Docker volumes (fresh start)
@@ -271,7 +279,7 @@ Commands:
 
 Environment variables:
   DOCKER_REGISTRY   Registry (default: docker.io)
-  DOCKER_ORG        Organization (default: opennms)
+  DOCKER_ORG        Organization (default: deltav)
   SKIP_TESTS        Skip tests (default: true)
   JAVA_HOME         JDK 21 path
 
@@ -296,7 +304,7 @@ main() {
     case "${1:-all}" in
         all)
             do_compile
-            if ! docker image inspect opennms/jre-deltav:21 >/dev/null 2>&1; then
+            if ! docker image inspect deltav/jre-deltav:21 >/dev/null 2>&1; then
                 do_jre_image
             fi
             do_deltav_images
@@ -321,7 +329,7 @@ main() {
             do_compile
             do_assemble
             do_images push
-            if ! docker image inspect opennms/jre-deltav:21 >/dev/null 2>&1; then
+            if ! docker image inspect deltav/jre-deltav:21 >/dev/null 2>&1; then
                 do_jre_image
             fi
             do_deltav_images

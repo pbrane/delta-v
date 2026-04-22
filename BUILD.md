@@ -77,11 +77,11 @@ cd opennms-container/delta-v
 ```
 
 The layered image build:
-1. `opennms/jre-deltav:21` — jlink custom JRE on Alpine 3.21 (22 modules, ~143MB)
-2. `opennms/daemon-base` — shared libraries (~321 JARs deduped across 12 daemons, ~415MB)
+1. `deltav/jre-deltav:21` — jlink custom JRE on Alpine 3.21 (22 modules, ~143MB)
+2. `deltav/daemon-base` — shared libraries (~321 JARs deduped across 12 daemons, ~415MB)
 3. `opennms/<daemon>` — per-daemon overlay (unique libs + thin app JAR)
-4. `opennms/minion-boot` — Spring Boot 4 Minion fat JAR
-5. `opennms/db-init` — one-shot Liquibase schema migration
+4. `deltav/minion-boot` — Spring Boot 4 Minion fat JAR
+5. `deltav/db-init` — one-shot Liquibase schema migration
 
 ### 3. Full Build (All Steps)
 

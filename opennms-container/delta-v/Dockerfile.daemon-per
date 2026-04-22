@@ -8,7 +8,7 @@
 # Built automatically by build.sh for each of the 12 daemons.
 
 ARG VERSION
-ARG DAEMON_BASE_IMAGE=opennms/daemon-base
+ARG DAEMON_BASE_IMAGE=deltav/daemon-base
 FROM ${DAEMON_BASE_IMAGE}:${VERSION}
 
 ARG DAEMON_NAME

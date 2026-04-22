@@ -57,11 +57,11 @@ Delta-V code lives in the `org.deltav` package namespace with `org.deltav.core` 
 
 | Image | Base | Contents |
 |-------|------|----------|
-| `opennms/jre-deltav:21` | `alpine:3.21` | jlink custom JRE (22 modules) + diagnostic tools |
-| `opennms/daemon-base` | `jre-deltav:21` | Shared libraries (~321 JARs deduped across 12 daemons) |
+| `deltav/jre-deltav:21` | `alpine:3.21` | jlink custom JRE (22 modules) + diagnostic tools |
+| `deltav/daemon-base` | `jre-deltav:21` | Shared libraries (~321 JARs deduped across 12 daemons) |
 | `opennms/<daemon>` | `daemon-base` | Per-daemon unique libs + thin app JAR (12 images) |
-| `opennms/minion-boot` | `jre-deltav:21` | Spring Boot 4 Minion — Kafka RPC server + Sink listeners + Twin API |
-| `opennms/db-init` | `jre-deltav:21` | One-shot Liquibase schema migration |
+| `deltav/minion-boot` | `jre-deltav:21` | Spring Boot 4 Minion — Kafka RPC server + Sink listeners + Twin API |
+| `deltav/db-init` | `jre-deltav:21` | One-shot Liquibase schema migration |
 
 ### Shared Infrastructure
 
@@ -103,7 +103,7 @@ OpenNMS Horizon is an enterprise-grade open-source network monitoring platform. 
 - **Events never touch PostgreSQL** — only alarms are persisted to the database
 - **Layered Docker images** — shared `daemon-base` (~415MB) + 12 per-daemon overlay images on a 143MB jlink Alpine JRE
 - **Spring Boot 4 migration complete** — all 12 daemons + Minion run as JARs (2-4s startup); Karaf fully retired
-- **One-shot database initialization** — `opennms/db-init` replaces the Core container for schema setup
+- **One-shot database initialization** — `deltav/db-init` replaces the Core container for schema setup
 - **`org.deltav` package namespace** — original delta-v code uses `org.deltav.*` packages; horizon-derived model-jakarta stays `org.opennms`
 
 ## Architecture

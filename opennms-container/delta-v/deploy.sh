@@ -33,7 +33,7 @@ do_up() {
     log "Starting Delta-V (version $VERSION)..."
 
     # Check a sample daemon image exists (Delta-V layered images)
-    for img in "opennms/trapd:$VERSION" "opennms/minion-boot:$VERSION"; do
+    for img in "deltav/trapd:$VERSION" "deltav/minion-boot:$VERSION"; do
         docker image inspect "$img" >/dev/null 2>&1 || err "Image $img not found. Run ./build.sh deltav first."
     done
 

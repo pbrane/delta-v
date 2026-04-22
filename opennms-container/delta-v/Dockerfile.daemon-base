@@ -7,7 +7,7 @@
 # Build with: ./build.sh deltav  (built automatically)
 # Rebuild when: shared dependencies change (Spring Boot, Hibernate, Kafka, etc.)
 
-ARG JRE_IMAGE=opennms/jre-deltav:21
+ARG JRE_IMAGE=deltav/jre-deltav:21
 FROM ${JRE_IMAGE}
 
 LABEL org.opencontainers.image.title="Delta-V Daemon Base" \
