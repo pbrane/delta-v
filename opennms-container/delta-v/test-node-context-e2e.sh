@@ -46,9 +46,20 @@ METRICS_TIMEOUT=180
 E2E_FOREIGN_SOURCE="node-context-e2e"
 E2E_REQUISITION_FILE="provisiond-overlay/etc/imports/${E2E_FOREIGN_SOURCE}.xml"
 
+PROVISIOND_CONFIG="provisiond-overlay/etc/provisiond-configuration.xml"
+PROVISIOND_CONFIG_BACKUP="$(mktemp -t provisiond-config.XXXXXX.xml)"
+
 cleanup() {
     echo "==> Tearing down stack"
     rm -f "${E2E_REQUISITION_FILE}"
+    # Restore provisiond-configuration.xml from the committed state (captured
+    # before mutation in Step 3) so this test never leaves the working tree
+    # in a state that breaks other e2e tests that depend on the full set of
+    # requisition-defs (rpc-canary, cloud-services, l8opensim-lab, …).
+    if [ -f "${PROVISIOND_CONFIG_BACKUP}" ]; then
+        cp "${PROVISIOND_CONFIG_BACKUP}" "${PROVISIOND_CONFIG}"
+        rm -f "${PROVISIOND_CONFIG_BACKUP}"
+    fi
     docker compose down -v --remove-orphans || true
 }
 trap cleanup EXIT
@@ -113,25 +124,29 @@ cat > "${E2E_REQUISITION_FILE}" <<'REQEOF'
 REQEOF
 
 # Add the requisition-def to provisiond-configuration.xml so provisiond
-# auto-imports.  We append a second import schedule alongside any existing
-# ones; provisiond reloads its config on restart.
-mkdir -p provisiond-overlay/etc
-cat > provisiond-overlay/etc/provisiond-configuration.xml <<PROVEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<provisiond-configuration xmlns="http://xmlns.opennms.org/xsd/config/provisiond-configuration"
-  foreign-source-dir="/opt/deltav/etc/foreign-sources"
-  requistion-dir="/opt/deltav/etc/imports"
-  importThreads="4" scanThreads="4" rescanThreads="4" writeThreads="4">
-  <requisition-def import-name="delta-v"
-                   import-url-resource="file:///opt/deltav/etc/imports/delta-v.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
-  </requisition-def>
-  <requisition-def import-name="${E2E_FOREIGN_SOURCE}"
-                   import-url-resource="file:///opt/deltav/etc/imports/${E2E_FOREIGN_SOURCE}.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
-  </requisition-def>
-</provisiond-configuration>
-PROVEOF
+# auto-imports.  Insert our E2E requisition-def immediately before the
+# closing </provisiond-configuration> tag, preserving every other
+# requisition-def (delta-v, rpc-canary, cloud-services, l8opensim-lab,
+# perspective-test, flow-test) that other e2e tests depend on.
+# The committed state is backed up in cleanup()'s trap and restored on exit.
+echo "==> Injecting ${E2E_FOREIGN_SOURCE} requisition-def into ${PROVISIOND_CONFIG}"
+cp "${PROVISIOND_CONFIG}" "${PROVISIOND_CONFIG_BACKUP}"
+python3 - "${PROVISIOND_CONFIG}" "${E2E_FOREIGN_SOURCE}" <<'PYEOF'
+import sys
+path, fs = sys.argv[1], sys.argv[2]
+snippet = (
+    f'  <requisition-def import-name="{fs}"\n'
+    f'                   import-url-resource="file:///opt/deltav/etc/imports/{fs}.xml">\n'
+    f'    <cron-schedule>0/30 * * * * ?</cron-schedule>\n'
+    f'  </requisition-def>\n'
+)
+with open(path) as f: content = f.read()
+marker = '</provisiond-configuration>'
+if marker not in content:
+    sys.exit(f"marker {marker!r} not found in {path}")
+content = content.replace(marker, snippet + marker, 1)
+with open(path, 'w') as f: f.write(content)
+PYEOF
 
 echo "==> Restarting provisiond to pick up E2E requisition"
 docker compose restart provisiond

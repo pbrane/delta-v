@@ -514,11 +514,25 @@ services:
       RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       RPC_KAFKA_FORCE_REMOTE: "true"
     volumes:
-      # Parent overlay is read-only: provisiond only ever mutates imports/ at
-      # runtime. The nested named volume below holds the mutating subdirectory
-      # so working-tree drift is eliminated. The provisiond-imports-init
-      # sidecar seeds the named volume from imports-seed/ on first boot.
-      - ./provisiond-overlay/etc:/opt/deltav/etc:ro
+      # Parent overlay is read-write. The named volume below (provisiond_imports)
+      # is the primary target for all provisiond mutation — it persists
+      # last-import timestamps without touching the host tree on Linux,
+      # where Docker honors the nested child mount.
+      #
+      # On macOS Docker Desktop, VirtioFS silently drops the nested child
+      # mount and the container sees the parent bind mount's imports/
+      # directory instead. A read-only parent would break last-import
+      # write-back on macOS (ModelImportException), so :rw is required for
+      # parity. Safety trade-off: provisiond could in theory mutate other
+      # files under /opt/deltav/etc, but nothing in the current codebase
+      # does. The host imports/ directory is gitignored (see .gitignore —
+      # only .gitkeep is tracked) so runtime drift there stays invisible
+      # to git in either deployment mode.
+      #
+      # Long-term fix tracked in memory project_provisiond_cloud_native_requisitions:
+      # move last-import state to PostgreSQL and make the overlay fully
+      # read-only.
+      - ./provisiond-overlay/etc:/opt/deltav/etc:rw
       - provisiond_imports:/opt/deltav/etc/imports
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
