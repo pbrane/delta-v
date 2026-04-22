@@ -99,5 +99,29 @@ if echo "${metrics}" | grep -E '^deltav_timeseries_batches_failed_total' | \
     exit 1
 fi
 
+# Regression guard for the horizon TimeseriesPersister ClassCastException
+# cascade fixed in delta-v-horizon PR #8 (horizon 1.0.11). The ClassCastException
+# on visitGroup and the NPE cascade on visitAttribute/persistNumeric/String
+# must all stay at 0 — if any of these fires, a regression has re-introduced
+# the bug and FanoutPersister's isolation would otherwise hide it.
+# step=visitResource is deliberately NOT asserted: Bug #1 (MetaTagDataLoader
+# rollback) is a separate investigation and may still tick on labbox today.
+echo "==> Asserting inner-persister cascade counters stay at zero"
+for step in visitGroup visitAttribute persistNumericAttribute persistStringAttribute; do
+    value=$(echo "${metrics}" | \
+        grep -E "^deltav_collectd_persister_inner_failures_total\{.*step=\"${step}\"" | \
+        awk '{print $NF}')
+    if [ -z "${value}" ]; then
+        echo "WARN: counter deltav_collectd_persister_inner_failures_total{step=${step}} not registered"
+        continue
+    fi
+    if [ "${value}" != "0.0" ]; then
+        echo "ERROR: deltav_collectd_persister_inner_failures_total{step=${step}} = ${value} (expected 0.0)"
+        echo "${metrics}" | grep deltav_collectd_persister || true
+        exit 1
+    fi
+done
+echo "==> Inner-persister cascade counters verified at zero"
+
 echo "==> PASS"
 exit 0
