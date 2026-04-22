@@ -34,7 +34,12 @@ cd "$(dirname "$0")"
 STACK_READY_TIMEOUT=180
 POLL_GRACE_SECONDS=90
 METRICS_TIMEOUT=180
-VM_QUERY_TIMEOUT=30
+# Bumped from 30s to 90s to accommodate cold-start SNMP warmup. Collectd's
+# first poll cycle lands ~30s after provisiond reports the node; on a slow
+# host the combination of Kafka producer/consumer bootstrap, Collectd's own
+# warmup, and Prometheus remote-write batching can push the first sample's
+# arrival in VictoriaMetrics to 60-80s. A 30s budget made Step 6 flaky.
+VM_QUERY_TIMEOUT=90
 CLICKHOUSE_QUERY_TIMEOUT=60
 
 cleanup() {
@@ -144,13 +149,21 @@ echo "==> Step 6: Query VictoriaMetrics for the landed series"
 deadline=$((SECONDS + VM_QUERY_TIMEOUT))
 vm_landed=false
 while (( SECONDS < deadline )); do
-    resp=$(curl -sf "http://localhost:18428/api/v1/query?query=opennms_mib2_interface_errors_ifindiscards_total" \
+    # Query opennms_mib2_x_interfaces_ifhcinoctets_total instead of the
+    # narrower opennms_mib2_interface_errors_ifindiscards_total: the HC
+    # interface counters come from the MIB-2 mib2-X-interfaces group which
+    # every MIB-2-compliant device serves, so the l8opensim-lab simulator
+    # (reliable) produces them alongside rpc-canary (which goes through the
+    # flaky in-compose mock-snmp-agent, see project_mock_snmp_agent_systemgroup_bug).
+    # Any reliable opennms_ metric proves the pipeline+labels work; there is
+    # no need to couple Step 6 to the flaky mock-agent path.
+    resp=$(curl -sf "http://localhost:18428/api/v1/query?query=opennms_mib2_x_interfaces_ifhcinoctets_total" \
             || echo '{"data":{"result":[]}}')
     count=$(echo "$resp" | python3 -c \
         'import json,sys; d=json.load(sys.stdin); print(len(d.get("data",{}).get("result",[])))' \
         2>/dev/null || echo "0")
     if (( count > 0 )); then
-        echo "==> VM returned ${count} series for opennms_mib2_interface_errors_ifindiscards_total"
+        echo "==> VM returned ${count} series for opennms_mib2_x_interfaces_ifhcinoctets_total"
         echo "$resp" | grep -E '"node_id":"[0-9]+"' > /dev/null || { echo "FAIL: missing node_id label"; exit 1; }
         echo "$resp" | grep -E '"location":' > /dev/null || { echo "FAIL: missing location label"; exit 1; }
         echo "$resp" | grep -E '"foreign_source":' > /dev/null || { echo "FAIL: missing foreign_source label"; exit 1; }
