@@ -78,7 +78,16 @@ public class TimeseriesKafkaPublisher {
             }
 
             if (batch.getResourcesCount() == 0) {
-                meterRegistry.counter("deltav_timeseries_batches_failed_total",
+                // An empty batch is an expected outcome, not a failure: it
+                // means the translator found no numeric resources in the
+                // CollectionSet (e.g. a collection cycle that produced only
+                // string attributes, or a node whose SNMP response was all
+                // filtered out). Publishing an empty batch wastes a Kafka
+                // record, so we skip. Track on the skipped counter so SLO
+                // alerts on batches_failed_total stay clean for real errors
+                // (translator_error, serialization_error, send_error) while
+                // ops still see the skip rate here.
+                meterRegistry.counter("deltav_timeseries_batches_skipped_total",
                         "location", loc, "producer", "collectd",
                         "reason", "empty_batch").increment();
                 return;

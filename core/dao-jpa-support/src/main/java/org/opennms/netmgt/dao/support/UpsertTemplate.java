@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.deltav.netmgt.dao.support;
+package org.opennms.netmgt.dao.support;
 
 import org.opennms.netmgt.dao.api.OnmsDao;
 import org.springframework.transaction.PlatformTransactionManager;

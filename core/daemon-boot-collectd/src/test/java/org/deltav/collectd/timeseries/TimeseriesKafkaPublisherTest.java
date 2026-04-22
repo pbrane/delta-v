@@ -94,9 +94,15 @@ class TimeseriesKafkaPublisherTest {
         publisher.publish(set, "default", 42, "Site-A");
 
         verify(streamBridge, never()).send(any(String.class), any(Message.class));
-        assertThat(meterRegistry.counter("deltav_timeseries_batches_failed_total",
+        // empty_batch is a benign skip, tracked on the skipped counter;
+        // the failed counter stays at zero for empty batches so SLO alerts
+        // on batches_failed_total fire only for real errors.
+        assertThat(meterRegistry.counter("deltav_timeseries_batches_skipped_total",
                 "location", "Site-A", "producer", "collectd", "reason", "empty_batch").count())
                 .isEqualTo(1.0);
+        assertThat(meterRegistry.counter("deltav_timeseries_batches_failed_total",
+                "location", "Site-A", "producer", "collectd", "reason", "empty_batch").count())
+                .isEqualTo(0.0);
     }
 
     @Test

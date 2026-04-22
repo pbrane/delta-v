@@ -260,6 +260,19 @@
             </exclusions>
         </dependency>
 
+        <!-- OIA common — provides org.opennms.integration.api.v1.timeseries.immutables.*.
+             features.timeseries (above) transitively declares org.opennms.integration.api:api
+             (the interfaces), but its TimeseriesPersistOperationBuilder.persistStringAttributeForMetricLevel
+             calls ImmutableTag from integration.api:common. Without this explicit dep
+             every SNMP attribute persist throws NoClassDefFoundError on the inner
+             persister path, ticking deltav_collectd_persister_inner_failures_total{step=visitAttribute}.
+             (The Kafka path is unaffected — FanoutPersister catches the error.)
+             Version managed by the horizon BOM. -->
+        <dependency>
+            <groupId>org.opennms.integration.api</groupId>
+            <artifactId>common</artifactId>
+        </dependency>
+
         <!-- In-memory time-series storage — InMemoryStorage for standalone/test use -->
         <dependency>
             <groupId>org.opennms.features</groupId>
