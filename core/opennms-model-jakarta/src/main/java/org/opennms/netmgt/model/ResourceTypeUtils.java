@@ -23,6 +23,7 @@ import java.io.File;
 import java.nio.file.Paths;
 import java.util.regex.Pattern;
 
+import org.opennms.netmgt.rrd.RrdRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,8 +31,9 @@ import org.slf4j.LoggerFactory;
  * Utility class for resource type path resolution and storage configuration.
  *
  * <p>Ported from opennms-model to model-jakarta. Methods referencing
- * OnmsResource/OnmsEntity/RrdRepository are omitted — those classes are
- * not in the delta-v classpath and the methods are not called by any daemon.</p>
+ * OnmsResource/OnmsEntity are omitted — those classes are not in the
+ * delta-v classpath and the corresponding methods are only called by
+ * horizon's read-path resource DAOs, which delta-v does not wire.</p>
  */
 public abstract class ResourceTypeUtils {
 
@@ -88,6 +90,20 @@ public abstract class ResourceTypeUtils {
                     + "' is invalid, it should be in the format: 'foreignSource:foreignId'.");
         }
         return ident;
+    }
+
+    /**
+     * Retrieves the ResourcePath relative to rrd.base.dir.
+     *
+     * <p>Horizon's features.timeseries TimeseriesPersister and
+     * TimeseriesPersistOperationBuilder invoke this on persist. Without the
+     * signature delta-v's inner (in-memory) persister throws NoSuchMethodError
+     * every cycle; the Kafka publisher path is unaffected but the inner
+     * failure counters tick. Implementation matches horizon's
+     * opennms-model/ResourceTypeUtils.getResourcePathWithRepository verbatim.</p>
+     */
+    public static ResourcePath getResourcePathWithRepository(RrdRepository repository, ResourcePath resource) {
+        return ResourcePath.get(ResourcePath.get(repository.getRrdBaseDir().getName()), resource);
     }
 
     /**

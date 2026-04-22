@@ -99,6 +99,18 @@
         <!-- Enlinkd enum types are now defined as inner classes in our Jakarta entities.
              No dependency on enlinkd-persistence-api needed. -->
 
+        <!-- opennms-rrd-api — compile-only for ResourceTypeUtils.getResourcePathWithRepository
+             signature. Horizon's features.timeseries-1.0.11 calls this static method on the
+             jakarta ResourceTypeUtils and gets NoSuchMethodError if the signature is missing;
+             see core/daemon-boot-collectd where features.timeseries already brings
+             opennms-rrd-api transitively at runtime. `provided` scope mirrors hibernate-core
+             and jaxb-api above — we only need the RrdRepository type for javac. -->
+        <dependency>
+            <groupId>org.opennms</groupId>
+            <artifactId>opennms-rrd-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- javax.xml.bind — compile-only for PrimaryTypeAdapter (extends XmlAdapter).
              Horizon's RequisitionInterface has @XmlJavaTypeAdapter(PrimaryTypeAdapter.class)
              baked into its bytecode; the adapter must extend the javax XmlAdapter at runtime.
@@ -127,6 +139,16 @@
                     <artifactId>junit-vintage-engine</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <!-- Boot 4.0 ships JUnit Jupiter 6.0.x but spring-boot-starter-test does not bring
+             junit-platform-launcher transitively; maven-surefire-plugin 3.5.x requires it on
+             the test classpath or discovery fails with "OutputDirectoryCreator not available".
+             Version is BOM-managed (aligns with junit-platform-engine). -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
