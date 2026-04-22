@@ -93,15 +93,19 @@ class NodeContextPublisherTest {
     }
 
     @Test
-    void publishNode_nodeNotFound_incrementsFailureCounterNoSend() {
+    void publishNode_nodeNotFound_incrementsSkippedCounterNoSend() {
         when(nodeDao.get(99)).thenReturn(null);
 
         publisher.publishNode(99);
 
         org.mockito.Mockito.verify(streamBridge, org.mockito.Mockito.never())
                 .send(any(String.class), any(Message.class));
-        assertThat(meters.counter("deltav_node_context_records_failed_total",
+        // node_not_found is a benign race, not a failure — it lives on the
+        // skipped counter so records_failed_total stays clean for SLO alerts.
+        assertThat(meters.counter("deltav_node_context_records_skipped_total",
                 "location", "", "reason", "node_not_found").count()).isEqualTo(1.0);
+        assertThat(meters.counter("deltav_node_context_records_failed_total",
+                "location", "", "reason", "node_not_found").count()).isEqualTo(0.0);
     }
 
     @Test

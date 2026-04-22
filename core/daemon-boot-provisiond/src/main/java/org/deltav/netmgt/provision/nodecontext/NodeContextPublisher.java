@@ -107,8 +107,15 @@ public class NodeContextPublisher {
             return null;
         }
         if (node == null) {
+            // Benign race: a node can be deleted between the time its id lands
+            // on the debounce queue and the time this publisher pulls it off.
+            // This is expected under normal operation (e.g. a requisition
+            // re-import deletes-and-recreates a foreign node so the old id
+            // becomes orphaned before we read it) and is NOT a failure. Use
+            // the skipped counter so SLO/alerting on records_failed_total
+            // stays clean while ops still see the soft-miss rate here.
             LOG.debug("Node {} not found (likely deleted between event and read)", nodeId);
-            meters.counter("deltav_node_context_records_failed_total",
+            meters.counter("deltav_node_context_records_skipped_total",
                     "location", "", "reason", "node_not_found").increment();
             return null;
         }
