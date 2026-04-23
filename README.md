@@ -250,7 +250,7 @@ cd opennms-container/delta-v
 - **Transport modernization** — Minion Kafka IPC → gRPC via Spring Cloud Gateway (lower latency, lighter dependency, same Gateway will front any future static UI). [Design](docs/plans/2026-04-22-v1.2.0-minion-grpc-migration-design.md).
 - **Operational observability** — Micrometer domain metrics across all 12 daemons so a future K8s operator can autoscale on application-aware signals (backlog depth, throughput, operation latency) instead of CPU/memory. [Design](docs/plans/2026-04-23-v1.2.0-app-observability-design.md).
 
-See the full [v1.2.0 release plan](docs/plans/2026-04-23-v1.2.0-release-plan.md) for the complete scope including second-tier items (test-harness cleanup, SpringServiceDaemon standardization, ActiveMQ/ServiceMix bundle purge, sink topic rename, retiring the "Default" Minion location) and a forward look at **v1.3.0 candidates** (K8s operator, Nephron analytics replacement, REST API gateway, YAML config migration).
+See the [v1.2.0 release plan](docs/plans/2026-04-23-v1.2.0-release-plan.md) for the full scope and forward look at **v1.3.0 candidates** (K8s operator, Nephron analytics replacement, REST API gateway, YAML config migration, SpringServiceDaemon standardization, cloud-native requisitions, static UI).
 
 ## Documentation
 
