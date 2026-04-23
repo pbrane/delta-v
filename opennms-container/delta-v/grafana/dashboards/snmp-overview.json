@@ -1,25 +1,599 @@
 {
-  "uid": "snmp-overview",
-  "title": "SNMP Overview",
-  "tags": ["delta-v", "snmp"],
-  "timezone": "browser",
-  "schemaVersion": 39,
-  "version": 1,
-  "refresh": "30s",
-  "time": {
-    "from": "now-15m",
-    "to": "now"
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
   },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 16,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "expr": "topk(10, rate(opennms_mib2_x_interfaces_ifhcinoctets_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) * 8)",
+          "legendFormat": "{{instance}} · ifIndex {{resource_instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Interface throughput in (bps, top 10)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 27,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "expr": "count by (instance, foreign_source, location, snmp_syscontact, snmp_syslocation) (rate(opennms_mib2_x_interfaces_ifhcinoctets_total[5m]))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Devices monitored",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "foreign_source": "Foreign source",
+              "instance": "Instance",
+              "location": "Monitoring location",
+              "snmp_syscontact": "SNMP sysContact",
+              "snmp_syslocation": "SNMP sysLocation"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 16,
+        "x": 0,
+        "y": 9
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "expr": "topk(10, rate(opennms_mib2_x_interfaces_ifhcoutoctets_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) * 8)",
+          "legendFormat": "{{instance}} · ifIndex {{resource_instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Interface throughput out (bps, top 10)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 16,
+        "x": 0,
+        "y": 18
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "expr": "rate(opennms_mib2_interface_errors_ifinerrors_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) + rate(opennms_mib2_interface_errors_ifouterrors_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) + rate(opennms_mib2_interface_errors_ifindiscards_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) + rate(opennms_mib2_interface_errors_ifoutdiscards_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m])",
+          "legendFormat": "{{instance}} · ifIndex {{resource_instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Interface error rate (errors+discards/sec)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      },
+      "id": 5,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "expr": "100 * opennms_mib2_host_resources_storage_hrstorageused{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"} / opennms_mib2_host_resources_storage_hrstoragesize{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}",
+          "instant": true,
+          "legendFormat": "{{instance}} · storage {{resource_instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Storage utilization (%)",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 27
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "expr": "opennms_mib2_host_resources_processor_hrprocessorload{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}",
+          "legendFormat": "{{instance}} · proc {{resource_instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU load per processor (%)",
+      "type": "timeseries"
+    }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 40,
+  "tags": [
+    "delta-v",
+    "snmp"
+  ],
   "templating": {
     "list": [
       {
-        "name": "instance",
-        "label": "Instance",
-        "type": "query",
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "victoriametrics"
         },
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
         "query": {
           "query": "label_values(opennms_mib2_x_interfaces_ifhcinoctets_total, instance)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
@@ -27,23 +601,26 @@
         "refresh": 1,
         "regex": "",
         "sort": 1,
-        "multi": true,
-        "includeAll": true,
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
-        }
+        "type": "query"
       },
       {
-        "name": "foreign_source",
-        "label": "Foreign source",
-        "type": "query",
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "victoriametrics"
         },
+        "includeAll": true,
+        "label": "Foreign source",
+        "multi": true,
+        "name": "foreign_source",
         "query": {
           "query": "label_values(opennms_mib2_x_interfaces_ifhcinoctets_total{instance=~\"$instance\"}, foreign_source)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
@@ -51,23 +628,26 @@
         "refresh": 1,
         "regex": "",
         "sort": 1,
-        "multi": true,
-        "includeAll": true,
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
-        }
+        "type": "query"
       },
       {
-        "name": "monitoring_location",
-        "label": "Monitoring location",
-        "type": "query",
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "victoriametrics"
         },
+        "includeAll": true,
+        "label": "Monitoring location",
+        "multi": true,
+        "name": "monitoring_location",
         "query": {
           "query": "label_values(opennms_mib2_x_interfaces_ifhcinoctets_total, location)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
@@ -75,247 +655,18 @@
         "refresh": 1,
         "regex": "",
         "sort": 1,
-        "multi": true,
-        "includeAll": true,
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
-        }
+        "type": "query"
       }
     ]
   },
-  "panels": [
-    {
-      "id": 1,
-      "title": "Interface throughput in (bps, top 10)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "victoriametrics"
-      },
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "topk(10, rate(opennms_mib2_x_interfaces_ifhcinoctets_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) * 8)",
-          "legendFormat": "{{instance}} · ifIndex {{resource_instance}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bps",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
-      }
-    },
-    {
-      "id": 2,
-      "title": "Interface throughput out (bps, top 10)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "victoriametrics"
-      },
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "topk(10, rate(opennms_mib2_x_interfaces_ifhcoutoctets_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) * 8)",
-          "legendFormat": "{{instance}} · ifIndex {{resource_instance}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bps",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
-      }
-    },
-    {
-      "id": 3,
-      "title": "Interface error rate (errors+discards/sec)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "victoriametrics"
-      },
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "rate(opennms_mib2_interface_errors_ifinerrors_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) + rate(opennms_mib2_interface_errors_ifouterrors_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) + rate(opennms_mib2_interface_errors_ifindiscards_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m]) + rate(opennms_mib2_interface_errors_ifoutdiscards_total{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}[5m])",
-          "legendFormat": "{{instance}} · ifIndex {{resource_instance}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "cps",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 1},
-              {"color": "red", "value": 10}
-            ]
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "thresholdsStyle": {"mode": "line"}
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
-      }
-    },
-    {
-      "id": 4,
-      "title": "CPU load per processor (%)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "victoriametrics"
-      },
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "opennms_mib2_host_resources_processor_hrprocessorload{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}",
-          "legendFormat": "{{instance}} · proc {{resource_instance}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "max": 100,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
-      }
-    },
-    {
-      "id": 5,
-      "title": "Storage utilization (%)",
-      "type": "bargauge",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "victoriametrics"
-      },
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "100 * opennms_mib2_host_resources_storage_hrstorageused{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"} / opennms_mib2_host_resources_storage_hrstoragesize{instance=~\"$instance\", foreign_source=~\"$foreign_source\", location=~\"$monitoring_location\"}",
-          "legendFormat": "{{instance}} · storage {{resource_instance}}",
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "max": 100,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 70},
-              {"color": "red", "value": 90}
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "gradient",
-        "showUnfilled": true
-      }
-    },
-    {
-      "id": 6,
-      "title": "Devices monitored",
-      "type": "table",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "victoriametrics"
-      },
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "count by (instance, foreign_source, location, snmp_syscontact, snmp_syslocation) (rate(opennms_mib2_x_interfaces_ifhcinoctets_total[5m]))",
-          "format": "table",
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": [
-          {
-            "matcher": {"id": "byName", "options": "Value"},
-            "properties": [{"id": "custom.hidden", "value": true}]
-          },
-          {
-            "matcher": {"id": "byName", "options": "Time"},
-            "properties": [{"id": "custom.hidden", "value": true}]
-          }
-        ]
-      },
-      "options": {
-        "showHeader": true
-      },
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "renameByName": {
-              "instance": "Instance",
-              "foreign_source": "Foreign source",
-              "location": "Monitoring location",
-              "snmp_syscontact": "SNMP sysContact",
-              "snmp_syslocation": "SNMP sysLocation"
-            }
-          }
-        }
-      ]
-    }
-  ],
-  "annotations": {
-    "list": []
+  "time": {
+    "from": "now-6h",
+    "to": "now"
   },
-  "links": [],
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SNMP Overview",
+  "uid": "snmp-overview",
+  "version": 1,
   "weekStart": ""
 }
