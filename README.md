@@ -240,6 +240,18 @@ cd opennms-container/delta-v
 
 10. **Horizon as pre-built dependency** — Horizon modules are built in `pbrane/delta-v-horizon` and consumed as Maven artifacts, keeping delta-v's 22-module reactor fast (~16s compile).
 
+## Roadmap
+
+**Current release: v1.1.1** — clean Linux consumer flow. Pull the 18 images from GHCR, `docker compose up`, stack comes up hands-off with 28 seed nodes imported. Full 12-test E2E suite passes in isolation.
+
+**Next release: v1.2.0** — "Delta-V runs well on Kubernetes." Three parallel tracks:
+
+- **Container hygiene** — self-contained images (eliminate the remaining bind mounts in `docker-compose.yml` so consumers don't need a git clone). [Design](docs/plans/2026-04-22-v1.2.0-self-contained-images-design.md).
+- **Transport modernization** — Minion Kafka IPC → gRPC via Spring Cloud Gateway (lower latency, lighter dependency, same Gateway will front any future static UI). [Design](docs/plans/2026-04-22-v1.2.0-minion-grpc-migration-design.md).
+- **Operational observability** — Micrometer domain metrics across all 12 daemons so a future K8s operator can autoscale on application-aware signals (backlog depth, throughput, operation latency) instead of CPU/memory. [Design](docs/plans/2026-04-23-v1.2.0-app-observability-design.md).
+
+See the full [v1.2.0 release plan](docs/plans/2026-04-23-v1.2.0-release-plan.md) for the complete scope including second-tier items (test-harness cleanup, SpringServiceDaemon standardization, ActiveMQ/ServiceMix bundle purge, sink topic rename, retiring the "Default" Minion location) and a forward look at **v1.3.0 candidates** (K8s operator, Nephron analytics replacement, REST API gateway, YAML config migration).
+
 ## Documentation
 
 | Document | Description |
@@ -250,7 +262,7 @@ cd opennms-container/delta-v
 | [SECURITY.md](SECURITY.md) | Security policy |
 | [NOTICE](NOTICE) | OpenNMS derivation attribution |
 
-Design documents are in `docs/plans/` and `docs/superpowers/`.
+Design documents and release plans are in `docs/plans/`. Session notes and superpowers agents are in `docs/superpowers/`.
 
 ## License
 
