@@ -237,7 +237,7 @@ services:
       start_period: 15s
 
   pollerd:
-    profiles: [lite, full]
+    profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/pollerd:${VERSION}
     container_name: delta-v-pollerd
     hostname: pollerd
@@ -266,7 +266,7 @@ services:
       start_period: 20s
 
   collectd:
-    profiles: [lite, full]
+    profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/collectd:${VERSION}
     container_name: delta-v-collectd
     hostname: collectd
@@ -444,7 +444,7 @@ services:
   # itself (baked by Dockerfile.daemon-per's `COPY --chown=opennms:opennms`),
   # so there's no host bind mount to chown here anymore.
   provisiond-imports-init:
-    profiles: [lite, passive, full]
+    profiles: [lite, passive, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/provisiond-imports-init:${VERSION}
     container_name: delta-v-provisiond-imports-init
     user: "0:0"
@@ -455,16 +455,23 @@ services:
       - -c
       - |
         set -e
-        if [ -z "$$(ls -A /runtime 2>/dev/null)" ]; then
+        # Use a marker file, not the emptiness check: when the named volume
+        # first mounts into the provisiond container, Docker auto-populates
+        # it from provisiond's image content at /opt/deltav/etc/imports
+        # (which contains a baked `.gitkeep`). That write happens before
+        # this sidecar runs, so an emptiness check was fooled into thinking
+        # the volume was already seeded and skipped the actual seed.
+        if [ ! -f /runtime/.seeded ]; then
             echo "[provisiond-imports-init] Seeding /runtime from /seed"
             cp -R /seed/. /runtime/
+            touch /runtime/.seeded
         else
-            echo "[provisiond-imports-init] /runtime already populated — leaving alone"
+            echo "[provisiond-imports-init] /runtime already seeded — leaving alone"
         fi
         chown -R 100:101 /runtime
 
   provisiond:
-    profiles: [lite, passive, full]
+    profiles: [lite, passive, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/provisiond:${VERSION}
     container_name: delta-v-provisiond
     hostname: provisiond
@@ -514,7 +521,7 @@ services:
     stop_grace_period: 60s
 
   bsmd:
-    profiles: [lite, full]
+    profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/bsmd:${VERSION}
     container_name: delta-v-bsmd
     hostname: bsmd
@@ -572,7 +579,7 @@ services:
       start_period: 20s
 
   alarmd:
-    profiles: [lite, passive, full]
+    profiles: [lite, passive, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/alarmd:${VERSION}
     container_name: delta-v-alarmd
     hostname: alarmd

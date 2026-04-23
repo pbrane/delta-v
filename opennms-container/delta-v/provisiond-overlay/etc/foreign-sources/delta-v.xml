@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Foreign source for the delta-v requisition. Only ICMP and SNMP detectors;
+  prevents scans from invoking detector classes (e.g. WsManDetector) that
+  aren't on the provisiond image's classpath.
+-->
+<foreign-source xmlns="http://xmlns.opennms.org/xsd/config/foreign-source" name="delta-v">
+    <scan-interval>1d</scan-interval>
+    <detectors>
+        <detector name="ICMP" class="org.opennms.netmgt.provision.detector.icmp.IcmpDetector"/>
+        <detector name="SNMP" class="org.opennms.netmgt.provision.detector.snmp.SnmpDetector"/>
+    </detectors>
+    <policies/>
+</foreign-source>

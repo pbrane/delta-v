@@ -235,10 +235,21 @@
             <artifactId>jaxb-runtime</artifactId>
         </dependency>
 
-        <!-- Jakarta Validation — needed by BSM entity @Size annotations -->
+        <!-- Jakarta Validation — needed by BSM entity @Size annotations.
+             The API-only dep above is insufficient at runtime: Spring Boot
+             autoconfigures a LocalValidatorFactoryBean that probes for a
+             provider via ServiceLoader and fails with NoProviderFoundException
+             when only the API is on the classpath. Hibernate Validator 9.x
+             (managed by Spring Boot 4 BOM) is the reference implementation
+             of jakarta.validation 3.1 and brings no javax/Horizon baggage —
+             just classmate, jboss-logging, and jakarta.el transitively. -->
         <dependency>
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
         </dependency>
 
         <!-- Jakarta Inject — needed by Hibernate 7 -->
