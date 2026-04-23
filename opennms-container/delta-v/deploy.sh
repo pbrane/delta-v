@@ -15,8 +15,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Source version
-VERSION=$(cat .env | grep VERSION | cut -d= -f2)
+# Source .env so IMAGE_PREFIX and VERSION are available to both this script
+# and every `docker compose` child invocation below.
+if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    . ./.env
+    set +a
+fi
+IMAGE_PREFIX="${IMAGE_PREFIX:-deltav}"
 
 log() { echo "==> $*"; }
 err() { echo "ERROR: $*" >&2; exit 1; }
@@ -25,8 +32,8 @@ do_up() {
     log "Starting Delta-V (version $VERSION)..."
 
     # Check a sample daemon image exists (Delta-V layered images)
-    for img in "deltav/trapd:$VERSION" "deltav/minion-boot:$VERSION"; do
-        docker image inspect "$img" >/dev/null 2>&1 || err "Image $img not found. Run ./build.sh deltav first."
+    for img in "$IMAGE_PREFIX/trapd:$VERSION" "$IMAGE_PREFIX/minion-boot:$VERSION"; do
+        docker image inspect "$img" >/dev/null 2>&1 || err "Image $img not found. Run ./build.sh deltav first, or set IMAGE_PREFIX in .env to a registry prefix you've pulled from (e.g. ghcr.io/pbrane)."
     done
 
     local profile="${1:-}"
