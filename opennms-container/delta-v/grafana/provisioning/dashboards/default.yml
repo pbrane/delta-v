@@ -1,6 +1,8 @@
-# Grafana dashboard provider — points at the bind-mounted directory where
-# JSON dashboard files live. Reloads every 30s, allows UI edits but they
-# don't persist across container restarts (the JSON file wins).
+# Grafana dashboard provider — reads the baked-in JSON files under
+# /etc/grafana/dashboards (placed outside the grafanadata volume so image
+# rebuilds refresh the bundled dashboards instead of being shadowed by
+# first-boot volume contents). Reloads every 30s; UI edits don't persist
+# across container restarts (the JSON file wins).
 apiVersion: 1
 
 providers:
@@ -13,5 +15,5 @@ providers:
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /var/lib/grafana/dashboards
+      path: /etc/grafana/dashboards
       foldersFromFilesStructure: false

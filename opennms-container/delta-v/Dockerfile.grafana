@@ -1,0 +1,17 @@
+# Delta-V Grafana image — stock grafana:11.4.0 + baked-in provisioning
+# (datasources, dashboards) for the Delta-V observability stack.
+#
+# Dashboards baked in here are the source of truth at build time; operators
+# who want to customize can layer an override via docker-compose or
+# re-provision through Grafana's UI (persisted in the grafanadata volume).
+FROM grafana/grafana:11.4.0
+
+LABEL org.opencontainers.image.title="Delta-V Grafana" \
+      org.opencontainers.image.description="Grafana with baked-in delta-v provisioning + dashboards"
+
+COPY grafana/provisioning/ /etc/grafana/provisioning/
+# Dashboards under /etc/grafana/dashboards (not /var/lib/grafana/dashboards)
+# so the grafanadata named volume can't shadow them on restart. The
+# provisioner config (provisioning/dashboards/default.yml) points at this
+# path.
+COPY grafana/dashboards/   /etc/grafana/dashboards/

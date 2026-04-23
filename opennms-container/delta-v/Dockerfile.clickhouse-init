@@ -1,0 +1,22 @@
+# Delta-V ClickHouse init sidecar — one-shot DDL bootstrap that applies
+# delta-v's default schema and any user-supplied overrides against a running
+# clickhouse-server. init-runner.sh does env-var substitution on TTL
+# placeholders in the .sql files (sed-based because the clickhouse-server
+# image has no envsubst), so it stays as an external sidecar instead of
+# moving into /docker-entrypoint-initdb.d/ on the main image.
+#
+# Build context: repo root — Dockerfile references paths from both
+# opennms-container/delta-v/clickhouse/ and core/flow-enricher/src/main/proto/.
+FROM clickhouse/clickhouse-server:25.8
+
+LABEL org.opencontainers.image.title="Delta-V ClickHouse Init" \
+      org.opencontainers.image.description="One-shot DDL bootstrap for delta-v ClickHouse"
+
+COPY opennms-container/delta-v/clickhouse/init/           /delta-v/init/
+COPY opennms-container/delta-v/clickhouse/user-init/      /delta-v/user-init/
+COPY opennms-container/delta-v/clickhouse/init-runner.sh  /usr/local/bin/init-runner.sh
+COPY core/flow-enricher/src/main/proto/                   /delta-v/proto/
+
+RUN chmod +x /usr/local/bin/init-runner.sh
+
+ENTRYPOINT ["/bin/bash", "/usr/local/bin/init-runner.sh"]

@@ -1,0 +1,21 @@
+# Delta-V ClickHouse server image — vanilla clickhouse-server + baked-in
+# config.d overrides and protobuf format schemas consumed by the Kafka
+# flow-ingest engine.
+#
+# Build context: repo root (Dockerfile references paths from both
+# opennms-container/delta-v/clickhouse/ and core/flow-enricher/src/main/proto/).
+#
+# The one-shot DDL bootstrap runs from a separate image
+# (Dockerfile.clickhouse-init); this image is the long-running server.
+FROM clickhouse/clickhouse-server:25.8
+
+LABEL org.opencontainers.image.title="Delta-V ClickHouse" \
+      org.opencontainers.image.description="ClickHouse server with baked-in config.d + format schemas"
+
+# format-schema-path.xml tells clickhouse-server where to find .proto files
+# for the Kafka table engine's Protobuf rows.
+COPY opennms-container/delta-v/clickhouse/config.d/ /etc/clickhouse-server/config.d/
+
+# Protobuf schemas used by the Kafka flow-ingest table. Source of truth lives
+# in core/flow-enricher.
+COPY core/flow-enricher/src/main/proto/ /opt/clickhouse/format_schemas/

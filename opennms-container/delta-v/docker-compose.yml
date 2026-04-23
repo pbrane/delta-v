@@ -88,7 +88,7 @@ services:
       JAVA_TOOL_OPTIONS: -Xms256m -Xmx512m
 
   snmp-agent:
-    build: ./mock-snmp-agent
+    image: ${IMAGE_PREFIX:-deltav}/mock-snmp-agent:${VERSION}
     container_name: delta-v-snmp-agent
     hostname: snmp-agent
     healthcheck:
@@ -140,7 +140,7 @@ services:
       - "19081:8080/tcp" # web UI + REST API
 
   l8opensim-provisioner:
-    image: curlimages/curl:8.10.1
+    image: ${IMAGE_PREFIX:-deltav}/l8opensim-provisioner:${VERSION}
     container_name: delta-v-l8opensim-provisioner
     profiles: [lite, full, metrics]
     depends_on:
@@ -163,8 +163,6 @@ services:
                  | grep -o '"id"' | wc -l)
         echo "provisioner: l8opensim now reports $$count devices"
         [ "$$count" -ge 20 ] || { echo "FAIL expected >= 20 devices got $$count"; exit 1; }
-    volumes:
-      - ./l8opensim:/seed:ro
 
   minion:
     image: ${IMAGE_PREFIX:-deltav}/minion-boot:${VERSION}
@@ -260,8 +258,6 @@ services:
       OPENNMS_TSID_NODE_ID: "4"
       OPENNMS_RPC_KAFKA_ENABLED: "true"
       OPENNMS_RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    volumes:
-      - ./pollerd-overlay/etc:/opt/deltav/etc:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -288,8 +284,6 @@ services:
       OPENNMS_HOME: /opt/deltav
       OPENNMS_TIMESERIES_STRATEGY: inmemory
       DELTAV_TIMESERIES_ENABLED: ${DELTAV_TIMESERIES_ENABLED:-true}
-    volumes:
-      - ./collectd-daemon-overlay/etc:/opt/deltav/etc:ro
     stop_grace_period: 60s
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
@@ -320,8 +314,6 @@ services:
       OPENNMS_TSID_NODE_ID: "24"
       RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       RPC_KAFKA_FORCE_REMOTE: "true"
-    volumes:
-      - ./discovery-overlay/etc:/opt/deltav/etc:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -352,8 +344,6 @@ services:
       INTERFACE_NODE_CACHE_REFRESH_MS: "15000"
       OPENNMS_INSTANCE_ID: OpenNMS
       OPENNMS_TSID_NODE_ID: "20"
-    volumes:
-      - ./trapd-overlay/etc:/opt/deltav/etc:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -383,8 +373,6 @@ services:
       INTERFACE_NODE_CACHE_REFRESH_MS: "15000"
       OPENNMS_INSTANCE_ID: OpenNMS
       OPENNMS_TSID_NODE_ID: "21"
-    volumes:
-      - ./syslogd-overlay/etc:/opt/deltav/etc:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -412,8 +400,6 @@ services:
       OPENNMS_HOME: /opt/deltav
       OPENNMS_INSTANCE_ID: OpenNMS
       OPENNMS_TSID_NODE_ID: "22"
-    volumes:
-      - ./eventtranslator-overlay/etc:/opt/deltav/etc:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -442,36 +428,28 @@ services:
       retries: 12
       start_period: 20s
     stop_grace_period: 60s
-    volumes:
-      - ./enlinkd-overlay/etc:/opt/deltav/etc:ro
     depends_on:
       db-init:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
 
-  # One-shot sidecar that seeds the provisiond_imports named volume from
-  # the committed imports-seed/ directory on first boot. Provisiond runs as
-  # uid 100 (opennms), but Docker creates new named volumes root-owned;
-  # the sidecar runs as root to both copy the seed files in and chown the
-  # volume so the subsequent provisiond container can write `last-import`
-  # timestamps without tripping permission errors. When the volume is
-  # already populated the sidecar is a no-op.
+  # One-shot sidecar that seeds the provisiond_imports named volume from the
+  # baked requisition seed (see Dockerfile.provisiond-imports-init) on first
+  # boot. Runs as root so it can chown the freshly-created named volume to
+  # the provisiond runtime uid. When the volume is already populated the
+  # sidecar is a no-op.
+  #
+  # foreign-sources/pending/ is handled entirely inside the provisiond image
+  # itself (baked by Dockerfile.daemon-per's `COPY --chown=opennms:opennms`),
+  # so there's no host bind mount to chown here anymore.
   provisiond-imports-init:
     profiles: [lite, passive, full]
-    image: busybox:1.36
+    image: ${IMAGE_PREFIX:-deltav}/provisiond-imports-init:${VERSION}
     container_name: delta-v-provisiond-imports-init
     user: "0:0"
     volumes:
-      - ./provisiond-overlay/etc/imports-seed:/seed:ro
       - provisiond_imports:/runtime
-      # Bind the host foreign-sources dir so this root-privileged sidecar can
-      # ensure `pending/` exists and is writable by provisiond (uid 100). On
-      # macOS Docker Desktop the VirtioFS UID mapping hides the ownership
-      # mismatch; on Linux it's fatal — provisiond's DirectoryWatcher fails
-      # to create pending/, throws NoSuchFileException, and startup stalls
-      # before any requisition import fires. See delta-v#200.
-      - ./provisiond-overlay/etc/foreign-sources:/foreign-sources
     command:
       - sh
       - -c
@@ -484,10 +462,6 @@ services:
             echo "[provisiond-imports-init] /runtime already populated — leaving alone"
         fi
         chown -R 100:101 /runtime
-        echo "[provisiond-imports-init] Ensuring /foreign-sources/pending exists and is writable"
-        mkdir -p /foreign-sources/pending
-        chown 100:101 /foreign-sources/pending
-        chmod 775 /foreign-sources/pending
 
   provisiond:
     profiles: [lite, passive, full]
@@ -525,25 +499,11 @@ services:
       RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       RPC_KAFKA_FORCE_REMOTE: "true"
     volumes:
-      # Parent overlay is read-write. The named volume below (provisiond_imports)
-      # is the primary target for all provisiond mutation — it persists
-      # last-import timestamps without touching the host tree on Linux,
-      # where Docker honors the nested child mount.
-      #
-      # On macOS Docker Desktop, VirtioFS silently drops the nested child
-      # mount and the container sees the parent bind mount's imports/
-      # directory instead. A read-only parent would break last-import
-      # write-back on macOS (ModelImportException), so :rw is required for
-      # parity. Safety trade-off: provisiond could in theory mutate other
-      # files under /opt/deltav/etc, but nothing in the current codebase
-      # does. The host imports/ directory is gitignored (see .gitignore —
-      # only .gitkeep is tracked) so runtime drift there stays invisible
-      # to git in either deployment mode.
-      #
-      # Long-term fix tracked in memory project_provisiond_cloud_native_requisitions:
-      # move last-import state to PostgreSQL and make the overlay fully
-      # read-only.
-      - ./provisiond-overlay/etc:/opt/deltav/etc:rw
+      # /opt/deltav/etc is baked into the image (see Dockerfile.daemon-per). The
+      # provisiond_imports named volume shadows imports/ so last-import timestamp
+      # writes persist across restarts without a host bind mount. With the parent
+      # bind mount gone, the macOS VirtioFS nested-mount bug is no longer in play
+      # — the named volume mounts cleanly on Linux and macOS alike.
       - provisiond_imports:/opt/deltav/etc/imports
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
@@ -604,8 +564,6 @@ services:
       OPENNMS_TSID_NODE_ID: "7"
       OPENNMS_RPC_KAFKA_ENABLED: "true"
       OPENNMS_RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    volumes:
-      - ./perspectivepollerd-overlay/etc:/opt/deltav/etc:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -660,8 +618,6 @@ services:
       OPENNMS_HOME: /opt/deltav
       OPENNMS_INSTANCE_ID: OpenNMS
       OPENNMS_TSID_NODE_ID: "18"
-    volumes:
-      - ./telemetryd-overlay/etc:/opt/deltav/etc:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -671,7 +627,7 @@ services:
 
   clickhouse:
     profiles: [lite, full, metrics]
-    image: clickhouse/clickhouse-server:25.8
+    image: ${IMAGE_PREFIX:-deltav}/clickhouse:${VERSION}
     container_name: delta-v-clickhouse
     hostname: clickhouse
     restart: unless-stopped
@@ -684,8 +640,6 @@ services:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
       - clickhouse-data:/var/lib/clickhouse
-      - ../../core/flow-enricher/src/main/proto:/opt/clickhouse/format_schemas
-      - ./clickhouse/config.d/format-schema-path.xml:/etc/clickhouse-server/config.d/format-schema-path.xml:ro
     ports:
       - "8123:8123"
       - "9000:9000"
@@ -701,7 +655,7 @@ services:
 
   clickhouse-init:
     profiles: [lite, full, metrics]
-    image: clickhouse/clickhouse-server:25.8
+    image: ${IMAGE_PREFIX:-deltav}/clickhouse-init:${VERSION}
     container_name: delta-v-clickhouse-init
     hostname: clickhouse-init
     restart: "no"
@@ -714,12 +668,6 @@ services:
       CLICKHOUSE_PASSWORD: deltav
       DELTAV_CLICKHOUSE_FLOWS_RAW_TTL_DAYS: "14"
       DELTAV_CLICKHOUSE_FLOWS_AGG_TTL_DAYS: "90"
-    volumes:
-      - ./clickhouse/init:/delta-v/init:ro
-      - ./clickhouse/user-init:/delta-v/user-init:ro
-      - ./clickhouse/init-runner.sh:/usr/local/bin/init-runner.sh:ro
-      - ../../core/flow-enricher/src/main/proto:/delta-v/proto:ro
-    entrypoint: ["/bin/bash", "/usr/local/bin/init-runner.sh"]
 
   flow-enricher:
     profiles: [lite, full, metrics]
@@ -749,7 +697,7 @@ services:
 
   flow-default-testnode-1:
     profiles: [lite, full, metrics]
-    build: ./flow-exporter
+    image: ${IMAGE_PREFIX:-deltav}/flow-exporter:${VERSION}
     container_name: flow-default-testnode-1
     hostname: flow-default-testnode-1
     cap_add:
@@ -767,7 +715,7 @@ services:
 
   flow-sflow-testnode-1:
     profiles: [lite, full, metrics]
-    build: ./sflow-exporter
+    image: ${IMAGE_PREFIX:-deltav}/sflow-exporter:${VERSION}
     container_name: flow-sflow-testnode-1
     hostname: flow-sflow-testnode-1
     cap_add:
@@ -788,7 +736,7 @@ services:
 
   flow-v5-testnode-1:
     profiles: [lite, full, metrics]
-    build: ./flow-exporter
+    image: ${IMAGE_PREFIX:-deltav}/flow-exporter:${VERSION}
     container_name: flow-v5-testnode-1
     hostname: flow-v5-testnode-1
     cap_add:
@@ -849,7 +797,7 @@ services:
       - "18428:8428"
 
   grafana:
-    image: grafana/grafana:11.4.0
+    image: ${IMAGE_PREFIX:-deltav}/grafana:${VERSION}
     profiles: [metrics, metrics-e2e]
     container_name: delta-v-grafana
     hostname: grafana
@@ -872,8 +820,6 @@ services:
       # shows races with readiness — defer to that task's verification gate.
       GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
     volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafanadata:/var/lib/grafana
     healthcheck:
       # Use 127.0.0.1 (not localhost) — BusyBox wget in the Grafana base

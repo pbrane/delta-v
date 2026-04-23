@@ -26,4 +26,10 @@ COPY staging/${DAEMON_NAME}/libs/ /opt/libs/daemon/
 # Thin application JAR (classes + resources only, ~18KB-200KB)
 COPY staging/${DAEMON_NAME}/app/ /opt/app/
 
+# Bake the daemon's config overlay into the image. `--chown=opennms:opennms`
+# guarantees mutable subpaths like provisiond's `foreign-sources/pending/`
+# are writable to the runtime user (previously handled by the
+# provisiond-imports-init sidecar with a uid:100:101 host-path chown).
+COPY --chown=opennms:opennms ${DAEMON_NAME}-overlay/etc /opt/deltav/etc
+
 ENTRYPOINT ["/opt/entrypoint.sh"]

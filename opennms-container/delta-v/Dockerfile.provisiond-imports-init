@@ -1,0 +1,14 @@
+# Delta-V provisiond imports init sidecar — one-shot copy of the committed
+# requisition seed into the provisiond_imports named volume on first boot.
+# Runs as root so it can chown the (fresh) named-volume mount to the opennms
+# runtime uid before provisiond starts up.
+#
+# The old bind-mount + host-path chown for foreign-sources/pending is gone:
+# the provisiond image itself bakes that directory with correct ownership
+# (see Dockerfile.daemon-per's overlay COPY).
+FROM busybox:1.36
+
+LABEL org.opencontainers.image.title="Delta-V Provisiond Imports Init" \
+      org.opencontainers.image.description="Seeds provisiond_imports named volume from baked requisitions"
+
+COPY provisiond-overlay/etc/imports-seed/ /seed/

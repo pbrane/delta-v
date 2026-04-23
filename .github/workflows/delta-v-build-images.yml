@@ -1,6 +1,6 @@
 # Delta-V Build & Push Images
 #
-# Builds all Delta-V Docker images (18 total) and pushes them to GitHub
+# Builds all Delta-V Docker images (26 total) and pushes them to GitHub
 # Container Registry (GHCR) as multi-arch images (linux/amd64 + linux/arm64).
 #
 # Trigger: Push a tag matching 'v*' (e.g., v1.1.0)
@@ -26,10 +26,18 @@
 #     - ghcr.io/<owner>/trapd:<version>
 #
 #   Infrastructure:
-#     - ghcr.io/<owner>/minion-boot:<version>  Spring Boot Minion
-#     - ghcr.io/<owner>/db-init:<version>      Liquibase schema migration
-#     - ghcr.io/<owner>/flow-enricher:<version>      Flow decode + enrich → ClickHouse
-#     - ghcr.io/<owner>/prometheus-writer:<version>  Metrics → Prometheus Remote Write
+#     - ghcr.io/<owner>/minion-boot:<version>              Spring Boot Minion
+#     - ghcr.io/<owner>/db-init:<version>                  Liquibase schema migration
+#     - ghcr.io/<owner>/flow-enricher:<version>            Flow decode + enrich → ClickHouse
+#     - ghcr.io/<owner>/prometheus-writer:<version>        Metrics → Prometheus Remote Write
+#     - ghcr.io/<owner>/clickhouse:<version>               ClickHouse server + baked config.d / format schemas
+#     - ghcr.io/<owner>/clickhouse-init:<version>          One-shot DDL bootstrap sidecar
+#     - ghcr.io/<owner>/grafana:<version>                  Grafana + baked provisioning / dashboards
+#     - ghcr.io/<owner>/provisiond-imports-init:<version>  Seeds requisitions named volume on first boot
+#     - ghcr.io/<owner>/l8opensim-provisioner:<version>    POSTs 20-device seed to l8opensim
+#     - ghcr.io/<owner>/mock-snmp-agent:<version>          Mock SNMP agent (test infra)
+#     - ghcr.io/<owner>/flow-exporter:<version>            NetFlow v5/v9 test-node exporter
+#     - ghcr.io/<owner>/sflow-exporter:<version>           sFlow test-node exporter (hsflowd)
 #
 # Usage after build:
 #   1. Set IMAGE_PREFIX in opennms-container/delta-v/.env:
@@ -229,6 +237,105 @@ jobs:
             --push \
             .
 
+      - name: Build and push deltav/clickhouse image
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -f opennms-container/delta-v/Dockerfile.clickhouse \
+            -t "${{ env.IMAGE_PREFIX }}/clickhouse:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/clickhouse:latest" \
+            --push \
+            .
+
+      - name: Build and push deltav/clickhouse-init image
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -f opennms-container/delta-v/Dockerfile.clickhouse-init \
+            -t "${{ env.IMAGE_PREFIX }}/clickhouse-init:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/clickhouse-init:latest" \
+            --push \
+            .
+
+      - name: Build and push deltav/grafana image
+        working-directory: opennms-container/delta-v
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -f Dockerfile.grafana \
+            -t "${{ env.IMAGE_PREFIX }}/grafana:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/grafana:latest" \
+            --push \
+            .
+
+      - name: Build and push deltav/provisiond-imports-init image
+        working-directory: opennms-container/delta-v
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -f Dockerfile.provisiond-imports-init \
+            -t "${{ env.IMAGE_PREFIX }}/provisiond-imports-init:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/provisiond-imports-init:latest" \
+            --push \
+            .
+
+      - name: Build and push deltav/l8opensim-provisioner image
+        working-directory: opennms-container/delta-v
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -f Dockerfile.l8opensim-provisioner \
+            -t "${{ env.IMAGE_PREFIX }}/l8opensim-provisioner:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/l8opensim-provisioner:latest" \
+            --push \
+            .
+
+      - name: Build and push deltav/mock-snmp-agent image
+        working-directory: opennms-container/delta-v/mock-snmp-agent
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -t "${{ env.IMAGE_PREFIX }}/mock-snmp-agent:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/mock-snmp-agent:latest" \
+            --push \
+            .
+
+      - name: Build and push deltav/flow-exporter image
+        working-directory: opennms-container/delta-v/flow-exporter
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -t "${{ env.IMAGE_PREFIX }}/flow-exporter:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/flow-exporter:latest" \
+            --push \
+            .
+
+      - name: Build and push deltav/sflow-exporter image
+        working-directory: opennms-container/delta-v/sflow-exporter
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -t "${{ env.IMAGE_PREFIX }}/sflow-exporter:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/sflow-exporter:latest" \
+            --push \
+            .
+
       - name: Print image summary
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -250,7 +357,7 @@ jobs:
           echo "     ./deploy.sh up lite"
           echo ""
           echo "### Images"
-          DAEMONS="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd minion-boot db-init flow-enricher prometheus-writer jre-deltav daemon-base"
+          DAEMONS="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd minion-boot db-init flow-enricher prometheus-writer clickhouse clickhouse-init grafana provisiond-imports-init l8opensim-provisioner mock-snmp-agent flow-exporter sflow-exporter jre-deltav daemon-base"
           for name in $DAEMONS; do
             echo "  ${{ env.IMAGE_PREFIX }}/$name:${VERSION}"
           done
