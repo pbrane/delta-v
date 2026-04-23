@@ -465,6 +465,13 @@ services:
     volumes:
       - ./provisiond-overlay/etc/imports-seed:/seed:ro
       - provisiond_imports:/runtime
+      # Bind the host foreign-sources dir so this root-privileged sidecar can
+      # ensure `pending/` exists and is writable by provisiond (uid 100). On
+      # macOS Docker Desktop the VirtioFS UID mapping hides the ownership
+      # mismatch; on Linux it's fatal — provisiond's DirectoryWatcher fails
+      # to create pending/, throws NoSuchFileException, and startup stalls
+      # before any requisition import fires. See delta-v#200.
+      - ./provisiond-overlay/etc/foreign-sources:/foreign-sources
     command:
       - sh
       - -c
@@ -477,6 +484,10 @@ services:
             echo "[provisiond-imports-init] /runtime already populated — leaving alone"
         fi
         chown -R 100:101 /runtime
+        echo "[provisiond-imports-init] Ensuring /foreign-sources/pending exists and is writable"
+        mkdir -p /foreign-sources/pending
+        chown 100:101 /foreign-sources/pending
+        chmod 775 /foreign-sources/pending
 
   provisiond:
     profiles: [lite, passive, full]
