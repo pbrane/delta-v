@@ -244,11 +244,12 @@ cd opennms-container/delta-v
 
 **Current release: v1.1.1** — clean Linux consumer flow. Pull the 18 images from GHCR, `docker compose up`, stack comes up hands-off with 28 seed nodes imported. Full 12-test E2E suite passes in isolation.
 
-**Next release: v1.2.0** — "Delta-V runs well on Kubernetes." Three parallel tracks:
+**Next release: v1.2.0** — "Delta-V runs well on Kubernetes." Four parallel tracks:
 
 - **Container hygiene** — self-contained images (eliminate the remaining bind mounts in `docker-compose.yml` so consumers don't need a git clone). [Design](docs/plans/2026-04-22-v1.2.0-self-contained-images-design.md).
 - **Transport modernization** — Minion Kafka IPC → gRPC via Spring Cloud Gateway (lower latency, lighter dependency, same Gateway will front any future static UI). [Design](docs/plans/2026-04-22-v1.2.0-minion-grpc-migration-design.md).
 - **Operational observability** — Micrometer domain metrics across all 12 daemons so a future K8s operator can autoscale on application-aware signals (backlog depth, throughput, operation latency) instead of CPU/memory. [Design](docs/plans/2026-04-23-v1.2.0-app-observability-design.md).
+- **Historical observability** — Pollerd + PerspectivePollerd publish per-poll response-time samples to the `deltav-timeseries` Kafka topic so service latency lands in VictoriaMetrics alongside SNMP metrics (Kafka Time Series Phase 3). [Design](docs/plans/2026-04-23-v1.2.0-pollerd-timeseries-design.md).
 
 See the [v1.2.0 release plan](docs/plans/2026-04-23-v1.2.0-release-plan.md) for the full scope and forward look at **v1.3.0 candidates** (K8s operator, Nephron analytics replacement, REST API gateway, YAML config migration, SpringServiceDaemon standardization, cloud-native requisitions, static UI).
 
