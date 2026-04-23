@@ -91,6 +91,9 @@ jobs:
           cache: maven
 
       - name: Configure Maven for GitHub Packages
+        # HORIZON_READ_TOKEN is a PAT with read:packages scope on pbrane/delta-v-horizon.
+        # GITHUB_TOKEN is not sufficient here (cross-repo packages access isn't granted
+        # by default, even when the source and target repos have the same owner).
         run: |
           mkdir -p ~/.m2
           cat > ~/.m2/settings.xml << SETTINGS
@@ -98,14 +101,14 @@ jobs:
             <servers>
               <server>
                 <id>github-deltav-horizon</id>
-                <username>${GITHUB_ACTOR}</username>
+                <username>${GITHUB_REPOSITORY_OWNER}</username>
                 <password>${PACKAGES_TOKEN}</password>
               </server>
             </servers>
           </settings>
           SETTINGS
         env:
-          PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGES_TOKEN: ${{ secrets.HORIZON_READ_TOKEN }}
 
       - name: Extract version from POM
         id: version

@@ -39,6 +39,10 @@ jobs:
           cache: maven
 
       - name: Configure Maven for GitHub Packages
+        # HORIZON_READ_TOKEN is a PAT with read:packages scope on pbrane/delta-v-horizon.
+        # GITHUB_TOKEN is not sufficient here: it's scoped to this repo's packages, but
+        # the horizon BOM lives on a different repo owned by the same user, and
+        # cross-repo GitHub Packages reads via GITHUB_TOKEN are not granted by default.
         run: |
           mkdir -p ~/.m2
           cat > ~/.m2/settings.xml << SETTINGS
@@ -46,14 +50,14 @@ jobs:
             <servers>
               <server>
                 <id>github-deltav-horizon</id>
-                <username>${GITHUB_ACTOR}</username>
+                <username>${GITHUB_REPOSITORY_OWNER}</username>
                 <password>${PACKAGES_TOKEN}</password>
               </server>
             </servers>
           </settings>
           SETTINGS
         env:
-          PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGES_TOKEN: ${{ secrets.HORIZON_READ_TOKEN }}
 
       - name: Build all modules
         run: ./mvnw -B -DskipTests install
