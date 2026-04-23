@@ -794,7 +794,7 @@ services:
         ipv4_address: 172.18.0.22
 
   prometheus-writer:
-    image: deltav/prometheus-writer:${ONMS_DELTAV_VERSION:-latest}
+    image: ${IMAGE_PREFIX:-deltav}/prometheus-writer:${VERSION}
     profiles: [lite, full, metrics]
     depends_on:
       db-init:
