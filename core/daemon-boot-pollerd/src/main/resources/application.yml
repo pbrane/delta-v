@@ -31,3 +31,9 @@ opennms:
     kafka:
       enabled: ${OPENNMS_RPC_KAFKA_ENABLED:true}
       bootstrap-servers: ${OPENNMS_RPC_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus

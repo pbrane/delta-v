@@ -64,6 +64,16 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Micrometer Prometheus registry — required for Spring Boot Actuator
+             to register the /actuator/prometheus endpoint at all. Without it,
+             enabling 'prometheus' in management.endpoints.web.exposure.include
+             silently 404s. Pulled into daemon-common so every Spring Boot
+             daemon gets the endpoint by default. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- opennms-config-model — provides eventconf JAXB classes (Event, Events,
              EventMatchers, Partition) used by DaemonEventConfDao for event matching.
              No opennms-model dependency — safe for Spring Boot daemon classpath. -->

@@ -32,7 +32,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,env,detectors,monitors,collectors
+        include: health,info,env,detectors,monitors,collectors,prometheus
   endpoint:
     health:
       show-details: always

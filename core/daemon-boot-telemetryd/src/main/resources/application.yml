@@ -27,3 +27,9 @@ opennms:
     ipc-topic: ${KAFKA_IPC_TOPIC:opennms-ipc-events}
     consumer-group: ${KAFKA_CONSUMER_GROUP:opennms-telemetryd}
     poll-timeout-ms: ${KAFKA_POLL_TIMEOUT_MS:100}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
