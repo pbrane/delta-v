@@ -55,6 +55,15 @@
             <artifactId>kafka-clients</artifactId>
         </dependency>
 
+        <!-- Horizon Dropwizard → Micrometer bridge.
+             Surfaces kafkaRpcMetricRegistry meters at /actuator/prometheus
+             for every daemon that imports KafkaRpcClientConfiguration. -->
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>org.deltav.horizon-metric-bridge</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- opennms-config-model — provides eventconf JAXB classes (Event, Events,
              EventMatchers, Partition) used by DaemonEventConfDao for event matching.
              No opennms-model dependency — safe for Spring Boot daemon classpath. -->

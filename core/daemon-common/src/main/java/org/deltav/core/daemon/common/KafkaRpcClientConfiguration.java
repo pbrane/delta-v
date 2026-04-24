@@ -18,6 +18,7 @@ package org.deltav.core.daemon.common;
 
 import com.codahale.metrics.MetricRegistry;
 
+import org.deltav.horizon.metrics.HorizonMetricsBridge;
 import org.opennms.core.ipc.rpc.kafka.KafkaRpcClientFactory;
 import org.opennms.core.rpc.utils.RpcTargetHelper;
 import org.opennms.core.tracing.api.TracerRegistry;
@@ -60,6 +61,11 @@ public class KafkaRpcClientConfiguration {
     @Bean
     public MetricRegistry kafkaRpcMetricRegistry() {
         return new MetricRegistry();
+    }
+
+    @Bean
+    public HorizonMetricsBridge kafkaRpcMetricsBridge(MetricRegistry kafkaRpcMetricRegistry) {
+        return new HorizonMetricsBridge(kafkaRpcMetricRegistry, "opennms");
     }
 
     @Bean

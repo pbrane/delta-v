@@ -29,6 +29,7 @@ import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 
 import org.deltav.core.daemon.common.JdbcDistPollerDao;
 import org.deltav.core.daemon.common.JdbcInterfaceToNodeCache;
+import org.deltav.horizon.metrics.HorizonMetricsBridge;
 import org.opennms.netmgt.config.SyslogdConfig;
 import org.opennms.netmgt.config.syslogd.SyslogdConfigurationGroup;
 import org.opennms.netmgt.config.syslogd.HideMatch;
@@ -116,6 +117,11 @@ public class SyslogdConfiguration {
     @Bean
     public MetricRegistry syslogdMetricRegistry() {
         return new MetricRegistry();
+    }
+
+    @Bean
+    public HorizonMetricsBridge syslogdMetricsBridge(MetricRegistry syslogdMetricRegistry) {
+        return new HorizonMetricsBridge(syslogdMetricRegistry, "opennms");
     }
 
     @Bean

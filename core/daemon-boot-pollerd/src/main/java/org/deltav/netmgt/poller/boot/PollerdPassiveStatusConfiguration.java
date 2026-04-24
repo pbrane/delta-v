@@ -20,6 +20,7 @@ import javax.sql.DataSource;
 
 import com.codahale.metrics.MetricRegistry;
 
+import org.deltav.horizon.metrics.HorizonMetricsBridge;
 import org.opennms.core.ipc.twin.common.LocalTwinSubscriberImpl;
 import org.opennms.core.ipc.twin.kafka.publisher.KafkaTwinPublisher;
 import org.opennms.core.tracing.api.TracerRegistry;
@@ -65,11 +66,22 @@ public class PollerdPassiveStatusConfiguration {
         return new LocalTwinSubscriberImpl(twinIdentity);
     }
 
+    @Bean
+    public MetricRegistry pollerdTwinMetricRegistry() {
+        return new MetricRegistry();
+    }
+
+    @Bean
+    public HorizonMetricsBridge pollerdTwinMetricsBridge(MetricRegistry pollerdTwinMetricRegistry) {
+        return new HorizonMetricsBridge(pollerdTwinMetricRegistry, "opennms");
+    }
+
     @Bean(initMethod = "init", destroyMethod = "close")
     public KafkaTwinPublisher kafkaTwinPublisher(
             LocalTwinSubscriberImpl localTwinSubscriber,
-            TracerRegistry tracerRegistry) {
-        return new KafkaTwinPublisher(localTwinSubscriber, tracerRegistry, new MetricRegistry());
+            TracerRegistry tracerRegistry,
+            MetricRegistry pollerdTwinMetricRegistry) {
+        return new KafkaTwinPublisher(localTwinSubscriber, tracerRegistry, pollerdTwinMetricRegistry);
     }
 
     @Bean(initMethod = "init", destroyMethod = "close")

@@ -19,6 +19,7 @@ package org.deltav.minion.common;
 import java.util.Properties;
 
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.deltav.horizon.metrics.HorizonMetricsBridge;
 import org.opennms.core.ipc.sink.api.MessageDispatcherFactory;
 import org.opennms.core.ipc.sink.kafka.client.KafkaRemoteMessageDispatcherFactory;
 import org.opennms.core.tracing.api.TracerRegistry;
@@ -52,10 +53,21 @@ public class KafkaSinkClientConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSinkClientConfiguration.class);
 
     @Bean
+    public MetricRegistry minionSinkMetricRegistry() {
+        return new MetricRegistry();
+    }
+
+    @Bean
+    public HorizonMetricsBridge minionSinkMetricsBridge(MetricRegistry minionSinkMetricRegistry) {
+        return new HorizonMetricsBridge(minionSinkMetricRegistry, "opennms");
+    }
+
+    @Bean
     public KafkaRemoteMessageDispatcherFactory kafkaRemoteMessageDispatcherFactory(
             @Value("${opennms.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
             MinionIdentity minionIdentity,
-            TracerRegistry tracerRegistry) {
+            TracerRegistry tracerRegistry,
+            MetricRegistry minionSinkMetricRegistry) {
 
         Properties kafkaProps = new Properties();
         kafkaProps.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -65,7 +77,7 @@ public class KafkaSinkClientConfiguration {
         factory.setBundleContext(null);
         factory.setTracerRegistry(tracerRegistry);
         factory.setIdentity(minionIdentity);
-        factory.setMetrics(new MetricRegistry());
+        factory.setMetrics(minionSinkMetricRegistry);
 
         return factory;
     }

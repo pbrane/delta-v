@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 import com.codahale.metrics.MetricRegistry;
 
 import org.deltav.core.daemon.common.NoOpTracerRegistry;
+import org.deltav.horizon.metrics.HorizonMetricsBridge;
 import org.opennms.core.ipc.sink.api.MessageConsumerManager;
 import org.opennms.core.ipc.sink.api.MessageDispatcherFactory;
 import org.opennms.core.ipc.twin.api.LocalTwinSubscriber;
@@ -107,6 +108,11 @@ public class TelemetrydDaemonConfiguration {
     @Bean
     public MetricRegistry metricRegistry() {
         return new MetricRegistry();
+    }
+
+    @Bean
+    public HorizonMetricsBridge telemetrydMetricsBridge(MetricRegistry metricRegistry) {
+        return new HorizonMetricsBridge(metricRegistry, "opennms");
     }
 
     /**

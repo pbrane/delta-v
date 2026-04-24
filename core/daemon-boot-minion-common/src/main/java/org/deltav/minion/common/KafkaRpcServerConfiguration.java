@@ -19,6 +19,7 @@ package org.deltav.minion.common;
 import java.util.Properties;
 
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.deltav.horizon.metrics.HorizonMetricsBridge;
 import org.opennms.core.ipc.rpc.kafka.KafkaRpcServerManager;
 import org.opennms.core.rpc.api.RpcModule;
 import org.opennms.core.tracing.api.TracerRegistry;
@@ -48,18 +49,28 @@ public class KafkaRpcServerConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRpcServerConfiguration.class);
 
     @Bean
+    public MetricRegistry minionRpcServerMetricRegistry() {
+        return new MetricRegistry();
+    }
+
+    @Bean
+    public HorizonMetricsBridge minionRpcServerMetricsBridge(MetricRegistry minionRpcServerMetricRegistry) {
+        return new HorizonMetricsBridge(minionRpcServerMetricRegistry, "opennms");
+    }
+
+    @Bean
     public KafkaRpcServerManager kafkaRpcServerManager(
             @Value("${opennms.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
             MinionIdentity minionIdentity,
-            TracerRegistry tracerRegistry) {
+            TracerRegistry tracerRegistry,
+            MetricRegistry minionRpcServerMetricRegistry) {
 
         Properties kafkaProperties = new Properties();
         kafkaProperties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 
         SpringKafkaConfigProvider configProvider = new SpringKafkaConfigProvider(kafkaProperties);
-        MetricRegistry metricRegistry = new MetricRegistry();
 
-        return new KafkaRpcServerManager(configProvider, minionIdentity, tracerRegistry, metricRegistry);
+        return new KafkaRpcServerManager(configProvider, minionIdentity, tracerRegistry, minionRpcServerMetricRegistry);
     }
 
     @Bean

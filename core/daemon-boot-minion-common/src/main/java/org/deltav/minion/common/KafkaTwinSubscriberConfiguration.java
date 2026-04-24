@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Properties;
 
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.deltav.horizon.metrics.HorizonMetricsBridge;
 import org.opennms.core.ipc.twin.api.TwinSubscriber;
 import org.opennms.core.ipc.twin.kafka.subscriber.KafkaTwinSubscriber;
 import org.opennms.core.tracing.api.TracerRegistry;
@@ -51,10 +52,21 @@ public class KafkaTwinSubscriberConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTwinSubscriberConfiguration.class);
 
     @Bean
+    public MetricRegistry minionTwinSubscriberMetricRegistry() {
+        return new MetricRegistry();
+    }
+
+    @Bean
+    public HorizonMetricsBridge minionTwinSubscriberMetricsBridge(MetricRegistry minionTwinSubscriberMetricRegistry) {
+        return new HorizonMetricsBridge(minionTwinSubscriberMetricRegistry, "opennms");
+    }
+
+    @Bean
     public KafkaTwinSubscriber kafkaTwinSubscriber(
             @Value("${opennms.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
             MinionIdentity minionIdentity,
-            TracerRegistry tracerRegistry) {
+            TracerRegistry tracerRegistry,
+            MetricRegistry minionTwinSubscriberMetricRegistry) {
 
         Properties kafkaProps = new Properties();
         kafkaProps.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -63,7 +75,7 @@ public class KafkaTwinSubscriberConfiguration {
                 minionIdentity,
                 new SpringKafkaConfigProvider(kafkaProps),
                 tracerRegistry,
-                new MetricRegistry());
+                minionTwinSubscriberMetricRegistry);
     }
 
     /**
