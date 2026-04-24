@@ -25,6 +25,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
 import org.opennms.netmgt.config.EventTranslatorConfig;
 import org.opennms.netmgt.config.EventTranslatorConfigFactory;
@@ -86,8 +88,9 @@ public class EventTranslatorBootConfiguration {
     public EventTranslator eventTranslator(
             EventIpcManager eventIpcManager,
             EventTranslatorConfig config,
-            DataSource dataSource) {
-        var translator = new EventTranslator();
+            DataSource dataSource,
+            MeterRegistry meterRegistry) {
+        var translator = new CountingEventTranslator(meterRegistry);
         translator.setEventManager(eventIpcManager);
         translator.setConfig(config);
         translator.setDataSource(dataSource);
