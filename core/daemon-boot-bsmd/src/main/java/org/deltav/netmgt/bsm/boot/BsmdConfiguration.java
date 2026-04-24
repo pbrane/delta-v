@@ -77,6 +77,9 @@ import org.opennms.netmgt.model.jakarta.converter.NodeLabelSourceConverter;
 import org.opennms.netmgt.model.jakarta.converter.NodeTypeConverter;
 import org.opennms.netmgt.model.jakarta.converter.OnmsSeverityConverter;
 import org.opennms.netmgt.model.jakarta.converter.PrimaryTypeConverter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -220,19 +223,28 @@ public class BsmdConfiguration {
      */
     @Bean
     public org.opennms.netmgt.bsm.service.AlarmProvider alarmProvider(
-            org.opennms.netmgt.dao.api.AlarmDao alarmDao) {
-        return reductionKeys -> {
+            org.opennms.netmgt.dao.api.AlarmDao alarmDao,
+            MeterRegistry meterRegistry) {
+        Timer lookupTimer = meterRegistry.timer(BsmdDomainMetrics.ALARM_LOOKUP_DURATION);
+        return reductionKeys -> lookupTimer.record(() -> {
+            meterRegistry.counter(BsmdDomainMetrics.ALARM_LOOKUPS).increment();
             if (reductionKeys == null || reductionKeys.isEmpty()) {
                 return new HashMap<>();
             }
-            return alarmDao.findAll().stream()
+            meterRegistry.counter(BsmdDomainMetrics.ALARM_LOOKUP_KEYS_REQUESTED)
+                    .increment(reductionKeys.size());
+            var matches = alarmDao.findAll().stream()
                     .filter(a -> reductionKeys.contains(a.getReductionKey()))
                     .collect(java.util.stream.Collectors.toMap(
                             OnmsAlarm::getReductionKey,
                             a -> (org.opennms.netmgt.bsm.service.model.AlarmWrapper)
                                     new org.opennms.netmgt.bsm.service.internal.AlarmWrapperImpl(a)));
-        };
+            meterRegistry.counter(BsmdDomainMetrics.ALARM_LOOKUP_KEYS_MATCHED)
+                    .increment(matches.size());
+            return matches;
+        });
     }
+
 
     @Bean
     public BusinessServiceStateMachine businessServiceStateMachine(
