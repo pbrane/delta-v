@@ -1,0 +1,149 @@
+---
+# Dev/test JVM override for Delta-V.
+#
+# Applied on top of docker-compose.yml for resource-constrained lab VMs.
+# Trims heap/metaspace/thread-stack allocations per daemon based on empirical
+# usage observed in the v1.2.0-alpha2 clean-VM smoke test (28 nodes, lab scale):
+#
+#   daemon       | heap used | lean -Xmx  | prod -Xmx
+#   -------------|-----------|------------|----------
+#   pollerd      |    86 MB  | 192 MB     |   1 GB
+#   collectd     |   277 MB  | 384 MB     |   1 GB
+#   provisiond   |   350 MB  | 512 MB     |   1 GB
+#   (others)     | < 200 MB  | 192 MB     | 512 MB
+#
+# Stack-wide RSS saving at lab scale: ~2–3 GB vs the production-shaped defaults.
+#
+# Additional JVM tuning (applied to all daemons):
+#   -XX:+UseSerialGC   — serial GC beats G1 on heaps under ~256 MB (lower native
+#                        overhead, no concurrent-collector bookkeeping).
+#   -Xss256k           — thread stacks from 1 MB default to 256 KB; saves
+#                        ~40 MB across 50+ threads. Risks StackOverflowError on
+#                        deeply recursive code; Spring Boot / Kafka / Hibernate
+#                        stacks fit comfortably.
+#   -XX:MaxMetaspaceSize=256m — retained from prod defaults; observed metaspace
+#                        peaks around 160 MB, so 256 MB is still ample.
+#
+# Intentionally NOT set here:
+#   -XX:TieredStopAtLevel=1  (skip C2 JIT; saves ~80 MB code cache but costs
+#                             20–40% throughput — OK for tinkering, but makes
+#                             smoke tests feel sluggish. Uncomment per-daemon if
+#                             you want the smaller footprint and can tolerate it.)
+#
+# Usage:
+#   # Prod-shaped (current behavior):
+#   docker compose --profile metrics up -d
+#
+#   # Lean for lab VM:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile metrics up -d
+#
+# Because docker-compose merges env-var keys by replacement (not concatenation),
+# each daemon's JAVA_OPTS below must restate the -D system properties from
+# docker-compose.yml verbatim. If a new -D property is added to the base file
+# for an overridden daemon, mirror it here.
+
+services:
+
+  # Minions — lab-scale tuning. Both share the same lean config.
+  minion:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+        -Djava.security.egd=file:/dev/./urandom
+
+  minion-lab:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+        -Djava.security.egd=file:/dev/./urandom
+
+  # Dispatcher tier — 1 GB heaps → trimmed per observed usage.
+  pollerd:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+        -Dorg.opennms.core.ipc.twin.kafka.bootstrap.servers=kafka:9092
+        -Dorg.opennms.core.ipc.rpc.force-remote=true
+
+  collectd:
+    environment:
+      JAVA_OPTS: >-
+        -Xms128m -Xmx384m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+        -Dorg.opennms.tsid.node-id=5
+
+  provisiond:
+    environment:
+      JAVA_OPTS: >-
+        -Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+
+  perspectivepollerd:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+        -Dorg.opennms.core.ipc.rpc.force-remote=true
+
+  alarmd:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+
+  # Event-handler tier — 512 MB heaps → trimmed per observed usage.
+  discovery:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+
+  trapd:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+
+  syslogd:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+
+  eventtranslator:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+
+  enlinkd:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+        -Dopennms.home=/opt/deltav
+
+  bsmd:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+        -Dorg.opennms.alarms.snapshot.sync.ms=10000
+
+  telemetryd:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k
+        -Dorg.opennms.core.ipc.sink.kafka.bootstrap.servers=kafka:9092
+        -Dorg.opennms.core.ipc.sink.kafka.group.id=opennms-telemetryd-sink
+        -Dorg.opennms.core.ipc.twin.kafka.bootstrap.servers=kafka:9092
+
+  flow-enricher:
+    environment:
+      JAVA_OPTS: >-
+        -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
+        -XX:+UseSerialGC -Xss256k

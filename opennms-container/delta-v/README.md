@@ -114,6 +114,16 @@ cd opennms-container/delta-v
 ./deploy.sh test
 ```
 
+#### Dev/test deployments — lean JVM overrides
+
+On resource-constrained lab VMs, layer `docker-compose.dev.yml` on top of the base file to shrink JVM heap / metaspace / thread-stack allocations per daemon. Saves ~2–3 GB of stack-wide RSS at lab scale (28 nodes); numbers calibrated from empirical `jcmd GC.heap_info` on the v1.2.0-alpha2 smoke test.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile metrics up -d
+```
+
+Only use the override for dev/test — the production-shaped defaults in `docker-compose.yml` are sized for real target counts. See the comment block at the top of `docker-compose.dev.yml` for per-daemon sizing rationale.
+
 **No Web UI.** The legacy OpenNMS JSP webapp has been removed from the Maven reactor (`opennms-webapp` + `opennms-webapp-rest`). Operator observability lives on each daemon's Spring Boot Actuator:
 
 ```bash
