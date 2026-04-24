@@ -18,9 +18,10 @@ package org.deltav.netmgt.alarmd.boot;
 
 
 
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
 import org.opennms.netmgt.dao.api.AlarmEntityNotifier;
-import org.opennms.netmgt.model.OnmsSeverity;
 import org.opennms.netmgt.alarmd.Alarmd;
 import org.opennms.netmgt.alarmd.AlarmLifecycleListenerManager;
 import org.opennms.netmgt.alarmd.AlarmPersister;
@@ -161,27 +162,15 @@ public class AlarmdConfiguration {
     }
 
     /**
-     * No-op AlarmEntityNotifier — alarm lifecycle notifications are not needed
-     * until REST API or BSMd integration is added.
+     * Counting AlarmEntityNotifier — increments {@code deltav_alarmd_alarms_*}
+     * Micrometer counters on every lifecycle notification. Downstream listener
+     * integration (BSMd, REST callers) is tracked in memory
+     * {@code project_alarmd_alarm_lifecycle_gap}; this bean only surfaces
+     * domain signal, it does not forward events.
      */
     @Bean
-    public AlarmEntityNotifier alarmEntityNotifier() {
-        return new AlarmEntityNotifier() {
-            @Override public void didCreateAlarm(OnmsAlarm alarm) {}
-            @Override public void didUpdateAlarmWithReducedEvent(OnmsAlarm alarm) {}
-            @Override public void didAcknowledgeAlarm(OnmsAlarm alarm, String u, java.util.Date d) {}
-            @Override public void didUnacknowledgeAlarm(OnmsAlarm alarm, String u, java.util.Date d) {}
-            @Override public void didUpdateAlarmSeverity(OnmsAlarm alarm, OnmsSeverity s) {}
-            @Override public void didArchiveAlarm(OnmsAlarm alarm, String k) {}
-            @Override public void didDeleteAlarm(OnmsAlarm alarm) {}
-            @Override public void didUpdateStickyMemo(OnmsAlarm a, String b, String au, java.util.Date d) {}
-            @Override public void didUpdateReductionKeyMemo(OnmsAlarm a, String b, String au, java.util.Date d) {}
-            @Override public void didDeleteStickyMemo(OnmsAlarm a, OnmsMemo m) {}
-            @Override public void didDeleteReductionKeyMemo(OnmsAlarm a, OnmsReductionKeyMemo m) {}
-            @Override public void didUpdateLastAutomationTime(OnmsAlarm a, java.util.Date d) {}
-            @Override public void didUpdateRelatedAlarms(OnmsAlarm a, java.util.Set<OnmsAlarm> s) {}
-            @Override public void didChangeTicketStateForAlarm(OnmsAlarm a, org.opennms.netmgt.model.TroubleTicketState s) {}
-        };
+    public AlarmEntityNotifier alarmEntityNotifier(MeterRegistry meterRegistry) {
+        return new CountingAlarmEntityNotifier(meterRegistry);
     }
 
     @Bean
