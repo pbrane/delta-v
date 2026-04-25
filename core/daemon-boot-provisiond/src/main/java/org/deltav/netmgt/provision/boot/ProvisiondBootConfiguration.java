@@ -28,6 +28,7 @@ import javax.sql.DataSource;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import org.opennms.netmgt.config.SnmpAssetAdapterConfig;
 import org.opennms.netmgt.config.SnmpAssetAdapterConfigFactory;
@@ -288,10 +289,20 @@ public class ProvisiondBootConfiguration {
     // Section 5: Event Forwarder
     // ===================================================================
 
+    /**
+     * Wraps the upstream {@link EventForwarder} with {@link CountingProvisionEventForwarder}
+     * (Micrometer counters per provisiond lifecycle UEI) and then with
+     * {@link QualifiedEventForwarder} (the {@code @Qualifier("transactionAware")}
+     * marker bean). The chain order is intentional: counting must see every
+     * outbound event, including those that {@code QualifiedEventForwarder}
+     * would otherwise pass through unchanged today but might mediate later.
+     */
     @Bean
     @Qualifier("transactionAware")
-    public EventForwarder transactionAwareEventForwarder(EventForwarder eventForwarder) {
-        return new QualifiedEventForwarder(eventForwarder);
+    public EventForwarder transactionAwareEventForwarder(EventForwarder eventForwarder,
+                                                         MeterRegistry meterRegistry) {
+        return new QualifiedEventForwarder(
+                new CountingProvisionEventForwarder(eventForwarder, meterRegistry));
     }
 
     // ===================================================================
