@@ -26,6 +26,7 @@ import javax.sql.DataSource;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
 import org.deltav.core.daemon.common.JdbcDistPollerDao;
@@ -186,19 +187,33 @@ public class DiscoveryBootConfiguration {
         return new RangeChunker(filter);
     }
 
+    /**
+     * Wraps the discovery daemon's {@link EventForwarder} so that every event
+     * forwarded — and {@code newSuspect} events specifically — increments
+     * Micrometer counters at {@code /actuator/prometheus}. Suspects-found
+     * is the operationally meaningful "discovery is doing real work" signal.
+     */
+    @Bean(name = "countingDiscoveryEventForwarder")
+    public EventForwarder countingDiscoveryEventForwarder(
+            @Qualifier("eventIpcManager") EventForwarder eventForwarder,
+            MeterRegistry meterRegistry) {
+        return new CountingEventForwarder(eventForwarder, meterRegistry);
+    }
+
     @Bean
     public DiscoveryTaskExecutorImpl discoveryTaskExecutor(
             RangeChunker rangeChunker,
             LocationAwarePingClient locationAwarePingClient,
-            @Qualifier("eventIpcManager") EventForwarder eventForwarder) {
-        return new DiscoveryTaskExecutorImpl(rangeChunker, locationAwarePingClient,
-                eventForwarder, null);
+            @Qualifier("countingDiscoveryEventForwarder") EventForwarder eventForwarder,
+            MeterRegistry meterRegistry) {
+        return new CountingDiscoveryTaskExecutor(rangeChunker, locationAwarePingClient,
+                eventForwarder, null, meterRegistry);
     }
 
     @Bean
     public Discovery discovery(DiscoveryConfigurationFactory discoveryConfigFactory,
                                DiscoveryTaskExecutorImpl discoveryTaskExecutor,
-                               @Qualifier("eventIpcManager") EventForwarder eventForwarder) {
+                               @Qualifier("countingDiscoveryEventForwarder") EventForwarder eventForwarder) {
         return new Discovery(discoveryConfigFactory, discoveryTaskExecutor, eventForwarder);
     }
 
