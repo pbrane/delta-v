@@ -42,6 +42,7 @@ import org.opennms.netmgt.dao.api.MonitoredServiceDao;
 import org.opennms.netmgt.dao.api.MonitoringLocationDao;
 import org.opennms.netmgt.dao.api.OutageDao;
 import org.opennms.netmgt.dao.api.SessionUtils;
+import org.opennms.netmgt.events.api.EventForwarder;
 import org.opennms.netmgt.events.api.EventIpcManager;
 import org.opennms.netmgt.events.api.AnnotationBasedEventListenerAdapter;
 import org.opennms.netmgt.perspectivepoller.PerspectivePollerd;
@@ -136,6 +137,14 @@ public class PerspectivePollerdDaemonConfiguration {
      * {@code EventForwarder}, but {@code EventIpcManager} extends
      * {@code EventForwarder}, so passing the EventIpcManager bean is valid.
      * Spring resolves by type compatibility.</p>
+     *
+     * <p>The forwarder slot is wrapped with {@link CountingPerspectiveEventForwarder}
+     * so per-perspective lifecycle UEIs (nodeLostService /
+     * nodeRegainedService) are surfaced at {@code /actuator/prometheus}
+     * as {@code deltav_perspective_*} counters. The unwrapped
+     * {@code EventIpcManager} bean is still used by the
+     * {@code AnnotationBasedEventListenerAdapter} beans for inbound
+     * subscription registration.</p>
      */
     @Bean
     public PerspectivePollerd perspectivePollerd(
@@ -151,10 +160,13 @@ public class PerspectivePollerdDaemonConfiguration {
             ThresholdingService thresholdingService,
             OutageDao outageDao,
             TracerRegistry tracerRegistry,
-            PerspectiveServiceTracker perspectiveServiceTracker) {
+            PerspectiveServiceTracker perspectiveServiceTracker,
+            io.micrometer.core.instrument.MeterRegistry meterRegistry) {
+        EventForwarder countingForwarder =
+                new CountingPerspectiveEventForwarder(eventIpcManager, meterRegistry);
         return new PerspectivePollerd(sessionUtils, monitoringLocationDao, pollerConfig,
                 monitoredServiceDao, locationAwarePollerClient, applicationDao,
-                collectionAgentFactory, persisterFactory, eventIpcManager,
+                collectionAgentFactory, persisterFactory, countingForwarder,
                 thresholdingService, outageDao, tracerRegistry, perspectiveServiceTracker);
     }
 
