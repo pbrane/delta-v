@@ -16,6 +16,9 @@
  */
 package org.deltav.collectd.timeseries;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.deltav.collectd.identity.AgentIdentity;
 import org.deltav.collectd.identity.AgentIdentityHolder;
 import org.opennms.netmgt.collection.api.AttributeGroup;
@@ -47,29 +50,47 @@ public class TimeseriesKafkaPersister implements Persister {
     private final TimeseriesKafkaPublisher publisher;
     private final String collectionPackage;
     private final AgentIdentityHolder holder;
+    private final Counter setsVisited;
+    private final Counter resourcesVisited;
+    private final Counter groupsVisited;
+    private final Counter attributesVisited;
+    private final Counter setsCompleted;
     private CollectionSet capturedSet;
 
     public TimeseriesKafkaPersister(TimeseriesKafkaPublisher publisher,
                                      String collectionPackage,
-                                     AgentIdentityHolder holder) {
+                                     AgentIdentityHolder holder,
+                                     MeterRegistry meterRegistry) {
         this.publisher = publisher;
         this.collectionPackage = collectionPackage;
         this.holder = holder;
+        this.setsVisited       = meterRegistry.counter(CollectdDomainMetrics.COLLECTION_SETS_VISITED);
+        this.resourcesVisited  = meterRegistry.counter(CollectdDomainMetrics.COLLECTION_RESOURCES);
+        this.groupsVisited     = meterRegistry.counter(CollectdDomainMetrics.COLLECTION_GROUPS);
+        this.attributesVisited = meterRegistry.counter(CollectdDomainMetrics.COLLECTION_ATTRIBUTES);
+        this.setsCompleted     = meterRegistry.counter(CollectdDomainMetrics.COLLECTION_SETS_COMPLETED);
     }
 
     @Override
     public void visitCollectionSet(CollectionSet set) {
+        setsVisited.increment();
         this.capturedSet = set;
     }
 
     @Override
-    public void visitResource(CollectionResource resource) { /* no-op */ }
+    public void visitResource(CollectionResource resource) {
+        resourcesVisited.increment();
+    }
 
     @Override
-    public void visitGroup(AttributeGroup group) { /* no-op */ }
+    public void visitGroup(AttributeGroup group) {
+        groupsVisited.increment();
+    }
 
     @Override
-    public void visitAttribute(CollectionAttribute attribute) { /* no-op */ }
+    public void visitAttribute(CollectionAttribute attribute) {
+        attributesVisited.increment();
+    }
 
     @Override
     public void completeAttribute(CollectionAttribute attribute) { /* no-op */ }
@@ -82,6 +103,7 @@ public class TimeseriesKafkaPersister implements Persister {
 
     @Override
     public void completeCollectionSet(CollectionSet set) {
+        setsCompleted.increment();
         try {
             if (capturedSet != null) {
                 AgentIdentity identity = holder.getOrThrow();

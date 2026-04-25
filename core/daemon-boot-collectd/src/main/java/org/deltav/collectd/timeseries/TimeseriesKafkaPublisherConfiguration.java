@@ -170,7 +170,7 @@ public class TimeseriesKafkaPublisherConfiguration {
         public Persister createPersister(ServiceParameters params, RrdRepository repository) {
             return new FanoutPersister(
                     innerFactory.createPersister(params, repository),
-                    new TimeseriesKafkaPersister(publisher, extractCollection(params), holder),
+                    new TimeseriesKafkaPersister(publisher, extractCollection(params), holder, meterRegistry),
                     meterRegistry, failFastInner, failFastKafka);
         }
 
@@ -181,7 +181,7 @@ public class TimeseriesKafkaPublisherConfiguration {
             return new FanoutPersister(
                     innerFactory.createPersister(params, repository, dontPersistCounters,
                             forceStoreByGroup, dontReorderAttributes),
-                    new TimeseriesKafkaPersister(publisher, extractCollection(params), holder),
+                    new TimeseriesKafkaPersister(publisher, extractCollection(params), holder, meterRegistry),
                     meterRegistry, failFastInner, failFastKafka);
         }
 

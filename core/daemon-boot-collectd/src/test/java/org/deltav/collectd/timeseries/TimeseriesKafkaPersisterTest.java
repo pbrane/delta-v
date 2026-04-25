@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.deltav.collectd.identity.AgentIdentityHolder;
 import org.junit.jupiter.api.Test;
 import org.opennms.netmgt.collection.api.AttributeGroup;
@@ -37,7 +38,7 @@ class TimeseriesKafkaPersisterTest {
         AgentIdentityHolder holder = new AgentIdentityHolder();
         holder.set(42, "Site-A");
         TimeseriesKafkaPersister persister =
-                new TimeseriesKafkaPersister(publisher, "critical-infra", holder);
+                new TimeseriesKafkaPersister(publisher, "critical-infra", holder, new SimpleMeterRegistry());
 
         CollectionSet set = mock(CollectionSet.class);
         persister.visitCollectionSet(set);
@@ -52,7 +53,7 @@ class TimeseriesKafkaPersisterTest {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
         AgentIdentityHolder holder = new AgentIdentityHolder();
         TimeseriesKafkaPersister persister =
-                new TimeseriesKafkaPersister(publisher, "default", holder);
+                new TimeseriesKafkaPersister(publisher, "default", holder, new SimpleMeterRegistry());
 
         CollectionSet set = mock(CollectionSet.class);
         persister.visitCollectionSet(set);
@@ -71,7 +72,7 @@ class TimeseriesKafkaPersisterTest {
         AgentIdentityHolder holder = new AgentIdentityHolder();
         holder.set(0, "Default");
         TimeseriesKafkaPersister persister =
-                new TimeseriesKafkaPersister(publisher, "default", holder);
+                new TimeseriesKafkaPersister(publisher, "default", holder, new SimpleMeterRegistry());
 
         CollectionSet set = mock(CollectionSet.class);
         persister.visitCollectionSet(set);
@@ -89,7 +90,7 @@ class TimeseriesKafkaPersisterTest {
         AgentIdentityHolder holder = new AgentIdentityHolder();
         holder.set(-5, "Default");
         TimeseriesKafkaPersister persister =
-                new TimeseriesKafkaPersister(publisher, "default", holder);
+                new TimeseriesKafkaPersister(publisher, "default", holder, new SimpleMeterRegistry());
 
         CollectionSet set = mock(CollectionSet.class);
         persister.visitCollectionSet(set);
@@ -105,7 +106,7 @@ class TimeseriesKafkaPersisterTest {
         AgentIdentityHolder holder = new AgentIdentityHolder();
         holder.set(7, "X");
         TimeseriesKafkaPersister persister =
-                new TimeseriesKafkaPersister(publisher, "default", holder);
+                new TimeseriesKafkaPersister(publisher, "default", holder, new SimpleMeterRegistry());
 
         CollectionSet set = mock(CollectionSet.class);
         persister.completeCollectionSet(set);
@@ -119,7 +120,7 @@ class TimeseriesKafkaPersisterTest {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
         AgentIdentityHolder holder = new AgentIdentityHolder();
         TimeseriesKafkaPersister persister =
-                new TimeseriesKafkaPersister(publisher, "default", holder);
+                new TimeseriesKafkaPersister(publisher, "default", holder, new SimpleMeterRegistry());
 
         persister.visitResource(mock(CollectionResource.class));
         persister.visitGroup(mock(AttributeGroup.class));
@@ -136,7 +137,7 @@ class TimeseriesKafkaPersisterTest {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
         AgentIdentityHolder holder = new AgentIdentityHolder();
         TimeseriesKafkaPersister persister =
-                new TimeseriesKafkaPersister(publisher, "default", holder);
+                new TimeseriesKafkaPersister(publisher, "default", holder, new SimpleMeterRegistry());
 
         persister.persistNumericAttribute(mock(CollectionAttribute.class));
         persister.persistStringAttribute(mock(CollectionAttribute.class));

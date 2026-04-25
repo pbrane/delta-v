@@ -53,7 +53,7 @@ class FanoutPersisterTest {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
         AgentIdentityHolder holder = new AgentIdentityHolder();
         holder.set(1, "Default");
-        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, "default", holder);
+        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, "default", holder, new SimpleMeterRegistry());
         FanoutPersister fanout = new FanoutPersister(inner, kafka, new SimpleMeterRegistry(), false, false);
 
         CollectionSet set = mock(CollectionSet.class);
@@ -78,7 +78,7 @@ class FanoutPersisterTest {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
         AgentIdentityHolder holder = new AgentIdentityHolder();
         holder.set(1, "Default");
-        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, "default", holder);
+        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, "default", holder, new SimpleMeterRegistry());
         FanoutPersister fanout = new FanoutPersister(inner, kafka, new SimpleMeterRegistry(), false, false);
 
         CollectionSet set = mock(CollectionSet.class);
@@ -101,7 +101,7 @@ class FanoutPersisterTest {
         TimeseriesKafkaPublisher publisher = mock(TimeseriesKafkaPublisher.class);
         AgentIdentityHolder holder = new AgentIdentityHolder();
         holder.set(1, "Default");
-        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, "default", holder);
+        TimeseriesKafkaPersister kafka = new TimeseriesKafkaPersister(publisher, "default", holder, new SimpleMeterRegistry());
         FanoutPersister fanout = new FanoutPersister(inner, kafka, new SimpleMeterRegistry(), false, false);
 
         CollectionSet set = mock(CollectionSet.class);
