@@ -22,6 +22,8 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.ObjectProvider;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
@@ -141,21 +143,30 @@ public class PollerdDaemonConfiguration {
     }
 
     /**
-     * PollContext that skips AsyncPollingEngine creation.
+     * PollContext that skips AsyncPollingEngine creation and instruments
+     * every poll with {@code deltav_pollerd_*} Micrometer counters plus
+     * (when {@code deltav.timeseries.enabled=true}) per-poll Kafka publish
+     * via {@link PollResultPublisher}.
      *
-     * <p>{@link StandalonePollContext} overrides {@code afterPropertiesSet()} as a
-     * no-op to avoid loading resilience4j Bulkhead, which is not needed when polls
-     * execute via Kafka RPC to Minion.</p>
+     * <p>The {@link ObjectProvider} for {@link PollResultPublisher} is used
+     * so the bean stays optional — {@code PollerdTimeseriesConfiguration}
+     * is gated by {@code @ConditionalOnProperty}, so the publisher is absent
+     * unless the flag is on. {@link InstrumentedPollContext} treats a null
+     * publisher as "Phase 3 disabled" and still emits Phase 2 counters.</p>
      */
     @Bean
     public PollContext pollContext(EventIpcManager eventIpcManager,
                                   PollerConfig pollerConfig,
                                   QueryManager queryManager,
                                   LocationAwarePingClient locationAwarePingClient,
-                                  TsidFactory tsidFactory) {
+                                  TsidFactory tsidFactory,
+                                  MeterRegistry meterRegistry,
+                                  ObjectProvider<PollResultPublisher> publisherProvider) {
         String localHostName = InetAddressUtils.getLocalHostName();
-        return new StandalonePollContext(eventIpcManager, pollerConfig, queryManager,
-                locationAwarePingClient, tsidFactory, localHostName, "OpenNMS.Poller.DefaultPollContext");
+        return new InstrumentedPollContext(eventIpcManager, pollerConfig, queryManager,
+                locationAwarePingClient, tsidFactory, localHostName,
+                "OpenNMS.Poller.DefaultPollContext",
+                meterRegistry, publisherProvider.getIfAvailable());
     }
 
     /**

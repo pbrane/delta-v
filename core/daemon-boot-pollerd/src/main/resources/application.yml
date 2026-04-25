@@ -14,6 +14,34 @@ spring:
     properties:
       hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
       hibernate.archive.autodetection: none
+  # KafkaAdmin (which provisions deltavTimeseriesTopic in
+  # PollerdTimeseriesConfiguration) binds to spring.kafka.bootstrap-servers.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+  cloud:
+    stream:
+      bindings:
+        publishTimeseries-out-0:
+          destination: deltav-timeseries
+          producer:
+            partition-count: ${DELTAV_TIMESERIES_PARTITIONS:16}
+            use-native-encoding: true
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+          auto-create-topics: true
+        bindings:
+          publishTimeseries-out-0:
+            producer:
+              configuration:
+                key.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+                value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+                compression.type: lz4
+                linger.ms: 50
+                batch.size: 65536
+                acks: all
+                enable.idempotence: true
+                max.in.flight.requests.per.connection: 5
 
 opennms:
   home: ${OPENNMS_HOME:/opt/deltav}
@@ -37,3 +65,10 @@ management:
     web:
       exposure:
         include: health,prometheus
+
+deltav:
+  timeseries:
+    enabled: ${DELTAV_TIMESERIES_ENABLED:false}
+    partitions: ${DELTAV_TIMESERIES_PARTITIONS:16}
+    replication-factor: ${DELTAV_TIMESERIES_REPLICATION_FACTOR:1}
+    retention-days: ${DELTAV_TIMESERIES_RETENTION_DAYS:1}
