@@ -26,6 +26,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import org.deltav.core.daemon.common.JdbcDistPollerDao;
 import org.deltav.core.daemon.common.JdbcInterfaceToNodeCache;
@@ -148,7 +149,8 @@ public class SyslogdConfiguration {
                                                   SyslogdConfig syslogdConfig,
                                                   DistPollerDao distPollerDao,
                                                   EventForwarder eventForwarder,
-                                                  LocationAwareDnsLookupClient locationAwareDnsLookupClient) {
+                                                  LocationAwareDnsLookupClient locationAwareDnsLookupClient,
+                                                  MeterRegistry meterRegistry) {
         // Bridge DNS cache config for SyslogSinkConsumer constructor
         System.setProperty("org.opennms.netmgt.syslogd.dnscache.config", dnsCacheConfig);
 
@@ -160,7 +162,7 @@ public class SyslogdConfiguration {
         // Note: SyslogSinkConsumer.getModule() internally creates its own
         // SyslogSinkModule using its syslogdConfig and distPollerDao.
         // No separate SyslogSinkModule @Bean is needed.
-        return new SyslogSinkConsumer(metricRegistry, messageConsumerManager, syslogdConfig,
-                distPollerDao, eventForwarder, locationAwareDnsLookupClient);
+        return new CountingSyslogSinkConsumer(metricRegistry, messageConsumerManager, syslogdConfig,
+                distPollerDao, eventForwarder, locationAwareDnsLookupClient, meterRegistry);
     }
 }
