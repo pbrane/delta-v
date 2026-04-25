@@ -16,6 +16,8 @@
  */
 package org.deltav.netmgt.telemetry.boot;
 
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.opennms.core.ipc.sink.api.MessageConsumerManager;
 import org.opennms.core.ipc.sink.api.MessageDispatcherFactory;
 import org.springframework.context.annotation.Bean;
@@ -36,8 +38,8 @@ import org.springframework.context.annotation.Configuration;
 public class TelemetrydSinkConfiguration {
 
     @Bean
-    public TelemetryMessageConsumerManager messageConsumerManager() {
-        return new TelemetryMessageConsumerManager();
+    public TelemetryMessageConsumerManager messageConsumerManager(MeterRegistry meterRegistry) {
+        return new TelemetryMessageConsumerManager(meterRegistry);
     }
 
     @Bean

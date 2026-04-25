@@ -21,6 +21,9 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -60,13 +63,16 @@ public class KafkaSinkBridge implements InitializingBean, DisposableBean {
     private static final String DEFAULT_GROUP_ID = "opennms-telemetryd-sink";
 
     private final AbstractMessageConsumerManager consumerManager;
+    private final MeterRegistry meterRegistry;
 
     private volatile SinkModule<?, Message> module;
     private volatile Thread consumerThread;
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
-    public KafkaSinkBridge(AbstractMessageConsumerManager consumerManager) {
+    public KafkaSinkBridge(AbstractMessageConsumerManager consumerManager,
+                           MeterRegistry meterRegistry) {
         this.consumerManager = consumerManager;
+        this.meterRegistry = meterRegistry;
     }
 
     /**
@@ -112,6 +118,23 @@ public class KafkaSinkBridge implements InitializingBean, DisposableBean {
         props.put("auto.commit.interval.ms", "1000");
         props.put("auto.offset.reset", "latest");
 
+        // Pre-resolve per-module meters so the hot path doesn't repeatedly hit
+        // the registry. module.getId() is bounded to the configured queue
+        // count (typically 4-8) so this is a single resolution per bridge.
+        final String moduleId = module.getId();
+        final var packetsReceived = meterRegistry.counter(
+                TelemetrydDomainMetrics.PACKETS_RECEIVED,
+                TelemetrydDomainMetrics.TAG_MODULE, moduleId);
+        final var packetsDispatched = meterRegistry.counter(
+                TelemetrydDomainMetrics.PACKETS_DISPATCHED,
+                TelemetrydDomainMetrics.TAG_MODULE, moduleId);
+        final var dispatchFailures = meterRegistry.counter(
+                TelemetrydDomainMetrics.DISPATCH_FAILURES,
+                TelemetrydDomainMetrics.TAG_MODULE, moduleId);
+        final Timer dispatchDuration = Timer.builder(TelemetrydDomainMetrics.DISPATCH_DURATION)
+                .tag(TelemetrydDomainMetrics.TAG_MODULE, moduleId)
+                .register(meterRegistry);
+
         try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(props)) {
             consumer.subscribe(Collections.singletonList(topic));
 
@@ -119,16 +142,22 @@ public class KafkaSinkBridge implements InitializingBean, DisposableBean {
                 try {
                     ConsumerRecords<String, byte[]> records = consumer.poll(POLL_DURATION);
                     for (ConsumerRecord<String, byte[]> record : records) {
+                        packetsReceived.increment();
+                        Timer.Sample sample = Timer.start(meterRegistry);
                         try {
                             SinkMessage sinkMessage = SinkMessage.parseFrom(record.value());
                             byte[] content = sinkMessage.getContent().toByteArray();
                             Message message = module.unmarshal(content);
                             consumerManager.dispatch(module, message);
+                            packetsDispatched.increment();
                             LOG.debug("Dispatched Sink message from Kafka: module={}, offset={}",
                                     module.getId(), record.offset());
                         } catch (Exception e) {
+                            dispatchFailures.increment();
                             LOG.warn("Error processing Sink message from Kafka (module={}, offset={}): {}",
                                     module.getId(), record.offset(), e.getMessage(), e);
+                        } finally {
+                            sample.stop(dispatchDuration);
                         }
                     }
                 } catch (Throwable t) {

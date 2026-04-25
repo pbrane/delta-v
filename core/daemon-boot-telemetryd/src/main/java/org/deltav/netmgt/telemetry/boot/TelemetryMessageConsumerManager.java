@@ -19,6 +19,8 @@ package org.deltav.netmgt.telemetry.boot;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.opennms.core.ipc.sink.api.Message;
 import org.opennms.core.ipc.sink.api.SinkModule;
 import org.opennms.core.ipc.sink.common.AbstractMessageConsumerManager;
@@ -44,6 +46,11 @@ public class TelemetryMessageConsumerManager extends AbstractMessageConsumerMana
     private static final Logger LOG = LoggerFactory.getLogger(TelemetryMessageConsumerManager.class);
 
     private final Map<String, KafkaSinkBridge> bridges = new ConcurrentHashMap<>();
+    private final MeterRegistry meterRegistry;
+
+    public TelemetryMessageConsumerManager(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
 
     @Override
     @SuppressWarnings("unchecked")
@@ -56,7 +63,7 @@ public class TelemetryMessageConsumerManager extends AbstractMessageConsumerMana
             return;
         }
 
-        KafkaSinkBridge bridge = new KafkaSinkBridge(this);
+        KafkaSinkBridge bridge = new KafkaSinkBridge(this, meterRegistry);
         bridge.setModule(module);
         bridges.put(moduleId, bridge);
 
