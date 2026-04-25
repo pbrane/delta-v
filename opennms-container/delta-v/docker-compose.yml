@@ -258,6 +258,12 @@ services:
       OPENNMS_TSID_NODE_ID: "4"
       OPENNMS_RPC_KAFKA_ENABLED: "true"
       OPENNMS_RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Phase 3 (delta-v#220, v1.2.0-beta2): publish per-poll response-time
+      # samples to the deltav-timeseries Kafka topic. Without this,
+      # PollerdTimeseriesConfiguration's @ConditionalOnProperty stays inactive
+      # and InstrumentedPollContext sees a null PollResultPublisher (Phase 2
+      # /actuator/prometheus counters still emit; Phase 3 publish is a no-op).
+      DELTAV_TIMESERIES_ENABLED: ${DELTAV_TIMESERIES_ENABLED:-true}
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -282,6 +288,14 @@ services:
       SPRING_DATASOURCE_PASSWORD: opennms
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OPENNMS_HOME: /opt/deltav
+      # Vestigial — selects the strategy for horizon's stock TimeseriesPersister
+      # (the "inner" persister inside FanoutPersister). InMemoryStorage is a
+      # black hole in delta-v: nothing reads from it, no Newts, no horizon
+      # webapp. The real TSDB path is the parallel Kafka persister
+      # (TimeseriesKafkaPersister → deltav-timeseries → prometheus-writer →
+      # VictoriaMetrics → Grafana), gated by DELTAV_TIMESERIES_ENABLED below.
+      # Removing this line would let horizon fail-fast on missing strategy
+      # config; documented in memory project_collectd_inner_persister_inert.
       OPENNMS_TIMESERIES_STRATEGY: inmemory
       DELTAV_TIMESERIES_ENABLED: ${DELTAV_TIMESERIES_ENABLED:-true}
     stop_grace_period: 60s
