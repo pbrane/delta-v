@@ -24,6 +24,7 @@ import java.util.List;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
 import org.opennms.core.mate.api.EntityScopeProvider;
@@ -160,9 +161,15 @@ public class EnlinkdDaemonConfiguration {
 
     // ── 4. OnmsTopologyDao ───────────────────────────────────────────
 
+    /**
+     * Wraps the in-memory OnmsTopologyDao with a Micrometer-counting
+     * decorator so every protocol updater's {@code update(...)} call is
+     * surfaced at {@code /actuator/prometheus} as
+     * {@code deltav_enlinkd_topology_updates_total{protocol,status}}.
+     */
     @Bean
-    public OnmsTopologyDao onmsTopologyDao() {
-        return new OnmsTopologyDaoInMemoryImpl();
+    public OnmsTopologyDao onmsTopologyDao(MeterRegistry meterRegistry) {
+        return new CountingOnmsTopologyDao(new OnmsTopologyDaoInMemoryImpl(), meterRegistry);
     }
 
     // ── 5. TopologyEntityCache (no-op) ───────────────────────────────
