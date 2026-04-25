@@ -24,6 +24,7 @@ import javax.sql.DataSource;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import org.deltav.core.daemon.common.DaemonEventConfDao;
 import org.opennms.netmgt.config.api.EventConfDao;
@@ -115,8 +116,9 @@ public class TrapdConfiguration {
                                              @Qualifier("eventIpcManager") EventForwarder eventForwarder,
                                              InterfaceToNodeCache interfaceToNodeCache,
                                              TrapdConfig trapdConfig,
-                                             DistPollerDao distPollerDao) {
-        return new TrapSinkConsumer(messageConsumerManager, eventConfDao, eventForwarder,
-                interfaceToNodeCache, trapdConfig, distPollerDao);
+                                             DistPollerDao distPollerDao,
+                                             MeterRegistry meterRegistry) {
+        return new CountingTrapSinkConsumer(messageConsumerManager, eventConfDao, eventForwarder,
+                interfaceToNodeCache, trapdConfig, distPollerDao, meterRegistry);
     }
 }
