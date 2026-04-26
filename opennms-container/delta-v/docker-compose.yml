@@ -164,6 +164,44 @@ services:
         echo "provisioner: l8opensim now reports $$count devices"
         [ "$$count" -ge 20 ] || { echo "FAIL expected >= 20 devices got $$count"; exit 1; }
 
+  # gRPC-to-Kafka translator for the Minion-facing surface (Heartbeat in rc1;
+  # Sink/RPC channels follow in v1.3). Sole inbound surface for Minions per
+  # the bidirectional zero-trust posture (project_minion_mandatory).
+  minion-gateway:
+    image: ${IMAGE_PREFIX:-deltav}/minion-gateway:${VERSION}
+    container_name: delta-v-minion-gateway
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 30s
+
+  # gRPC ingress in front of minion-gateway. h2c plaintext in rc1 (TLS
+  # termination is rc2 work). Long-lived bidi stream timeouts disabled
+  # per Phase 0 Decision 3.
+  envoy:
+    image: ${IMAGE_PREFIX:-deltav}/envoy:${VERSION}
+    container_name: delta-v-envoy
+    depends_on:
+      minion-gateway:
+        condition: service_healthy
+    ports:
+      - "8443:8443"            # 8443 published so Minions outside the compose network can reach it
+    healthcheck:
+      # curl is installed in our envoy image (upstream image strips all HTTP clients)
+      test: ["CMD-SHELL", "curl -sf http://localhost:9901/ready | grep -q LIVE"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
   minion:
     image: ${IMAGE_PREFIX:-deltav}/minion-boot:${VERSION}
     container_name: delta-v-minion
@@ -172,6 +210,8 @@ services:
       - NET_RAW
     depends_on:
       kafka:
+        condition: service_healthy
+      envoy:
         condition: service_healthy
     # Stub reverse-DNS entries for the mhuot-labs requisition's 172.20.20.x
     # addresses. Without these, getnameinfo() times out ~20s per interface,
@@ -190,6 +230,9 @@ services:
       MINION_ID: minion-default-01
       MINION_LOCATION: Default
       KAFKA_IPC_BOOTSTRAP_SERVERS: kafka:9092
+      MINION_TRANSPORT: ${MINION_TRANSPORT:-grpc}    # rc1 default; set to 'kafka' for emergency rollback (Task 7 wiring)
+      MINION_GATEWAY_HOST: envoy
+      MINION_GATEWAY_PORT: 8443
       JAVA_OPTS: >-
         -Xms256m -Xmx512m
         -Djava.security.egd=file:/dev/./urandom

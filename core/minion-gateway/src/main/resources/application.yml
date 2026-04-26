@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: minion-gateway
+  grpc:
+    server:
+      port: 9090             # h2c plaintext within compose network; TLS terminated at Envoy in front
+      address: 0.0.0.0
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+
+server:
+  port: 8080                 # actuator http port
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    org.deltav.gateway: INFO
+    io.grpc: INFO
+    org.apache.kafka: WARN

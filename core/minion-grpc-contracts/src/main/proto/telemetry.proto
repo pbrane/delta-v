@@ -1,0 +1,28 @@
+// core/minion-grpc-contracts/src/main/proto/telemetry.proto
+syntax = "proto3";
+package org.deltav.minion.grpc.v1;
+option java_package = "org.deltav.minion.grpc.v1";
+option java_multiple_files = true;
+option java_outer_classname = "TelemetryProto";
+
+import "google/protobuf/timestamp.proto";
+
+message TelemetryDatagram {
+  bytes raw = 1;                        // protocol-specific bytes (IPFIX, NetflowN, sFlow)
+  string source_address = 2;
+  int32 source_port = 3;
+  google.protobuf.Timestamp received_at = 4;
+}
+
+message TelemetryAck {
+  google.protobuf.Timestamp received_at = 1;
+}
+
+// rc2: separate methods per protocol so minion-gateway can route to the
+// right OpenNMS.Sink.Telemetry-* topic without inspecting payload.
+service TelemetryService {
+  rpc PublishIpfix(stream TelemetryDatagram) returns (stream TelemetryAck);
+  rpc PublishNetflow5(stream TelemetryDatagram) returns (stream TelemetryAck);
+  rpc PublishNetflow9(stream TelemetryDatagram) returns (stream TelemetryAck);
+  rpc PublishSflow(stream TelemetryDatagram) returns (stream TelemetryAck);
+}

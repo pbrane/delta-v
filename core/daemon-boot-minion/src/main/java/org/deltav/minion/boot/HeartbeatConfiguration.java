@@ -27,6 +27,7 @@ import org.opennms.minion.heartbeat.common.HeartbeatModule;
 import org.opennms.minion.heartbeat.common.MinionIdentityDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -50,7 +51,7 @@ public class HeartbeatConfiguration {
     @Bean(destroyMethod = "cancel")
     public Timer heartbeatTimer(
             MinionIdentity identity,
-            MessageDispatcherFactory dispatcherFactory,
+            @Qualifier("heartbeatDispatcherFactory") MessageDispatcherFactory dispatcherFactory,
             @Value("${spring.application.version:0.0.0}") String version) {
 
         MinionIdentityDTO identityDTO = new MinionIdentityDTO(identity);
