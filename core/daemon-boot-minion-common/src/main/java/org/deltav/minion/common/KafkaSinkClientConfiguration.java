@@ -31,6 +31,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 import com.codahale.metrics.MetricRegistry;
 
@@ -63,6 +64,7 @@ public class KafkaSinkClientConfiguration {
     }
 
     @Bean
+    @Primary
     public KafkaRemoteMessageDispatcherFactory kafkaRemoteMessageDispatcherFactory(
             @Value("${opennms.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
             MinionIdentity minionIdentity,

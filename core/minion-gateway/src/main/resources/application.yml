@@ -3,7 +3,7 @@ spring:
     name: minion-gateway
   grpc:
     server:
-      port: 50051            # h2c plaintext within compose network; TLS terminated at Envoy in front
+      port: 9090             # h2c plaintext within compose network; TLS terminated at Envoy in front
       address: 0.0.0.0
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
