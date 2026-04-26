@@ -62,6 +62,7 @@
     <module>core/deltav-kafka-contracts</module>
     <module>core/event-forwarder-kafka</module>
     <module>core/horizon-metric-bridge</module>
+    <module>core/minion-grpc-contracts</module>
     <module>core/opennms-model-jakarta</module>
 
     <!-- Daemon boots (Spring Boot fat JARs) -->

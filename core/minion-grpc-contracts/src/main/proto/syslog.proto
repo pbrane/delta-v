@@ -1,0 +1,25 @@
+// core/minion-grpc-contracts/src/main/proto/syslog.proto
+syntax = "proto3";
+package org.deltav.minion.grpc.v1;
+option java_package = "org.deltav.minion.grpc.v1";
+option java_multiple_files = true;
+option java_outer_classname = "SyslogProto";
+
+import "google/protobuf/timestamp.proto";
+
+message SyslogMessage {
+  bytes raw = 1;                        // exact UDP datagram bytes
+  string source_address = 2;
+  int32 source_port = 3;
+  google.protobuf.Timestamp received_at = 4;
+}
+
+message SyslogAck {
+  google.protobuf.Timestamp received_at = 1;
+}
+
+// rc2 implementation; rc1 ships definition only so the wire format is stable
+// before any client/server code lands.
+service SyslogService {
+  rpc Publish(stream SyslogMessage) returns (stream SyslogAck);
+}

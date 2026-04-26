@@ -1,0 +1,24 @@
+// core/minion-grpc-contracts/src/main/proto/trap.proto
+syntax = "proto3";
+package org.deltav.minion.grpc.v1;
+option java_package = "org.deltav.minion.grpc.v1";
+option java_multiple_files = true;
+option java_outer_classname = "TrapProto";
+
+import "google/protobuf/timestamp.proto";
+
+message SnmpTrap {
+  bytes raw = 1;                        // raw SNMP PDU
+  string source_address = 2;
+  int32 source_port = 3;
+  google.protobuf.Timestamp received_at = 4;
+}
+
+message TrapAck {
+  google.protobuf.Timestamp received_at = 1;
+}
+
+// rc2 implementation; rc1 ships definition only.
+service TrapService {
+  rpc Publish(stream SnmpTrap) returns (stream TrapAck);
+}
