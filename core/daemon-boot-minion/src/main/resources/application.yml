@@ -8,6 +8,10 @@ opennms:
   minion:
     id: ${MINION_ID:minion-default-01}
     location: ${MINION_LOCATION:Default}
+    transport: ${MINION_TRANSPORT:grpc}
+    gateway:
+      host: ${MINION_GATEWAY_HOST:envoy}
+      port: ${MINION_GATEWAY_PORT:8443}
     rpc.enabled: true
     sink.enabled: true
     twin.enabled: true

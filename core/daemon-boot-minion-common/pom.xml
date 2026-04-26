@@ -220,6 +220,37 @@
         </dependency>
 
         <!-- ============================================================ -->
+        <!-- gRPC: Minion sink contracts + Spring gRPC starter + Netty    -->
+        <!-- ============================================================ -->
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>org.opennms.core.minion-grpc-contracts</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.grpc</groupId>
+            <artifactId>spring-grpc-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+        </dependency>
+
+        <!-- ============================================================ -->
+        <!-- Minion heartbeat common (MinionIdentityDTO, HeartbeatModule) -->
+        <!-- Required by GrpcMessageDispatcherFactory                     -->
+        <!-- ============================================================ -->
+        <dependency>
+            <groupId>org.opennms.features.minion.heartbeat</groupId>
+            <artifactId>org.opennms.features.minion.heartbeat.common</artifactId>
+            <exclusions>
+                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion>
+                <exclusion><groupId>org.ops4j.pax.logging</groupId><artifactId>pax-logging-api</artifactId></exclusion>
+                <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- ============================================================ -->
         <!-- DAO APIs (DistPollerDao): exclude opennms-model                -->
         <!-- ============================================================ -->
         <dependency>
@@ -293,6 +324,22 @@
                 <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
             </exclusions>
         </dependency>
+
+        <!-- gRPC in-process server/channel for GrpcMessageDispatcherFactoryTest -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-inprocess</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Required by maven-surefire-plugin 3.5.x to discover JUnit Platform 6.x tests
+             (Spring Boot 4 brings junit-jupiter 6.x, which transitively includes
+             junit-platform-engine, but not junit-platform-launcher). -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -313,18 +360,6 @@
                         <includeJUnit5Engine>junit-jupiter</includeJUnit5Engine>
                     </includeJUnit5Engines>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.junit.jupiter</groupId>
-                        <artifactId>junit-jupiter-engine</artifactId>
-                        <version>5.12.2</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.junit.platform</groupId>
-                        <artifactId>junit-platform-launcher</artifactId>
-                        <version>1.12.2</version>
-                    </dependency>
-                </dependencies>
             </plugin>
         </plugins>
     </build>

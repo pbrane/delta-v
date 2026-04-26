@@ -24,6 +24,16 @@ public class MinionProperties {
     private String id = "00000000-0000-0000-0000-000000000001";
     private String location = "Default";
 
+    /**
+     * Heartbeat transport selection. {@code grpc} (default) routes Heartbeat
+     * via {@link org.deltav.minion.common.grpc.GrpcMessageDispatcherFactory};
+     * {@code kafka} aliases the primary Kafka factory under the same bean
+     * name (rollback path). Other sinks remain on Kafka in rc1 regardless.
+     */
+    private String transport = "grpc";
+
+    private final Gateway gateway = new Gateway();
+
     public String getId() {
         return id;
     }
@@ -38,5 +48,38 @@ public class MinionProperties {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getTransport() {
+        return transport;
+    }
+
+    public void setTransport(String transport) {
+        this.transport = transport;
+    }
+
+    public Gateway getGateway() {
+        return gateway;
+    }
+
+    public static class Gateway {
+        private String host = "envoy";
+        private int port = 8443;
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        public void setPort(int port) {
+            this.port = port;
+        }
     }
 }
