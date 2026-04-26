@@ -16,7 +16,7 @@ gh pr create ...  # defaults to OpenNMS/opennms
 
 ## Project Overview
 
-OpenNMS Horizon is an enterprise-grade open-source network monitoring platform. Version 36.0.0-SNAPSHOT, licensed under AGPL v3. Java 17 required (enforced range `[17,18)`).
+OpenNMS Horizon is an enterprise-grade open-source network monitoring platform. Version 36.0.0-SNAPSHOT, licensed under AGPL v3. Java 21 required (`<java.version>21</java.version>` set in root `pom.xml` and every `core/*` module pom).
 
 ## Build Commands
 
@@ -118,7 +118,7 @@ OpenNMS embeds Apache Karaf (4.3.10) as an OSGi container. Karaf is embedded *ab
 
 | Layer | Technology |
 |-------|-----------|
-| Language | Java 17 |
+| Language | Java 21 |
 | Build | Maven (bundled), Perl wrapper scripts |
 | OSGi Container | Apache Karaf 4.3.10 |
 | Web Framework | Spring 4.2.x (OpenNMS-patched fork), Spring Security 4.2.x (patched) |
