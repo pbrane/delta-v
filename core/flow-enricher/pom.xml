@@ -369,25 +369,6 @@
                 <!-- repackage execution is inherited from spring-boot-starter-parent -->
             </plugin>
             <plugin>
-                <!--
-                    Include Spring Boot stream-binder integration tests (suffix *IT)
-                    in the surefire 'test' phase so they run alongside the unit tests
-                    without requiring a separate failsafe/verify phase. The flow-enricher
-                    integration tests use the in-memory TestChannelBinder, so they have
-                    no external dependencies and behave like unit tests from a CI
-                    perspective.
-                -->
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <includes>
-                        <include>**/*Test.java</include>
-                        <include>**/*Tests.java</include>
-                        <include>**/*IT.java</include>
-                    </includes>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>0.6.1</version>

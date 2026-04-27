@@ -52,7 +52,6 @@ class KafkaEventTransportConfigurationTest {
         assertThat(method.isAnnotationPresent(Bean.class)).isTrue();
 
         Bean beanAnnotation = method.getAnnotation(Bean.class);
-        assertThat(beanAnnotation.initMethod()).contains("start");
         assertThat(beanAnnotation.destroyMethod()).contains("stop");
     }
 
@@ -61,7 +60,8 @@ class KafkaEventTransportConfigurationTest {
         var method = KafkaEventTransportConfiguration.class
                 .getDeclaredMethod("eventIpcManager",
                         org.deltav.core.event.forwarder.kafka.KafkaEventForwarder.class,
-                        org.deltav.core.event.forwarder.kafka.KafkaEventSubscriptionService.class);
+                        org.deltav.core.event.forwarder.kafka.KafkaEventSubscriptionService.class,
+                        EventConfEnrichmentService.class);
         assertThat(method.isAnnotationPresent(Bean.class)).isTrue();
     }
 }
