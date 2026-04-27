@@ -71,7 +71,7 @@ jobs:
         </settings>
         SETTINGS
       env:
-        PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PACKAGES_TOKEN: ${{ secrets.HORIZON_READ_TOKEN }}
 
     - name: Build all modules (Java)
       run: ./mvnw -B -DskipTests install
