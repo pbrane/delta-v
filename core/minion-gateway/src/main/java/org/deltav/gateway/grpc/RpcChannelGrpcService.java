@@ -47,6 +47,14 @@ public class RpcChannelGrpcService extends RpcChannelServiceGrpc.RpcChannelServi
         this.responseHandler = responseHandler;
     }
 
+    /**
+     * Registers a Minion's bidi stream in the pool and returns the inbound observer
+     * for {@link RpcResponse} messages. Per Decision 1 of v1.2.0-rc2: there is an
+     * unavoidable race where a dispatcher thread may call {@link MinionStreamPool#pickStream}
+     * shortly after register() but before the Minion is fully ready. The redispatch
+     * handler (triggered on stream close mid-flight) absorbs this by re-queuing the
+     * RPC to a sibling stream — no correctness fix needed at this layer.
+     */
     @Override
     public StreamObserver<RpcResponse> channel(StreamObserver<RpcRequest> requestObserver) {
         String minionId = MINION_ID_CTX.get();
@@ -66,6 +74,10 @@ public class RpcChannelGrpcService extends RpcChannelServiceGrpc.RpcChannelServi
                 LOG.info("RPC stream error for minion={}: {}", minionId, t.toString());
                 pool.unregister(location, minionId);
                 closeHandler.onStreamClosed(location, requestObserver);
+                // Intentionally NOT relaying error back via requestObserver.onError():
+                // the gRPC runtime already surfaces the error to the client via the
+                // stream context, and relaying would duplicate the signal. Matches
+                // HeartbeatGrpcService convention.
             }
 
             @Override
