@@ -21,6 +21,7 @@ import org.deltav.minion.grpc.v1.RpcRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -101,7 +102,7 @@ public class MinionStreamPool {
                     result.add(e.stream);
                 }
             }
-            return result;
+            return Collections.unmodifiableList(result);
         }
 
         private record Entry(String minionId, StreamObserver<RpcRequest> stream) {}
