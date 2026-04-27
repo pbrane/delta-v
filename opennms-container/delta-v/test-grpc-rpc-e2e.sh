@@ -48,6 +48,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 source "${SCRIPT_DIR}/test-lib.sh"
 
+# log/err/ok functions match the convention used by sibling test scripts
+# (test-perspective-e2e.sh, test-enlinkd-e2e.sh, etc.). Defined here rather
+# than in test-lib.sh because each script wants its own PASS counter and
+# exit code mapping; test-lib.sh is shared DB helpers only.
+log() { echo "==> $*"; }
+ok()  { echo "  [PASS] $*"; }
+err() { echo "ERROR: $*" >&2; exit 2; }
+
 # -- Parse flags ------------------------------------------------------------
 OBSERVE_SECS=60
 for ((i=1; i<=$#; i++)); do
