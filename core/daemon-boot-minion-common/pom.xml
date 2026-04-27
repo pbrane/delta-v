@@ -351,16 +351,6 @@
                     <release>${java.version}</release>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.5</version>
-                <configuration>
-                    <includeJUnit5Engines>
-                        <includeJUnit5Engine>junit-jupiter</includeJUnit5Engine>
-                    </includeJUnit5Engines>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 </project>

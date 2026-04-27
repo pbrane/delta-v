@@ -46,8 +46,17 @@
     <!-- Spring Cloud release train (for flow-enricher / flow-aggregator) -->
     <spring-cloud.version>2025.1.1</spring-cloud.version>
 
+    <!-- JUnit Platform alignment with Jupiter 6.0.3 (Boot 4 BOM).
+         Boot 4 sets junit-jupiter.version=6.0.3 but does not manage junit-platform-*.
+         Horizon BOM 1.0.13 manages junit-platform-engine at 1.9.2 (pre-JUnit-6 era);
+         this property + the dependencyManagement overrides below win against horizon's
+         pin so that JUnit 6 unified versioning holds across the reactor. -->
+    <junit-platform.version>6.0.3</junit-platform.version>
+
     <!-- Plugin versions not inherited from spring-boot-starter-parent -->
     <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
+    <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
+    <maven-failsafe-plugin.version>3.5.5</maven-failsafe-plugin.version>
   </properties>
 
   <!-- ============================================================ -->
@@ -259,6 +268,30 @@
       <dependency><groupId>org.opennms.features.topologies</groupId><artifactId>org.opennms.features.topologies.service.impl</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.protocols</groupId><artifactId>org.opennms.protocols.radius</artifactId><version>${deltav.horizon.version}</version></dependency>
 
+      <!-- JUnit Platform alignment — overrides horizon BOM 1.0.13's junit5PlatformVersion=1.9.2.
+           Required because BOM-defined properties don't propagate up to importing poms;
+           explicit dependencyManagement entries are the only way to win against horizon. -->
+      <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-launcher</artifactId>
+        <version>${junit-platform.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-engine</artifactId>
+        <version>${junit-platform.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-commons</artifactId>
+        <version>${junit-platform.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-suite-api</artifactId>
+        <version>${junit-platform.version}</version>
+      </dependency>
+
       <!-- Third-party deps not managed by Spring Boot or the horizon BOM -->
       <dependency><groupId>io.opentracing</groupId><artifactId>opentracing-api</artifactId><version>0.32.0</version></dependency>
       <dependency><groupId>io.opentracing</groupId><artifactId>opentracing-util</artifactId><version>0.32.0</version></dependency>
@@ -304,9 +337,20 @@
         </configuration>
       </plugin>
 
-      <!-- Surefire: unit tests -->
+      <!-- Surefire: unit tests.
+           Pinned to 3.5.5 for JUnit Platform 6.0.3 support (required by Boot 4).
+           Surefire 3.5.5 itself ships with versions.junit5=5.12.2, which would
+           otherwise pull junit-platform-engine 1.x onto its plugin classpath via
+           the surefire-junit-platform provider — the OutputDirectoryCreator
+           class introduced in junit-platform-engine 6.0.x would then be missing
+           and Jupiter 6.0.3 test discovery would fail. We pin -engine, -commons,
+           and -launcher all at ${junit-platform.version} (6.0.3) here to win
+           against surefire's transitive resolution.
+           includeJUnit5Engines restricts test discovery to Jupiter — the vintage
+           engine from horizon BOM (5.9.2) is incompatible with Platform 6.0+. -->
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
         <configuration>
           <argLine>
             --add-opens java.base/java.lang=ALL-UNNAMED
@@ -340,6 +384,9 @@
           <shutdown>kill</shutdown>
           <useModulePath>false</useModulePath>
           <forkedProcessExitTimeoutInSeconds>120</forkedProcessExitTimeoutInSeconds>
+          <includeJUnit5Engines>
+            <includeJUnit5Engine>junit-jupiter</includeJUnit5Engine>
+          </includeJUnit5Engines>
         </configuration>
         <dependencies>
           <dependency>
@@ -348,16 +395,29 @@
             <version>${junit-jupiter.version}</version>
           </dependency>
           <dependency>
-            <groupId>org.junit.vintage</groupId>
-            <artifactId>junit-vintage-engine</artifactId>
-            <version>${junit-jupiter.version}</version>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-engine</artifactId>
+            <version>${junit-platform.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-commons</artifactId>
+            <version>${junit-platform.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <version>${junit-platform.version}</version>
           </dependency>
         </dependencies>
       </plugin>
 
-      <!-- Failsafe: integration tests -->
+      <!-- Failsafe: integration tests.
+           Same alignment story as surefire above — pin all three junit-platform
+           artifacts to win against failsafe's own transitive 5.12.2 resolution. -->
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${maven-failsafe-plugin.version}</version>
         <configuration>
           <systemPropertyVariables>
             <java.locale.providers>CLDR,COMPAT</java.locale.providers>
@@ -366,6 +426,9 @@
           <reuseForks>false</reuseForks>
           <useModulePath>false</useModulePath>
           <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
+          <includeJUnit5Engines>
+            <includeJUnit5Engine>junit-jupiter</includeJUnit5Engine>
+          </includeJUnit5Engines>
         </configuration>
         <executions>
           <execution>
@@ -375,6 +438,28 @@
             </goals>
           </execution>
         </executions>
+        <dependencies>
+          <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit-jupiter.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-engine</artifactId>
+            <version>${junit-platform.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-commons</artifactId>
+            <version>${junit-platform.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <version>${junit-platform.version}</version>
+          </dependency>
+        </dependencies>
       </plugin>
 
       <!-- Enforcer -->
