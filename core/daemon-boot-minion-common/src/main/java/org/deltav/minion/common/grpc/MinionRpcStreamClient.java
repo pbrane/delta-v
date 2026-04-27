@@ -58,11 +58,28 @@ public class MinionRpcStreamClient {
         this.outboundSupplier = outboundSupplier;
     }
 
+    /**
+     * Returns a {@link StreamObserver} that receives {@link RpcRequest} messages from
+     * minion-gateway and dispatches them to the appropriate {@link RpcModule}.
+     *
+     * <p>The outbound supplier is evaluated lazily — once per {@code onNext} call, not at
+     * construction time. This is intentional: {@link org.deltav.minion.common.GrpcRpcStreamConfiguration}
+     * constructs this client before the bidi stream is opened, then opens the stream in
+     * {@code @PostConstruct}. The supplier captures a field reference ({@code () -> outboundStream})
+     * that resolves to {@code null} at construction time but to the real stream observer
+     * by the time the first {@link RpcRequest} arrives from the gateway.</p>
+     */
     public StreamObserver<RpcRequest> streamObserver() {
-        StreamObserver<RpcResponse> outbound = outboundSupplier.get();
         return new StreamObserver<>() {
             @Override
-            public void onNext(RpcRequest req) { handle(req, outbound); }
+            public void onNext(RpcRequest req) {
+                StreamObserver<RpcResponse> outbound = outboundSupplier.get();
+                if (outbound == null) {
+                    LOG.warn("Outbound stream not yet ready; dropping rpcId={}", req.getRpcId());
+                    return;
+                }
+                handle(req, outbound);
+            }
             @Override
             public void onError(Throwable t) {
                 LOG.info("RPC stream error on minion={}: {}", identity.getId(), t.toString());
