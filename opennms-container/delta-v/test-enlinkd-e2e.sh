@@ -180,13 +180,32 @@ wait_for_healthy() {
 # ── Prerequisite Checks ───────────────────────────────────────────
 log "Checking prerequisites..."
 
-REQUIRED_SERVICES="postgres kafka provisiond enlinkd"
+REQUIRED_SERVICES="postgres kafka provisiond enlinkd minion-gateway"
 for svc in $REQUIRED_SERVICES; do
     if ! docker compose ps --status running --format '{{.Name}}' 2>/dev/null | grep -qw "$svc"; then
         err "Service '$svc' is not running. Deploy with: ./deploy.sh up full"
     fi
 done
-ok "Required services running (postgres, kafka, provisiond, enlinkd)"
+ok "Required services running (postgres, kafka, provisiond, enlinkd, minion-gateway)"
+
+# v1.2.0-rc2 PR1: RPC channel migrated to gRPC bidi via minion-gateway.
+# Default for opennms.minion.transport.rpc is "grpc" (matchIfMissing=true).
+# Enlinkd's SNMP RPCs to the labbox Minion now flow through the gateway's
+# bidi gRPC stream rather than the OpenNMS.mhuot-labs.rpc-request Kafka
+# topic. Verify the stream is live before running the topology assertions
+# that depend on it.
+log "Checking gRPC RPC transport for location=${FOREIGN_SOURCE} (rc2 PR1)..."
+RPC_STREAM_DEADLINE=$(( $(date +%s) + 30 ))
+while (( $(date +%s) < RPC_STREAM_DEADLINE )); do
+    if docker logs delta-v-minion-gateway 2>&1 | grep -q "RPC stream opened for minion=.* location=${FOREIGN_SOURCE}"; then
+        break
+    fi
+    sleep 3
+done
+if ! docker logs delta-v-minion-gateway 2>&1 | grep -q "RPC stream opened for minion=.* location=${FOREIGN_SOURCE}"; then
+    err "minion-gateway never logged 'RPC stream opened' for location=${FOREIGN_SOURCE}; gRPC RPC channel not live (is the labbox SSH tunnel up?)"
+fi
+ok "gRPC RPC stream live for location=${FOREIGN_SOURCE} (rc2 PR1)"
 
 # ══════════════════════════════════════════════════════════════════
 # Pre-run cleanup (--pre-clean): full reset for a pristine test run

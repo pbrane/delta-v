@@ -44,6 +44,7 @@ import com.codahale.metrics.MetricRegistry;
  */
 @Configuration
 @ConditionalOnProperty(name = "opennms.minion.rpc.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "opennms.minion.transport.rpc", havingValue = "kafka")
 public class KafkaRpcServerConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRpcServerConfiguration.class);

@@ -1,0 +1,53 @@
+// core/minion-grpc-contracts/src/main/proto/rpc.proto
+syntax = "proto3";
+
+package org.deltav.minion.grpc.v1;
+
+option java_package = "org.deltav.minion.grpc.v1";
+option java_multiple_files = true;
+option java_outer_classname = "RpcChannelProto";
+
+import "google/protobuf/timestamp.proto";
+
+// Bidi-streaming RPC channel between minion-gateway (server) and Minion (client).
+//
+// On the wire: the gateway opens-and-keeps the stream; in-flight requests
+// flow gateway -> Minion as RpcRequest messages; responses flow Minion ->
+// gateway as RpcResponse messages on the same stream. Identity is in the
+// gRPC metadata (x-minion-id, x-minion-location) and read by
+// MinionIdentityServerInterceptor; the duplication into the payload is
+// intentional for self-describing logs (matches Heartbeat pattern from rc1).
+//
+// Per Decision 1 of the v1.2.0-rc2 decisions doc:
+// - Multiple Minions per location each open their own stream; gateway
+//   picks one per RPC (round-robin) so the competing-consumer pattern is
+//   preserved.
+// - On stream close mid-flight, gateway redispatches outstanding RpcRequests
+//   from the closed stream to a surviving sibling stream in the same pool.
+// - All RpcModules MUST be idempotent (read-only) — at-least-once execution
+//   is a property of the channel; modules must tolerate it.
+service RpcChannelService {
+  rpc Channel(stream RpcResponse) returns (stream RpcRequest);
+}
+
+// Mirrors the wire format of horizon's existing RpcRequestProto so the
+// Minion-side dispatcher can deserialize via RpcModule.unmarshalRequest()
+// without an intermediate translator. The 'module_id' selects which
+// RpcModule handles the request.
+message RpcRequest {
+  string rpc_id = 1;                 // correlation token; matches the response
+  string module_id = 2;              // RpcModule.getId()
+  string minion_id = 3;              // x-minion-id metadata, duplicated for self-describing
+  string location = 4;               // x-minion-location metadata
+  bytes payload = 5;                 // module-specific marshal()ed RpcRequest body
+  google.protobuf.Timestamp dispatched_at = 6;  // gateway-side timestamp; Task 14 uses for RTT
+  int64 deadline_ms = 7;             // dispatcher's RPC deadline (epoch millis); Minion enforces
+}
+
+// Mirrors horizon's RpcResponseProto.
+message RpcResponse {
+  string rpc_id = 1;                 // correlation token from request
+  bytes payload = 2;                 // module-specific marshal()ed RpcResponse body
+  string error_message = 3;          // empty on success; non-empty if Minion-side execution failed
+  google.protobuf.Timestamp completed_at = 4;  // Minion-side timestamp at response send
+}
