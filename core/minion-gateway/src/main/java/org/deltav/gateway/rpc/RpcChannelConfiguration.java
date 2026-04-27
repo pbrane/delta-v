@@ -26,6 +26,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -35,7 +36,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+/*
+ * @EnableKafka is needed because minion-gateway pulls org.springframework.kafka:spring-kafka
+ * directly (not via spring-boot-starter-kafka). Without it, Spring Boot's
+ * KafkaAutoConfiguration does not register the @KafkaListener annotation processor,
+ * and RpcChannelDispatcher.onKafkaRequest never receives messages — silent failure
+ * mode that surfaces only at Task 14 E2E (RPC requests time out without ever reaching
+ * the gateway dispatcher).
+ */
 @Configuration
+@EnableKafka
 @EnableScheduling
 public class RpcChannelConfiguration {
 

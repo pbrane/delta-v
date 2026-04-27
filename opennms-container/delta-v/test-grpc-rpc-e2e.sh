@@ -139,9 +139,10 @@ T1_LINES=$(echo "$T1" | wc -l | tr -d ' ')
 log "  Captured ${T1_LINES} metric points at T=${OBSERVE_SECS}s"
 
 # Compute changed counters (simplistic delta — assumes one value per metric name)
+# diff exits 1 when files differ (expected case); || true suppresses set -e exit.
 log ""
 log "Counter deltas over the ${OBSERVE_SECS}s window:"
-DELTA=$(diff <(echo "$T0") <(echo "$T1") | grep -E "^[<>]" | awk '
+DELTA=$( (diff <(echo "$T0") <(echo "$T1") || true) | grep -E "^[<>]" | awk '
     /^</ { name=$2; before[name]=$3 }
     /^>/ { name=$2; after[name]=$3 }
     END {

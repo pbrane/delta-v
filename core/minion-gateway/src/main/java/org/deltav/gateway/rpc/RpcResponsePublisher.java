@@ -19,18 +19,17 @@ package org.deltav.gateway.rpc;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.deltav.minion.grpc.v1.RpcResponse;
+import org.opennms.core.ipc.rpc.kafka.model.RpcMessageProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Publishes RpcResponse protobuf bytes to {@code OpenNMS.rpc-response}
- * (the topic horizon's KafkaRpcClient consumes for response correlation).
- *
- * <p>The wire format (RpcResponseProto from horizon's RPC API) matches
- * what KafkaRpcClient expects, so daemon-side correlation continues to
- * work unchanged.
+ * Publishes RPC responses to {@code OpenNMS.rpc-response} in horizon's
+ * RpcMessageProto wire format. Translates from rc2's RpcResponse (used on
+ * the gateway-Minion gRPC stream) so horizon's KafkaRpcClient on the daemon
+ * side can correlate by rpc_id and unmarshal rpc_content as before.
  */
 @Component
 public class RpcResponsePublisher {
@@ -47,8 +46,24 @@ public class RpcResponsePublisher {
     }
 
     public void publish(RpcResponse response) {
+        // KafkaRpcClient on the daemon side correlates by rpc_id only and unmarshals
+        // rpc_content via RpcModule.unmarshalResponse. The Minion's MinionRpcStreamClient
+        // already produced marshaled response bytes via RpcModule.marshalResponse(rsp);
+        // on module-execution failure the same client wraps the exception via
+        // createResponseWithException then marshals. Either way, rc2 RpcResponse.payload
+        // is the marshaled-response byte stream that horizon's RpcMessageProto.rpc_content
+        // expects.
+        //
+        // Single-chunk responses only in PR1. Large responses requiring chunking is
+        // tracked as a follow-up post-PR1.
+        RpcMessageProto horizonMsg = RpcMessageProto.newBuilder()
+            .setRpcId(response.getRpcId())
+            .setRpcContent(response.getPayload())
+            .setCurrentChunkNumber(0)
+            .setTotalChunks(1)
+            .build();
         ProducerRecord<String, byte[]> record =
-            new ProducerRecord<>(responseTopic, response.getRpcId(), response.toByteArray());
+            new ProducerRecord<>(responseTopic, response.getRpcId(), horizonMsg.toByteArray());
         producer.send(record, (md, ex) -> {
             if (ex != null) {
                 LOG.warn("Failed to publish RPC response rpcId={}", response.getRpcId(), ex);

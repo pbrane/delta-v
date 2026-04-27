@@ -16,10 +16,12 @@
  */
 package org.deltav.gateway.rpc;
 
+import com.google.protobuf.Timestamp;
 import io.grpc.stub.StreamObserver;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.deltav.minion.grpc.v1.RpcRequest;
 import org.deltav.minion.grpc.v1.RpcResponse;
+import org.opennms.core.ipc.rpc.kafka.model.RpcMessageProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -27,6 +29,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The "dispatcher" piece of Decision 1 Option D. Implements both
@@ -61,6 +65,14 @@ public class RpcChannelDispatcher implements RpcStreamCloseHandler, RpcResponseH
         this.publisher = publisher;
     }
 
+    /**
+     * Topic name encodes the Minion location: {@code OpenNMS.<location>.rpc-request}.
+     * Horizon's RpcMessageProto does NOT carry a location field — that information
+     * lives only in the Kafka topic name on horizon's side. The translator below
+     * extracts location from the topic name and populates rc2's RpcRequest accordingly.
+     */
+    private static final Pattern RPC_REQUEST_TOPIC = Pattern.compile("OpenNMS\\.(.*)\\.rpc-request");
+
     @KafkaListener(
         topicPattern = "OpenNMS\\..*\\.rpc-request",
         groupId = "minion-gateway-rpc",
@@ -68,11 +80,42 @@ public class RpcChannelDispatcher implements RpcStreamCloseHandler, RpcResponseH
     )
     public void onKafkaRequest(ConsumerRecord<String, byte[]> record) {
         try {
-            RpcRequest req = RpcRequest.parseFrom(record.value());
+            // Daemon-side wire format on this topic is horizon's RpcMessageProto, NOT
+            // rc2's RpcRequest. Translate at the boundary; the rc2 proto is what flows
+            // over the gRPC stream to the Minion (where MinionRpcStreamClient unmarshals
+            // payload bytes via RpcModule.unmarshalRequest).
+            RpcMessageProto horizonMsg = RpcMessageProto.parseFrom(record.value());
+            String location = extractLocationFromTopic(record.topic());
+            if (location == null) {
+                LOG.warn("Could not extract location from topic={}; dropping rpcId={}",
+                    record.topic(), horizonMsg.getRpcId());
+                return;
+            }
+            Instant now = Instant.now();
+            RpcRequest req = RpcRequest.newBuilder()
+                .setRpcId(horizonMsg.getRpcId())
+                .setModuleId(horizonMsg.getModuleId())
+                .setMinionId(horizonMsg.getSystemId())  // may be empty; Minion reads identity from gRPC metadata
+                .setLocation(location)
+                .setPayload(horizonMsg.getRpcContent())
+                .setDeadlineMs(horizonMsg.getExpirationTime())
+                .setDispatchedAt(Timestamp.newBuilder()
+                    .setSeconds(now.getEpochSecond())
+                    .setNanos(now.getNano())
+                    .build())
+                .build();
             dispatch(req);
         } catch (Exception e) {
-            LOG.warn("Failed to parse RpcRequest from topic={} key={}", record.topic(), record.key(), e);
+            LOG.warn("Failed to parse RpcMessageProto from topic={} key={}", record.topic(), record.key(), e);
         }
+    }
+
+    static String extractLocationFromTopic(String topic) {
+        if (topic == null) {
+            return null;
+        }
+        Matcher m = RPC_REQUEST_TOPIC.matcher(topic);
+        return m.matches() ? m.group(1) : null;
     }
 
     void dispatch(RpcRequest req) {

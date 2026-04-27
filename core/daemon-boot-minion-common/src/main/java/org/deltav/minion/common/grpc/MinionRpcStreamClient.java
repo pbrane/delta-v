@@ -107,28 +107,35 @@ public class MinionRpcStreamClient {
             org.opennms.core.rpc.api.RpcRequest internal = (org.opennms.core.rpc.api.RpcRequest)
                 module.unmarshalRequest(payloadStr);
             module.execute(internal).whenComplete((rsp, t) -> {
+                // Whether the future completes normally or with a throwable, we marshal
+                // a response object via the module so the response payload is always a
+                // valid marshaled-response byte stream that horizon's KafkaRpcClient on
+                // the daemon side can unmarshal. Per Decision 1 sub-decision 1-ii:
+                // RpcModule.createResponseWithException is the horizon convention for
+                // wrapping execution errors into the same wire shape as a success.
+                org.opennms.core.rpc.api.RpcResponse rspObj;
                 if (t != null) {
-                    synchronized (outbound) {
-                        outbound.onNext(errorResponse(req.getRpcId(), t.toString()));
-                    }
+                    // Raw RpcModule erases generics; whenComplete's t infers as Object.
+                    // Cast back to Throwable for createResponseWithException's signature.
+                    rspObj = (org.opennms.core.rpc.api.RpcResponse)
+                        module.createResponseWithException((Throwable) t);
                 } else {
-                    try {
-                        @SuppressWarnings("unchecked")
-                        String marshaled = module.marshalResponse(
-                            (org.opennms.core.rpc.api.RpcResponse) rsp);
-                        RpcResponse response = RpcResponse.newBuilder()
-                            .setRpcId(req.getRpcId())
-                            .setPayload(ByteString.copyFromUtf8(marshaled))
-                            .setCompletedAt(now())
-                            .build();
-                        synchronized (outbound) {
-                            outbound.onNext(response);
-                        }
-                    } catch (Throwable marshalError) {
-                        LOG.warn("marshalResponse failed for rpcId={}: {}", req.getRpcId(), marshalError.toString());
-                        synchronized (outbound) {
-                            outbound.onNext(errorResponse(req.getRpcId(), marshalError.toString()));
-                        }
+                    rspObj = (org.opennms.core.rpc.api.RpcResponse) rsp;
+                }
+                try {
+                    String marshaled = module.marshalResponse(rspObj);
+                    RpcResponse response = RpcResponse.newBuilder()
+                        .setRpcId(req.getRpcId())
+                        .setPayload(ByteString.copyFromUtf8(marshaled))
+                        .setCompletedAt(now())
+                        .build();
+                    synchronized (outbound) {
+                        outbound.onNext(response);
+                    }
+                } catch (Throwable marshalError) {
+                    LOG.warn("marshalResponse failed for rpcId={}: {}", req.getRpcId(), marshalError.toString());
+                    synchronized (outbound) {
+                        outbound.onNext(errorResponse(req.getRpcId(), marshalError.toString()));
                     }
                 }
             });
