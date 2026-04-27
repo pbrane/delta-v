@@ -211,12 +211,41 @@ wait_for_kafka_event() {
 log "Checking prerequisites..."
 
 RUNNING=$(docker compose ps --status running --format '{{.Name}}')
-for svc in postgres kafka provisiond perspectivepollerd minion; do
+for svc in postgres kafka provisiond perspectivepollerd minion minion-gateway; do
     if ! echo "$RUNNING" | grep -q "$svc"; then
         err "Service '$svc' is not running. Deploy with: ./deploy.sh up full"
     fi
 done
-ok "Required services running (postgres, kafka, provisiond, perspectivepollerd, minion)"
+ok "Required services running (postgres, kafka, provisiond, perspectivepollerd, minion, minion-gateway)"
+
+# v1.2.0-rc2 PR1: RPC channel migrated to gRPC bidi via minion-gateway.
+# Default for opennms.minion.transport.rpc is "grpc" (matchIfMissing=true);
+# rollback path opennms.minion.transport.rpc=kafka is opt-in only.
+# Verify the gateway has accepted at least one RPC stream from the Default
+# Minion before we drive perspective polling — without this, RPC traffic
+# silently fails over to no path at all (no Kafka path, no gRPC path) since
+# the migration is hard-cut at the channel level.
+log "Checking gRPC RPC transport (rc2 PR1)..."
+RPC_STREAM_DEADLINE=$(( $(date +%s) + 30 ))
+while (( $(date +%s) < RPC_STREAM_DEADLINE )); do
+    if docker logs delta-v-minion-gateway 2>&1 | grep -q "RPC stream opened for minion=.* location=${LOCATION_A}"; then
+        break
+    fi
+    sleep 3
+done
+if ! docker logs delta-v-minion-gateway 2>&1 | grep -q "RPC stream opened for minion=.* location=${LOCATION_A}"; then
+    err "minion-gateway never logged 'RPC stream opened' for location=${LOCATION_A}; gRPC RPC channel not live"
+fi
+ok "gRPC RPC stream live for location=${LOCATION_A} (rc2 PR1)"
+# The mhuot-labs perspective stream is only present when labbox SSH tunnel
+# is up and the labbox Minion has connected. Logged-not-required: if it's
+# missing, perspective polls from that side will not reach a Minion, which
+# the existing Phase 3/4/5 assertions already cover.
+if docker logs delta-v-minion-gateway 2>&1 | grep -q "RPC stream opened for minion=.* location=${LOCATION_B}"; then
+    ok "gRPC RPC stream live for location=${LOCATION_B} (rc2 PR1, labbox)"
+else
+    log "  Note: no RPC stream from location=${LOCATION_B} yet — labbox tunnel may not be up"
+fi
 
 # The committed provisiond-configuration.xml has the mhuot-labs requisition-def
 # commented out (lab devices at 172.20.20.x need VPN). This test is the labbox-
