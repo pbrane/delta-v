@@ -79,7 +79,9 @@ public class MinionRpcStreamClient {
         String moduleId = req.getModuleId();
         RpcModule module = registry.get(moduleId);
         if (module == null) {
-            outbound.onNext(errorResponse(req.getRpcId(), "Unknown module: " + moduleId));
+            synchronized (outbound) {
+                outbound.onNext(errorResponse(req.getRpcId(), "Unknown module: " + moduleId));
+            }
             return;
         }
         try {
@@ -88,20 +90,34 @@ public class MinionRpcStreamClient {
                 module.unmarshalRequest(payloadStr);
             module.execute(internal).whenComplete((rsp, t) -> {
                 if (t != null) {
-                    outbound.onNext(errorResponse(req.getRpcId(), t.toString()));
+                    synchronized (outbound) {
+                        outbound.onNext(errorResponse(req.getRpcId(), t.toString()));
+                    }
                 } else {
-                    @SuppressWarnings("unchecked")
-                    String marshaled = module.marshalResponse(
-                        (org.opennms.core.rpc.api.RpcResponse) rsp);
-                    outbound.onNext(RpcResponse.newBuilder()
-                        .setRpcId(req.getRpcId())
-                        .setPayload(ByteString.copyFromUtf8(marshaled))
-                        .setCompletedAt(now())
-                        .build());
+                    try {
+                        @SuppressWarnings("unchecked")
+                        String marshaled = module.marshalResponse(
+                            (org.opennms.core.rpc.api.RpcResponse) rsp);
+                        RpcResponse response = RpcResponse.newBuilder()
+                            .setRpcId(req.getRpcId())
+                            .setPayload(ByteString.copyFromUtf8(marshaled))
+                            .setCompletedAt(now())
+                            .build();
+                        synchronized (outbound) {
+                            outbound.onNext(response);
+                        }
+                    } catch (Throwable marshalError) {
+                        LOG.warn("marshalResponse failed for rpcId={}: {}", req.getRpcId(), marshalError.toString());
+                        synchronized (outbound) {
+                            outbound.onNext(errorResponse(req.getRpcId(), marshalError.toString()));
+                        }
+                    }
                 }
             });
         } catch (Throwable t) {
-            outbound.onNext(errorResponse(req.getRpcId(), t.toString()));
+            synchronized (outbound) {
+                outbound.onNext(errorResponse(req.getRpcId(), t.toString()));
+            }
         }
     }
 
