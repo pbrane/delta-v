@@ -95,6 +95,22 @@ public class RpcChannelDispatcher implements RpcStreamCloseHandler, RpcResponseH
         }
     }
 
+    /**
+     * Redispatches in-flight RPCs from a closed stream to a surviving sibling
+     * in the same location's pool. Per Decision 1 sub-decision 1-iii of the
+     * v1.2.0-rc2 decisions doc.
+     *
+     * <p>Race: between {@code evictByStream} returning orphans and
+     * {@code sibling.onNext()} firing on each orphan, the chosen sibling
+     * stream may itself close. In that case {@code sibling.onNext()} throws,
+     * the in-flight entry is removed, and the RPC is silently lost. This is
+     * acceptable per {@code feedback_rpc_timeout_no_outages}: the caller's
+     * existing dispatcher deadline absorbs the timeout. We do NOT attempt a
+     * second redispatch round (a "retry on a different sibling" loop) because
+     * the at-least-once execution contract from Decision 1 sub-decision 1-ii
+     * already permits the caller to retry, and unbounded redispatch loops add
+     * complexity without changing observable behavior.
+     */
     @Override
     public void onStreamClosed(String location, StreamObserver<RpcRequest> closedStream) {
         List<InFlightRpcTable.Entry> orphans = inFlight.evictByStream(closedStream);
@@ -127,5 +143,18 @@ public class RpcChannelDispatcher implements RpcStreamCloseHandler, RpcResponseH
     public void handle(RpcResponse response) {
         inFlight.complete(response.getRpcId());
         publisher.publish(response);
+    }
+
+    /**
+     * Periodically sweeps in-flight RPC entries past their deadline. Without
+     * this, Minion hangs (server-side processing wedged with no stream close)
+     * would leak entries indefinitely.
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 30000L)
+    public void sweepExpired() {
+        java.util.List<InFlightRpcTable.Entry> expired = inFlight.evictExpired(java.time.Instant.now());
+        if (!expired.isEmpty()) {
+            LOG.info("Swept {} expired in-flight RPCs (deadline-based)", expired.size());
+        }
     }
 }

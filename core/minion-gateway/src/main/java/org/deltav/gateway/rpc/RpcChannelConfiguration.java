@@ -29,15 +29,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
 @Configuration
+@EnableScheduling
 public class RpcChannelConfiguration {
 
-    @Bean
+    @Bean(destroyMethod = "close")
     public KafkaProducer<String, byte[]> minionGatewayKafkaProducer(
             @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
         Properties p = new Properties();

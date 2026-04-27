@@ -25,6 +25,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class RpcChannelDispatcherTest {
@@ -91,5 +92,24 @@ class RpcChannelDispatcherTest {
 
         verify(publisher).publish(rsp);
         assertThat(table.findEntry("xyz")).isNull();
+    }
+
+    @Test
+    void dispatch_noStream_logsAndDropsWithoutFailing() {
+        MinionStreamPool pool = mock(MinionStreamPool.class);
+        InFlightRpcTable table = new InFlightRpcTable();
+        RpcResponsePublisher publisher = mock(RpcResponsePublisher.class);
+        RpcChannelDispatcher dispatcher = new RpcChannelDispatcher(pool, table, publisher);
+
+        when(pool.pickStream("Default")).thenReturn(null);
+
+        RpcRequest req = RpcRequest.newBuilder()
+            .setRpcId("xyz").setLocation("Default").build();
+
+        // Must not throw. Must not record. Must not invoke publisher.
+        dispatcher.dispatch(req);
+
+        assertThat(table.findEntry("xyz")).isNull();
+        verifyNoInteractions(publisher);
     }
 }
