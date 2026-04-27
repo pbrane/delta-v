@@ -65,9 +65,10 @@ public class MinionRpcStreamClient {
      * <p>The outbound supplier is evaluated lazily — once per {@code onNext} call, not at
      * construction time. This is intentional: {@link org.deltav.minion.common.GrpcRpcStreamConfiguration}
      * constructs this client before the bidi stream is opened, then opens the stream in
-     * {@code @PostConstruct}. The supplier captures a field reference ({@code () -> outboundStream})
-     * that resolves to {@code null} at construction time but to the real stream observer
-     * by the time the first {@link RpcRequest} arrives from the gateway.</p>
+     * {@link SmartLifecycle#start()} (see {@code GrpcRpcStreamConfiguration.rpcStreamLifecycle()}).
+     * The supplier captures a field reference ({@code () -> outboundStream}) that resolves to
+     * {@code null} at construction time but to the real stream observer by the time the first
+     * {@link RpcRequest} arrives from the gateway.</p>
      */
     public StreamObserver<RpcRequest> streamObserver() {
         return new StreamObserver<>() {

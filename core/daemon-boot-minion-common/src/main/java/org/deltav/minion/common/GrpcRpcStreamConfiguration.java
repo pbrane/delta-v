@@ -18,7 +18,6 @@ package org.deltav.minion.common;
 
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
-import jakarta.annotation.PreDestroy;
 import org.deltav.minion.common.grpc.MinionIdentityClientInterceptor;
 import org.deltav.minion.common.grpc.MinionRpcStreamClient;
 import org.deltav.minion.grpc.v1.RpcChannelServiceGrpc;
@@ -141,12 +140,5 @@ public class GrpcRpcStreamConfiguration {
                 return 400;
             }
         };
-    }
-
-    @PreDestroy
-    public void closeStream() {
-        if (outboundStream != null) {
-            outboundStream.onCompleted();
-        }
     }
 }
