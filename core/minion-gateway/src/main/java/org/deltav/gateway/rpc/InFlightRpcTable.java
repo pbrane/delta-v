@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,7 +66,7 @@ public class InFlightRpcTable {
             }
             return false;
         });
-        return evicted;
+        return Collections.unmodifiableList(evicted);
     }
 
     public List<Entry> evictExpired(Instant now) {
@@ -77,7 +78,7 @@ public class InFlightRpcTable {
             }
             return false;
         });
-        return evicted;
+        return Collections.unmodifiableList(evicted);
     }
 
     public int size() {
