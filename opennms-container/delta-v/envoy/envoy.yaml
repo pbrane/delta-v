@@ -27,6 +27,16 @@ static_resources:
                 route:
                   cluster: minion_gateway
                   timeout: 0s            # streaming RPCs, no per-call timeout
+              # v1.2.0-rc2 PR1: RPC channel migration. Adds routing for the new
+              # RpcChannelService bidi stream used by gateway-side dispatcher
+              # (Decision 1 Option D). Future PRs (sinks, twin) will add their
+              # own per-service routes here as they migrate.
+              - match:
+                  prefix: "/org.deltav.minion.grpc.v1.RpcChannelService/"
+                  grpc: {}
+                route:
+                  cluster: minion_gateway
+                  timeout: 0s            # streaming RPCs, no per-call timeout
           http_filters:
           - name: envoy.filters.http.router
             typed_config:
