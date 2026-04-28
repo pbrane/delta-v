@@ -158,7 +158,7 @@ log "Checking prerequisites..."
 command -v snmptrap >/dev/null 2>&1 || err "snmptrap not found. Install net-snmp."
 command -v nc >/dev/null 2>&1 || err "nc (netcat) not found."
 
-REQUIRED_SERVICES="postgres kafka trapd syslogd eventtranslator alarmd provisiond pollerd"
+REQUIRED_SERVICES="postgres kafka trapd syslogd eventtranslator alarmd provisiond pollerd minion-gateway"
 for svc in $REQUIRED_SERVICES; do
     if ! docker compose ps --status running --format '{{.Name}}' 2>/dev/null | grep -qw "$svc"; then
         err "Service '$svc' is not running. Deploy with: docker compose up -d"
@@ -167,7 +167,24 @@ done
 if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qw "delta-v-minion"; then
     err "Minion container is not running."
 fi
-ok "All required services running (including Minion)"
+ok "All required services running (including Minion + minion-gateway)"
+
+# v1.2.0-rc2 PR2: Twin channel migrated to gRPC bidi via minion-gateway.
+# Default opennms.minion.transport.twin=grpc (matchIfMissing=true). Verify the
+# gateway has accepted at least one Twin stream from a Minion in this location
+# before exercising the passive-status pipeline that depends on Twin updates.
+log "Checking gRPC Twin transport (rc2 PR2)..."
+TWIN_STREAM_DEADLINE=$(( $(date +%s) + 30 ))
+while (( $(date +%s) < TWIN_STREAM_DEADLINE )); do
+    if docker logs delta-v-minion-gateway 2>&1 | grep -q "Twin stream opened for minion=.* location=Default"; then
+        break
+    fi
+    sleep 3
+done
+if ! docker logs delta-v-minion-gateway 2>&1 | grep -q "Twin stream opened for minion=.* location=Default"; then
+    err "minion-gateway never logged 'Twin stream opened' for location=Default; gRPC Twin channel not live"
+fi
+ok "gRPC Twin stream live for location=Default (rc2 PR2)"
 
 # ── Ensure cloud syslog event definitions exist in eventconf DB ──
 log "Ensuring cloud status event definitions exist in eventconf DB..."
