@@ -138,8 +138,9 @@ public class GrpcTwinStreamConfiguration {
                 if (outbound != null) {
                     try {
                         outbound.onCompleted();
-                    } catch (Throwable ignored) {
+                    } catch (Throwable t) {
                         // best-effort close; the lifecycle is being torn down
+                        LOG.debug("Twin outbound close threw during stop (best-effort): {}", t.toString());
                     }
                     outbound = null;
                 }
@@ -164,6 +165,14 @@ public class GrpcTwinStreamConfiguration {
      * subscribed (e.g. {@code new TwinSubscriptionRegistration("passive-status")}).
      * Spring auto-collects all such beans into the {@code List<>} the
      * lifecycle bean iterates in {@code start()}.
+     *
+     * <p>Example registration in a daemon-boot module's @Configuration:
+     * <pre>{@code
+     * @Bean
+     * TwinSubscriptionRegistration passiveStatusSubscription() {
+     *     return new TwinSubscriptionRegistration("passive-status");
+     * }
+     * }</pre>
      *
      * <p>If no daemon registers any of these, the lifecycle still opens the
      * stream but sends zero SUBSCRIBE messages — Minion gets no Twin state
