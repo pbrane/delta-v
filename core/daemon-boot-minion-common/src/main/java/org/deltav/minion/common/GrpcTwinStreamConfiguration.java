@@ -24,10 +24,10 @@ import org.deltav.minion.grpc.v1.SubscriptionMode;
 import org.deltav.minion.grpc.v1.TwinChannelServiceGrpc;
 import org.deltav.minion.grpc.v1.TwinSubscription;
 import org.opennms.core.ipc.twin.api.LocalTwinSubscriber;
+import org.opennms.core.ipc.twin.common.LocalTwinSubscriberImpl;
 import org.opennms.distributed.core.api.MinionIdentity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
@@ -57,15 +57,34 @@ import java.util.concurrent.atomic.AtomicReference;
  * reconnect, but the lifecycle bean needs the client to obtain the inbound
  * {@link StreamObserver}. To break this cycle we introduce
  * {@link AtomicReference}{@code <SmartLifecycle>}: the client closure
- * dereferences it lazily (after both beans exist), and the
- * {@link #wireLifecycleRef} {@code @Autowired} setter populates the
- * reference once Spring has constructed both beans.
+ * dereferences it lazily (after both beans exist). The lifecycle bean
+ * factory method itself populates the reference at construction time,
+ * inside the same {@code @Bean} call that creates the lifecycle — this
+ * avoids the Spring circular-reference detector that an {@code @Autowired}
+ * setter on this {@code @Configuration} class would have triggered (since
+ * the setter would depend on a {@code @Bean} produced by the same class).
  */
 @Configuration
 @ConditionalOnProperty(name = "opennms.minion.transport.twin", havingValue = "grpc", matchIfMissing = true)
 public class GrpcTwinStreamConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(GrpcTwinStreamConfiguration.class);
+
+    /**
+     * Central transport-agnostic Twin dispatcher used in gRPC mode.
+     * {@link MinionTwinBindingsConfiguration}'s phase-200 lifecycle binds
+     * {@code PassiveStatusTwinSubscriber} (and any other Minion-side
+     * subscribers) against this bean via {@code subscriber.bind(twinSubscriber)}.
+     * When {@link MinionTwinStreamClient} receives a TwinUpdate from the gRPC
+     * stream, it calls {@code accept(...)} on this dispatcher, which fires
+     * the registered callbacks. {@code LocalTwinSubscriberImpl.sendRpcRequest}
+     * is a no-op — the gRPC stream's SUBSCRIBE messages drive server-side
+     * notification, not the {@code TwinSubscriber.subscribe} callsite.
+     */
+    @Bean
+    public LocalTwinSubscriber localTwinSubscriber(MinionIdentity minionIdentity) {
+        return new LocalTwinSubscriberImpl(minionIdentity);
+    }
 
     @Bean
     public AtomicReference<SmartLifecycle> twinStreamLifecycleRef() {
@@ -109,8 +128,9 @@ public class GrpcTwinStreamConfiguration {
             @Qualifier("minionGatewayChannel") ManagedChannel channel,
             MinionIdentity identity,
             List<TwinSubscriptionRegistration> subscriptions,
-            MinionTwinStreamClient client) {
-        return new SmartLifecycle() {
+            MinionTwinStreamClient client,
+            AtomicReference<SmartLifecycle> twinStreamLifecycleRef) {
+        SmartLifecycle lifecycle = new SmartLifecycle() {
             private volatile boolean running = false;
             private volatile StreamObserver<TwinSubscription> outbound;
 
@@ -158,6 +178,13 @@ public class GrpcTwinStreamConfiguration {
                 return 350;
             }
         };
+        // Populate the AtomicReference so the MinionTwinStreamClient reconnect
+        // closure (constructed earlier with the same ref) can resolve this
+        // lifecycle bean at reconnect time. The earlier @Autowired setter
+        // approach created a Spring circular reference because the
+        // @Configuration class itself depended on a @Bean it produced.
+        twinStreamLifecycleRef.set(lifecycle);
+        return lifecycle;
     }
 
     /**
@@ -181,17 +208,4 @@ public class GrpcTwinStreamConfiguration {
      * {@link TwinSubscriptionRegistration} beans.
      */
     public record TwinSubscriptionRegistration(String consumerKey) {}
-
-    /**
-     * Populates the AtomicReference after Spring has constructed both the
-     * client and the lifecycle bean — breaks the bidirectional dep so the
-     * reconnect trigger captured inside the client closure can resolve the
-     * lifecycle bean lazily.
-     */
-    @Autowired
-    public void wireLifecycleRef(
-            AtomicReference<SmartLifecycle> twinStreamLifecycleRef,
-            @Qualifier("twinStreamLifecycle") SmartLifecycle twinStreamLifecycle) {
-        twinStreamLifecycleRef.set(twinStreamLifecycle);
-    }
 }

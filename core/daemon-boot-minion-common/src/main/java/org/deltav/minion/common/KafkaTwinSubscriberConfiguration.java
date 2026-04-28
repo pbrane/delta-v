@@ -25,7 +25,6 @@ import org.opennms.core.ipc.twin.api.TwinSubscriber;
 import org.opennms.core.ipc.twin.kafka.subscriber.KafkaTwinSubscriber;
 import org.opennms.core.tracing.api.TracerRegistry;
 import org.opennms.distributed.core.api.MinionIdentity;
-import org.opennms.minion.core.impl.PassiveStatusTwinSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,10 +39,15 @@ import com.codahale.metrics.MetricRegistry;
  * Spring Boot {@link Configuration} that wraps the OSGi-designed
  * {@link KafkaTwinSubscriber} in a Spring {@link SmartLifecycle}.
  *
- * <p>Lifecycle phase 100 ensures the Twin subscriber starts <b>first</b>,
- * before the Sink client (phase 200) and the RPC server (phase 300).
- * This allows config sync to complete before message dispatch and
- * request handling begin. Shutdown reverses this order automatically.</p>
+ * <p>Lifecycle phase 100 initializes the Kafka Twin transport.
+ * {@link MinionTwinBindingsConfiguration} runs at phase 200 to bind
+ * subscribers like {@link org.opennms.minion.core.impl.PassiveStatusTwinSubscriber}
+ * to whichever {@link TwinSubscriber} is active — same bindings work against
+ * either this Kafka subscriber or the gRPC path's {@code LocalTwinSubscriberImpl}.
+ *
+ * <p>Active only when {@code opennms.minion.transport.twin=kafka} (Decision 4
+ * sub-decision 4-ii's emergency rollback flag). The default {@code grpc} value
+ * routes through {@link GrpcTwinStreamConfiguration} instead.</p>
  */
 @Configuration
 @ConditionalOnProperty(name = "opennms.minion.twin.enabled", havingValue = "true", matchIfMissing = true)
@@ -79,24 +83,14 @@ public class KafkaTwinSubscriberConfiguration {
                 minionTwinSubscriberMetricRegistry);
     }
 
-    /**
-     * Subscribes to passive service status updates from Pollerd via Twin API
-     * so that {@link org.opennms.netmgt.poller.monitors.PassiveServiceMonitor}
-     * can execute on Minion with current status data.
-     *
-     * <p>Binding happens in the lifecycle's {@code start()} after the Kafka
-     * Twin subscriber is initialized, so the subscription is active.</p>
-     */
-    @Bean(destroyMethod = "close")
-    public PassiveStatusTwinSubscriber passiveStatusTwinSubscriber() {
-        return new PassiveStatusTwinSubscriber();
-    }
-
     @Bean
-    public SmartLifecycle kafkaTwinSubscriberLifecycle(
-            KafkaTwinSubscriber subscriber,
-            PassiveStatusTwinSubscriber passiveStatusTwinSubscriber) {
-
+    public SmartLifecycle kafkaTwinSubscriberLifecycle(KafkaTwinSubscriber subscriber) {
+        // Phase 100: initialize the Kafka transport. Subscriber binding (e.g.,
+        // PassiveStatusTwinSubscriber.bind(...)) is now owned by
+        // MinionTwinBindingsConfiguration's phase-200 lifecycle so the binding
+        // logic is transport-agnostic — the same bind() works against either
+        // KafkaTwinSubscriber (this bean) or LocalTwinSubscriberImpl from the
+        // gRPC path. Both implement TwinSubscriber.
         return new SmartLifecycle() {
             private volatile boolean running = false;
 
@@ -105,7 +99,6 @@ public class KafkaTwinSubscriberConfiguration {
                 LOG.info("Starting Kafka Twin subscriber (phase 100)");
                 try {
                     subscriber.init();
-                    passiveStatusTwinSubscriber.bind(subscriber);
                     running = true;
                     LOG.info("Kafka Twin subscriber started");
                 } catch (Exception e) {
