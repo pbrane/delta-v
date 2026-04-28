@@ -211,6 +211,7 @@
       <dependency><groupId>org.opennms.core.ipc.sink</groupId><artifactId>org.opennms.core.ipc.sink.common</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.core.ipc.sink</groupId><artifactId>org.opennms.core.ipc.sink.offheap</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.core.ipc.sink.kafka</groupId><artifactId>org.opennms.core.ipc.sink.kafka.client</artifactId><version>${deltav.horizon.version}</version></dependency>
+      <dependency><groupId>org.opennms.core.ipc.twin</groupId><artifactId>org.opennms.core.ipc.twin.common</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.core.ipc.twin.kafka</groupId><artifactId>org.opennms.core.ipc.twin.kafka.publisher</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.core.ipc.twin.kafka</groupId><artifactId>org.opennms.core.ipc.twin.kafka.subscriber</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.core.snmp</groupId><artifactId>org.opennms.core.snmp.config</artifactId><version>${deltav.horizon.version}</version></dependency>
