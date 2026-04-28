@@ -1,0 +1,62 @@
+// core/minion-grpc-contracts/src/main/proto/twin.proto
+syntax = "proto3";
+
+package org.deltav.minion.grpc.v1;
+
+option java_package = "org.deltav.minion.grpc.v1";
+option java_multiple_files = true;
+option java_outer_classname = "TwinChannelProto";
+
+import "google/protobuf/timestamp.proto";
+
+// Server-streaming Twin channel between minion-gateway (server) and Minion
+// (client). On the wire: Minion opens a stream once, sends a list of
+// TwinSubscriptions in the first message (or via gRPC metadata), and the
+// gateway streams TwinUpdate messages whenever subscribed state changes.
+//
+// Per Decision 2 of the v1.2.0-rc2 decisions doc:
+// - On (re)connect, the gateway sends a full snapshot first (is_patch=false).
+// - Subsequent updates are JSON Patch (RFC 6902) when generatable, full
+//   snapshot otherwise (is_patch=false).
+// - The subscriber tracks last_seen_version per (consumer_key, location).
+//   On non-contiguous version, the subscriber drops the stream and reconnects.
+service TwinChannelService {
+  // Client streams subscribe/unsubscribe requests; server streams updates.
+  // The server's first message after a Subscribe is always a full snapshot.
+  rpc Channel(stream TwinSubscription) returns (stream TwinUpdate);
+}
+
+// Subscription request from the Minion to the gateway. Identity (minion_id,
+// location) is in gRPC metadata via MinionIdentityClientInterceptor.
+message TwinSubscription {
+  // The consumer key the Minion wants to subscribe to (e.g., "passive-status",
+  // "requisition.<foreign-source>"). Multiple keys are supported by sending
+  // multiple TwinSubscription messages on the same stream.
+  string consumer_key = 1;
+  // Subscription mode: SUBSCRIBE adds; UNSUBSCRIBE removes.
+  SubscriptionMode mode = 2;
+}
+
+enum SubscriptionMode {
+  SUBSCRIBE = 0;
+  UNSUBSCRIBE = 1;
+}
+
+// Twin state update broadcast from gateway to Minion.
+//
+// twin_object semantics:
+//   is_patch=false: full JSON snapshot of the current state object.
+//   is_patch=true:  JSON Patch (RFC 6902) producing the new state from the
+//                   subscriber's prior state at version (current_version - 1).
+//
+// version increments by 1 per update. Initial snapshot may have any version
+// >= 1 (the daemon publisher's current version at subscribe time).
+message TwinUpdate {
+  string consumer_key = 1;
+  bytes twin_object = 2;          // JSON bytes: full state OR JSON Patch
+  bool is_patch = 3;
+  int32 version = 4;              // monotonic, per (consumer_key, location)
+  string session_id = 5;          // changes when publisher restarts; subscriber resyncs on change
+  string location = 6;            // duplicated from gRPC metadata for self-describing logs
+  google.protobuf.Timestamp dispatched_at = 7;
+}
