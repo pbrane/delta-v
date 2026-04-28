@@ -90,6 +90,11 @@ All daemon containers extend a shared `deltav/daemon-base` image built on top of
 git clone https://github.com/pbrane/delta-v.git
 cd delta-v
 
+# Copy the example environment file (sets VERSION + KAFKA_EXTERNAL_HOST).
+# `.env` is gitignored so local overrides (e.g., a bumped VERSION for smoke
+# testing) don't pollute git status.
+cp opennms-container/delta-v/.env.example opennms-container/delta-v/.env
+
 # Full build: compile + assemble + Docker images
 opennms-container/delta-v/build.sh
 
