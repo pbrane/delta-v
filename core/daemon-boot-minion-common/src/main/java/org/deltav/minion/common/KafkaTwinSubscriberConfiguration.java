@@ -47,6 +47,7 @@ import com.codahale.metrics.MetricRegistry;
  */
 @Configuration
 @ConditionalOnProperty(name = "opennms.minion.twin.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "opennms.minion.transport.twin", havingValue = "kafka")
 public class KafkaTwinSubscriberConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTwinSubscriberConfiguration.class);
