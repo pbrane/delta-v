@@ -77,6 +77,8 @@ class MinionTwinStreamClientTest {
         in.onNext(buildPatch("k", "L", "session-1", 7));  // jumped from 5 to 7 — gap!
 
         verify(reconnectTrigger).accept("version-gap on (k,L): expected 6, got 7");
+        verify(localSubscriber, org.mockito.Mockito.times(1))
+            .accept(org.mockito.ArgumentMatchers.any(org.opennms.core.ipc.twin.api.TwinUpdate.class));
     }
 
     private TwinUpdate buildSnapshot(String key, String loc, String sess, int v) {

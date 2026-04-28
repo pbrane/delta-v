@@ -22,8 +22,8 @@ import org.opennms.core.ipc.twin.api.LocalTwinSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 /**
@@ -36,6 +36,11 @@ import java.util.function.Consumer;
  * <p>State per (consumer_key, location): lastSeenVersion + sessionId. When
  * sessionId changes (publisher restart), the next update is treated as a
  * fresh baseline regardless of version (publisher reset its sequence).
+ *
+ * <p>The state map uses ConcurrentHashMap because the same client instance
+ * is reused across stream reconnects (see GrpcTwinStreamConfiguration in
+ * Task 11); cross-executor-thread reads need the visibility guarantees
+ * ConcurrentHashMap provides.
  */
 public class MinionTwinStreamClient {
 
@@ -44,7 +49,7 @@ public class MinionTwinStreamClient {
     private final LocalTwinSubscriber localSubscriber;
     private final Consumer<String> reconnectTrigger;
 
-    private final Map<Key, State> state = new HashMap<>();
+    private final Map<Key, State> state = new ConcurrentHashMap<>();
 
     public MinionTwinStreamClient(LocalTwinSubscriber localSubscriber, Consumer<String> reconnectTrigger) {
         this.localSubscriber = localSubscriber;
