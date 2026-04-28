@@ -94,6 +94,7 @@ _bmad-output/
 # Credentials & Secrets
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 *.jks
