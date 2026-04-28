@@ -173,15 +173,20 @@ ok "All required services running (including Minion + minion-gateway)"
 # Default opennms.minion.transport.twin=grpc (matchIfMissing=true). Verify the
 # gateway has accepted at least one Twin stream from a Minion in this location
 # before exercising the passive-status pipeline that depends on Twin updates.
+#
+# NOTE: do NOT use `grep -q` here; under `set -o pipefail`, grep -q's early
+# exit on first match causes SIGPIPE in docker logs (exit 141), which pipefail
+# propagates up as a false "no match." Use grep without -q, capture output,
+# then test for non-empty.
 log "Checking gRPC Twin transport (rc2 PR2)..."
-TWIN_STREAM_DEADLINE=$(( $(date +%s) + 30 ))
+TWIN_STREAM_DEADLINE=$(( $(date +%s) + 60 ))
+TWIN_MATCH=""
 while (( $(date +%s) < TWIN_STREAM_DEADLINE )); do
-    if docker logs delta-v-minion-gateway 2>&1 | grep -q "Twin stream opened for minion=.* location=Default"; then
-        break
-    fi
+    TWIN_MATCH=$(docker logs delta-v-minion-gateway 2>&1 | grep -E "Twin stream opened for minion=.* location=Default" | head -1 || true)
+    if [ -n "$TWIN_MATCH" ]; then break; fi
     sleep 3
 done
-if ! docker logs delta-v-minion-gateway 2>&1 | grep -q "Twin stream opened for minion=.* location=Default"; then
+if [ -z "$TWIN_MATCH" ]; then
     err "minion-gateway never logged 'Twin stream opened' for location=Default; gRPC Twin channel not live"
 fi
 ok "gRPC Twin stream live for location=Default (rc2 PR2)"
