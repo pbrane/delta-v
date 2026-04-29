@@ -275,6 +275,46 @@ IPC_CONSUMER_PID=$!
 sleep 8
 
 # ══════════════════════════════════════════════════════════════════
+# Pre-flight: assert gRPC SyslogService is engaged (not Kafka rollback)
+#
+# v1.2.0-rc2 PR3 migrated the Syslog sink from Minion→Kafka direct
+# publishing to Minion→gRPC→minion-gateway→Kafka. Without this assertion
+# a regression where the Kafka rollback path silently absorbs the test
+# load would be invisible at the Kafka-topic side (test still passes but
+# the gRPC path isn't exercised).
+# ══════════════════════════════════════════════════════════════════
+log "Pre-flight: assert gRPC SyslogService is engaged"
+
+ACTUAL_TRANSPORT=$(docker compose exec -T minion sh -c 'echo "${MINION_SINK_SYSLOG_TRANSPORT:-unset}"' | tr -d '\r')
+log "  MINION_SINK_SYSLOG_TRANSPORT inside minion: ${ACTUAL_TRANSPORT}"
+if [ "${ACTUAL_TRANSPORT}" != "grpc" ]; then
+    err "Expected gRPC syslog path; got '${ACTUAL_TRANSPORT}'"
+fi
+
+# Drive one syslog datagram to provoke gateway-side stream open.
+echo "<14>1 $(date -u +%Y-%m-%dT%H:%M:%SZ) preflight preflight - - preflight-syslog-message" \
+    | nc -u -w0 "$SYSLOG_HOST" "$SYSLOG_PORT"
+
+# Wait up to 10s for the gateway to log "Syslog stream opened". Capture +
+# case-match avoids the SIGPIPE-under-pipefail trap that `grep -q PATTERN`
+# on a piped `docker logs` produces (per feedback_grep_q_sigpipe_in_pipefail).
+GATEWAY_OPENED=""
+for i in $(seq 1 10); do
+    GATEWAY_LOG=$(docker compose logs minion-gateway 2>&1 || true)
+    case "$GATEWAY_LOG" in
+        *"Syslog stream opened for minion="*) GATEWAY_OPENED=yes; break ;;
+    esac
+    sleep 1
+done
+if [ "$GATEWAY_OPENED" = "yes" ]; then
+    ok "gRPC SyslogService engaged: minion-gateway logged stream open"
+else
+    log "  (last 30 gateway log lines:)"
+    docker compose logs minion-gateway --tail 30 2>&1 | sed 's/^/    /'
+    err "Pre-flight timed out: minion-gateway never logged 'Syslog stream opened'"
+fi
+
+# ══════════════════════════════════════════════════════════════════
 # Phase 1: Node Discovery via Syslog Alert Message
 # ══════════════════════════════════════════════════════════════════
 log ""

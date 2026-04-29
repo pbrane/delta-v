@@ -199,6 +199,44 @@ IPC_CONSUMER_PID=$!
 sleep 8
 
 # ══════════════════════════════════════════════════════════════════
+# Pre-flight: assert gRPC TrapService is engaged (not Kafka rollback)
+#
+# v1.2.0-rc2 PR3 migrated the Trap sink from Minion→Kafka direct
+# publishing to Minion→gRPC→minion-gateway→Kafka. Without this assertion
+# a regression where the Kafka rollback path silently absorbs the test
+# load would be invisible at the Kafka-topic side.
+# ══════════════════════════════════════════════════════════════════
+log "Pre-flight: assert gRPC TrapService is engaged"
+
+ACTUAL_TRANSPORT=$(docker compose exec -T minion sh -c 'echo "${MINION_SINK_TRAP_TRANSPORT:-unset}"' | tr -d '\r')
+log "  MINION_SINK_TRAP_TRANSPORT inside minion: ${ACTUAL_TRANSPORT}"
+if [ "${ACTUAL_TRANSPORT}" != "grpc" ]; then
+    err "Expected gRPC trap path; got '${ACTUAL_TRANSPORT}'"
+fi
+
+# Drive one trap to provoke gateway-side stream open.
+snmptrap -v 2c -c "$TRAP_COMMUNITY" "${TRAP_HOST}:${TRAP_PORT}" '' \
+    .1.3.6.1.4.1.99999 .1.3.6.1.4.1.99999.1.1 s "preflight" >/dev/null 2>&1 || true
+
+# Wait up to 10s for "Trap stream opened". Capture+case avoids SIGPIPE
+# under pipefail (per feedback_grep_q_sigpipe_in_pipefail).
+GATEWAY_OPENED=""
+for i in $(seq 1 10); do
+    GATEWAY_LOG=$(docker compose logs minion-gateway 2>&1 || true)
+    case "$GATEWAY_LOG" in
+        *"Trap stream opened for minion="*) GATEWAY_OPENED=yes; break ;;
+    esac
+    sleep 1
+done
+if [ "$GATEWAY_OPENED" = "yes" ]; then
+    ok "gRPC TrapService engaged: minion-gateway logged stream open"
+else
+    log "  (last 30 gateway log lines:)"
+    docker compose logs minion-gateway --tail 30 2>&1 | sed 's/^/    /'
+    err "Pre-flight timed out: minion-gateway never logged 'Trap stream opened'"
+fi
+
+# ══════════════════════════════════════════════════════════════════
 # Phase 1: Verify Minion Trap Forwarding (coldStart via Minion)
 # ══════════════════════════════════════════════════════════════════
 log ""
