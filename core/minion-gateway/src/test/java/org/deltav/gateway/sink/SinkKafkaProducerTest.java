@@ -22,6 +22,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
+import org.opennms.core.ipc.sink.model.SinkMessage;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -31,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SinkKafkaProducerTest {
 
     @Test
-    void send_publishesToCorrectTopicWithKey() throws Exception {
+    void send_publishesToCorrectTopicWithKeyAndSinkMessageWrappedPayload() throws Exception {
         MockProducer<String, byte[]> mock = new MockProducer<>(true, null,
             new StringSerializer(), new ByteArraySerializer());
         MetricRegistry metrics = new MetricRegistry();
@@ -46,7 +47,15 @@ class SinkKafkaProducerTest {
         ProducerRecord<String, byte[]> record = mock.history().get(0);
         assertThat(record.topic()).isEqualTo("OpenNMS.Sink.Syslog");
         assertThat(record.key()).isEqualTo("Default@minion-A");
-        assertThat(new String(record.value())).isEqualTo("payload-bytes");
+
+        // Published bytes must be a SinkMessage protobuf containing the payload —
+        // horizon's KafkaSinkBridge calls SinkMessage.parseFrom on every record.
+        SinkMessage parsed = SinkMessage.parseFrom(record.value());
+        assertThat(parsed.getContent().toStringUtf8()).isEqualTo("payload-bytes");
+        assertThat(parsed.getMessageId()).isNotBlank();
+        assertThat(parsed.getCurrentChunkNumber()).isEqualTo(1);
+        assertThat(parsed.getTotalChunks()).isEqualTo(1);
+
         assertThat(metrics.counter("minion_gateway_sink_publish_total").getCount()).isEqualTo(1);
     }
 
