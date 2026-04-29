@@ -20,6 +20,7 @@ import org.opennms.core.ipc.sink.api.MessageDispatcherFactory;
 import org.opennms.netmgt.dao.api.DistPollerDao;
 import org.opennms.netmgt.trapd.TrapdConfigBean;
 import org.opennms.netmgt.trapd.TrapListener;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
@@ -60,6 +61,7 @@ public class TrapListenerConfiguration {
 
     @Bean
     public TrapListener trapListener(TrapdConfigBean config,
+                                     @Qualifier("trapDispatcherFactory")
                                      MessageDispatcherFactory messageDispatcherFactory,
                                      DistPollerDao distPollerDao) throws Exception {
         return new TrapListener(config, messageDispatcherFactory, distPollerDao);

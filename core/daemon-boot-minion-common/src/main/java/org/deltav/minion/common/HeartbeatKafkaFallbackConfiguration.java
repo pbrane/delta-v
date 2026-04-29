@@ -17,23 +17,38 @@
 package org.deltav.minion.common;
 
 import org.opennms.core.ipc.sink.api.MessageDispatcherFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * {@code MINION_TRANSPORT=kafka} rollback path: aliases the primary Kafka
+ * {@code MINION_TRANSPORT=kafka} rollback path: aliases the Kafka Syslog
  * {@link MessageDispatcherFactory} under the {@code heartbeatDispatcherFactory}
  * bean name so HeartbeatConfiguration's {@code @Qualifier} injection still
  * resolves regardless of selected transport.
+ *
+ * <p>After PR3's per-sink split (Task 4) the rc1 monolithic
+ * {@code KafkaSinkClientConfiguration} no longer exists. Heartbeat does not
+ * have its own Kafka {@link MessageDispatcherFactory}, so the fallback now
+ * borrows the syslog one. The factory class itself is the same regardless of
+ * which sink it serves; any qualified Kafka factory bean would do here.
+ *
+ * <p><b>Operational coupling:</b> rolling back to {@code MINION_TRANSPORT=kafka}
+ * also requires {@code MINION_SINK_SYSLOG_TRANSPORT=kafka} so the
+ * {@code syslogDispatcherFactory} bean exists. This is operationally uncommon
+ * (mixing transport flags) and may be cleaned up post-rc2 by giving heartbeat
+ * its own dedicated Kafka @Configuration.
  */
 @Configuration
-@ConditionalOnProperty(name = "opennms.minion.transport", havingValue = "kafka")
+@ConditionalOnExpression(
+        "'${opennms.minion.transport:grpc}' == 'kafka' "
+        + "&& '${opennms.minion.transport.sink.syslog:grpc}' == 'kafka'")
 public class HeartbeatKafkaFallbackConfiguration {
 
     @Bean(name = "heartbeatDispatcherFactory")
     public MessageDispatcherFactory heartbeatDispatcherFactory(
-            MessageDispatcherFactory kafkaPrimary) {
-        return kafkaPrimary;
+            @Qualifier("syslogDispatcherFactory") MessageDispatcherFactory kafkaSyslog) {
+        return kafkaSyslog;
     }
 }

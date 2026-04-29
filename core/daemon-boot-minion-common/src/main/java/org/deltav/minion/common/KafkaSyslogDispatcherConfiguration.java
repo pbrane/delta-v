@@ -19,7 +19,6 @@ package org.deltav.minion.common;
 import java.util.Properties;
 
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.deltav.horizon.metrics.HorizonMetricsBridge;
 import org.opennms.core.ipc.sink.api.MessageDispatcherFactory;
 import org.opennms.core.ipc.sink.kafka.client.KafkaRemoteMessageDispatcherFactory;
 import org.opennms.core.tracing.api.TracerRegistry;
@@ -31,41 +30,26 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 import com.codahale.metrics.MetricRegistry;
 
 /**
- * Spring Boot {@link Configuration} that wraps the OSGi-designed
- * {@link KafkaRemoteMessageDispatcherFactory} in a Spring {@link SmartLifecycle}.
+ * Kafka-backed {@link MessageDispatcherFactory} for the Syslog sink.
+ * Active when {@code opennms.minion.transport.sink.syslog=kafka} (rollback
+ * path); the default is {@code grpc}, served by
+ * {@code GrpcSyslogDispatcherConfiguration} (Task 5).
  *
- * <p>The factory uses setter injection because it was designed for OSGi blueprint
- * wiring. We set {@code bundleContext} to {@code null} so the factory's
- * {@code onInit()} skips OSGi metrics registration.</p>
- *
- * <p>Lifecycle phase 200 ensures the Sink client starts <b>after</b> the
- * Twin subscriber (phase 100) and <b>before</b> the RPC server (phase 300).
- * Shutdown reverses this order automatically.</p>
+ * <p>Lifecycle phase 200 — same as rc1's monolithic config. SmartLifecycle
+ * start order: Sink (200) before RPC (300) before listeners (400).
  */
 @Configuration
-@ConditionalOnProperty(name = "opennms.minion.sink.enabled", havingValue = "true", matchIfMissing = true)
-public class KafkaSinkClientConfiguration {
+@ConditionalOnProperty(name = "opennms.minion.transport.sink.syslog", havingValue = "kafka")
+public class KafkaSyslogDispatcherConfiguration {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaSinkClientConfiguration.class);
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaSyslogDispatcherConfiguration.class);
 
-    @Bean
-    public MetricRegistry minionSinkMetricRegistry() {
-        return new MetricRegistry();
-    }
-
-    @Bean
-    public HorizonMetricsBridge minionSinkMetricsBridge(MetricRegistry minionSinkMetricRegistry) {
-        return new HorizonMetricsBridge(minionSinkMetricRegistry, "opennms");
-    }
-
-    @Bean
-    @Primary
-    public KafkaRemoteMessageDispatcherFactory kafkaRemoteMessageDispatcherFactory(
+    @Bean(name = "syslogDispatcherFactory")
+    public KafkaRemoteMessageDispatcherFactory syslogDispatcherFactory(
             @Value("${opennms.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
             MinionIdentity minionIdentity,
             TracerRegistry tracerRegistry,
@@ -80,35 +64,32 @@ public class KafkaSinkClientConfiguration {
         factory.setTracerRegistry(tracerRegistry);
         factory.setIdentity(minionIdentity);
         factory.setMetrics(minionSinkMetricRegistry);
-
         return factory;
     }
 
     @Bean
-    public SmartLifecycle kafkaSinkClientLifecycle(
-            KafkaRemoteMessageDispatcherFactory factory) {
-
+    public SmartLifecycle syslogDispatcherFactoryLifecycle(
+            @org.springframework.beans.factory.annotation.Qualifier("syslogDispatcherFactory")
+            KafkaRemoteMessageDispatcherFactory syslogDispatcherFactory) {
         return new SmartLifecycle() {
             private volatile boolean running = false;
 
             @Override
             public void start() {
-                LOG.info("Starting Kafka Sink client (phase 200)");
+                LOG.info("Starting Kafka Syslog dispatcher (phase 200)");
                 try {
-                    factory.init();
+                    syslogDispatcherFactory.init();
                     running = true;
-                    LOG.info("Kafka Sink client started");
                 } catch (Exception e) {
-                    LOG.error("Failed to initialize Kafka Sink client", e);
+                    LOG.error("Failed to init Kafka Syslog dispatcher", e);
                 }
             }
 
             @Override
             public void stop() {
-                LOG.info("Stopping Kafka Sink client (phase 200)");
-                factory.destroy();
+                LOG.info("Stopping Kafka Syslog dispatcher");
+                syslogDispatcherFactory.destroy();
                 running = false;
-                LOG.info("Kafka Sink client stopped");
             }
 
             @Override

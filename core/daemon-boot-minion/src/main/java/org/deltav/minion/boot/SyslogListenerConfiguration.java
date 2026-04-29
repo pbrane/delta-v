@@ -20,6 +20,7 @@ import org.opennms.core.ipc.sink.api.MessageDispatcherFactory;
 import org.opennms.netmgt.dao.api.DistPollerDao;
 import org.opennms.netmgt.syslogd.SyslogConfigBean;
 import org.opennms.netmgt.syslogd.SyslogReceiverJavaNetImpl;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
@@ -66,6 +67,7 @@ public class SyslogListenerConfiguration {
 
     @Bean
     public SyslogReceiverJavaNetImpl syslogReceiver(SyslogConfigBean config,
+                                                     @Qualifier("syslogDispatcherFactory")
                                                      MessageDispatcherFactory messageDispatcherFactory,
                                                      DistPollerDao distPollerDao) {
         return new SyslogReceiverJavaNetImpl(config, distPollerDao, messageDispatcherFactory);
