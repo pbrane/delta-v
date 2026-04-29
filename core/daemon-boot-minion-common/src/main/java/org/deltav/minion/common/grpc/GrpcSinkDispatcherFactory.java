@@ -59,8 +59,6 @@ public class GrpcSinkDispatcherFactory implements MessageDispatcherFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(GrpcSinkDispatcherFactory.class);
 
-    private final ManagedChannel channel;
-    private final MinionIdentity identity;
     private final SinkStreamRegistry streams = new SinkStreamRegistry();
 
     private final SyslogServiceGrpc.SyslogServiceStub syslogStub;
@@ -68,8 +66,6 @@ public class GrpcSinkDispatcherFactory implements MessageDispatcherFactory {
     private final TelemetryServiceGrpc.TelemetryServiceStub telemetryStub;
 
     public GrpcSinkDispatcherFactory(ManagedChannel channel, MinionIdentity identity) {
-        this.channel = channel;
-        this.identity = identity;
         MinionIdentityClientInterceptor interceptor =
             new MinionIdentityClientInterceptor(identity.getId(), identity.getLocation());
         this.syslogStub = SyslogServiceGrpc.newStub(channel).withInterceptors(interceptor);
@@ -101,16 +97,6 @@ public class GrpcSinkDispatcherFactory implements MessageDispatcherFactory {
         };
     }
 
-    /**
-     * Marshal a producer message via the module. Sinks routed through this factory
-     * are non-aggregating so {@code S == T}; mirrors the unchecked cast precedent in
-     * horizon's {@code AbstractMessageDispatcherFactory.DirectDispatcher.send}.
-     */
-    @SuppressWarnings("unchecked")
-    private static <S extends Message, T extends Message> byte[] marshal(SinkModule<S, T> module, S message) {
-        return module.marshal((T) message);
-    }
-
     private <S extends Message, T extends Message> AsyncDispatcher<S> syslogDispatcher(SinkModule<S, T> module) {
         return new AsyncDispatcher<>() {
             @Override
@@ -119,7 +105,7 @@ public class GrpcSinkDispatcherFactory implements MessageDispatcherFactory {
                     syslogStub.publish(noopAck("Syslog")));
                 try {
                     stream.onNext(SyslogMessage.newBuilder()
-                        .setPayload(ByteString.copyFrom(marshal(module, message)))
+                        .setPayload(ByteString.copyFrom(module.marshalSingleMessage(message)))
                         .setReceivedAt(now())
                         .build());
                     return CompletableFuture.completedFuture(DispatchStatus.QUEUED);
@@ -142,7 +128,7 @@ public class GrpcSinkDispatcherFactory implements MessageDispatcherFactory {
                     trapStub.publish(noopAck("Trap")));
                 try {
                     stream.onNext(SnmpTrap.newBuilder()
-                        .setPayload(ByteString.copyFrom(marshal(module, message)))
+                        .setPayload(ByteString.copyFrom(module.marshalSingleMessage(message)))
                         .setReceivedAt(now())
                         .build());
                     return CompletableFuture.completedFuture(DispatchStatus.QUEUED);
@@ -168,7 +154,7 @@ public class GrpcSinkDispatcherFactory implements MessageDispatcherFactory {
                     opener.apply(noopAck(id)));
                 try {
                     stream.onNext(TelemetryDatagram.newBuilder()
-                        .setPayload(ByteString.copyFrom(marshal(module, message)))
+                        .setPayload(ByteString.copyFrom(module.marshalSingleMessage(message)))
                         .setReceivedAt(now())
                         .build());
                     return CompletableFuture.completedFuture(DispatchStatus.QUEUED);

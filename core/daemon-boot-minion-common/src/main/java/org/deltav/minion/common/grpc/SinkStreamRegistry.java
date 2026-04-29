@@ -53,6 +53,18 @@ public class SinkStreamRegistry {
         return entries.computeIfAbsent(moduleId, k -> opener.get());
     }
 
+    /**
+     * Drop the cached entry for {@code moduleId}. Next {@link #getOrOpen}
+     * for that id opens a fresh stream.
+     *
+     * <p>Known race: a producer thread that observed a stream error and
+     * another caller that already opened a fresh stream can collide — the
+     * producer's reset will evict the healthy fresh stream, costing one
+     * message until the next reopen. Window is microseconds and matches
+     * rc1's {@code GrpcMessageDispatcherFactory} pattern. A
+     * {@code Map.remove(key, expectedValue)} variant could close it but
+     * adds API surface; deferred until evidence of operational impact.
+     */
     public void reset(String moduleId) {
         entries.remove(moduleId);
     }

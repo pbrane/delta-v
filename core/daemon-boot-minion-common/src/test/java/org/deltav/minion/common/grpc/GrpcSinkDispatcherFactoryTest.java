@@ -135,7 +135,7 @@ class GrpcSinkDispatcherFactoryTest {
         @SuppressWarnings("unchecked")
         SinkModule<Message, Message> syslog = Mockito.mock(SinkModule.class);
         Mockito.when(syslog.getId()).thenReturn("Syslog");
-        Mockito.when(syslog.marshal(Mockito.any())).thenReturn("hello-syslog".getBytes());
+        Mockito.when(syslog.marshalSingleMessage(Mockito.any())).thenReturn("hello-syslog".getBytes());
 
         AsyncDispatcher<Message> dispatcher = factory.createAsyncDispatcher(syslog);
         dispatcher.send(Mockito.mock(Message.class));
@@ -152,7 +152,7 @@ class GrpcSinkDispatcherFactoryTest {
         @SuppressWarnings("unchecked")
         SinkModule<Message, Message> ipfix = Mockito.mock(SinkModule.class);
         Mockito.when(ipfix.getId()).thenReturn("Telemetry-IPFIX");
-        Mockito.when(ipfix.marshal(Mockito.any())).thenReturn("ipfix-bytes".getBytes());
+        Mockito.when(ipfix.marshalSingleMessage(Mockito.any())).thenReturn("ipfix-bytes".getBytes());
 
         AsyncDispatcher<Message> dispatcher = factory.createAsyncDispatcher(ipfix);
         dispatcher.send(Mockito.mock(Message.class));
