@@ -11,6 +11,8 @@ import "google/protobuf/timestamp.proto";
 // FlowSinkModule.marshal(FlowTelemetryMessage). The minion-gateway forwards
 // `payload` bytes verbatim to the protocol-specific Kafka topic. Routing
 // to the correct topic is by RPC method, not by inspecting payload.
+// Delta-V's flow-enricher consumes the topic and calls
+// FlowSinkModule.unmarshal(bytes) unchanged.
 message TelemetryDatagram {
   bytes payload = 1;                    // FlowSinkModule.marshal() output (FlowTelemetryMessage proto bytes)
   string source_address = 2;
