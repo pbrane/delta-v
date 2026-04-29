@@ -25,6 +25,7 @@ import org.opennms.core.tracing.api.TracerRegistry;
 import org.opennms.distributed.core.api.MinionIdentity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
@@ -69,8 +70,7 @@ public class KafkaSyslogDispatcherConfiguration {
 
     @Bean
     public SmartLifecycle syslogDispatcherFactoryLifecycle(
-            @org.springframework.beans.factory.annotation.Qualifier("syslogDispatcherFactory")
-            KafkaRemoteMessageDispatcherFactory syslogDispatcherFactory) {
+            @Qualifier("syslogDispatcherFactory") KafkaRemoteMessageDispatcherFactory syslogDispatcherFactory) {
         return new SmartLifecycle() {
             private volatile boolean running = false;
 
