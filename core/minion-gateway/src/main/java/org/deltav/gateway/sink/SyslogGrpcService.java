@@ -52,7 +52,7 @@ public class SyslogGrpcService extends SyslogServiceGrpc.SyslogServiceImplBase {
     }
 
     @Override
-    public StreamObserver<SyslogMessage> publish(StreamObserver<SyslogAck> ack) {
+    public StreamObserver<SyslogMessage> publish(StreamObserver<SyslogAck> responseObserver) {
         String minionId = MINION_ID_CTX.get();
         String location = MINION_LOCATION_CTX.get();
         String key = location + "@" + minionId;
@@ -62,28 +62,35 @@ public class SyslogGrpcService extends SyslogServiceGrpc.SyslogServiceImplBase {
             @Override
             public void onNext(SyslogMessage msg) {
                 producer.send(TOPIC, key, msg.getPayload().toByteArray())
-                    .thenAccept(v -> ack.onNext(buildAck()))
+                    .thenAccept(v -> responseObserver.onNext(buildAck()))
                     .exceptionally(t -> {
                         LOG.warn("Syslog publish failed for minion={}", minionId, t);
                         return null;
                     });
             }
+
             @Override
             public void onError(Throwable t) {
                 LOG.info("Syslog stream error for minion={}: {}", minionId, t.toString());
             }
+
             @Override
             public void onCompleted() {
                 LOG.info("Syslog stream closed for minion={}", minionId);
-                ack.onCompleted();
+                responseObserver.onCompleted();
             }
         };
     }
 
+    /**
+     * Build the per-message ack. Called on the Kafka producer's I/O thread
+     * (via the {@code thenAccept} callback), not the gRPC stream thread —
+     * the timestamp is "ack issued at," not "Minion-emitted at."
+     */
     private SyslogAck buildAck() {
-        Instant n = Instant.now();
+        Instant now = Instant.now();
         return SyslogAck.newBuilder()
-            .setReceivedAt(Timestamp.newBuilder().setSeconds(n.getEpochSecond()).setNanos(n.getNano()).build())
+            .setReceivedAt(Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()).build())
             .build();
     }
 }

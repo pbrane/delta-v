@@ -51,6 +51,8 @@ public class SinkChannelConfiguration {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
         props.put(ProducerConfig.CLIENT_ID_CONFIG, "minion-gateway-sinks");
         props.put(ProducerConfig.ACKS_CONFIG, "1");
+        // Suppress Kafka's built-in JMX reporter; metrics surface via HorizonMetricsBridge
+        // under opennms_kafka_producer_* (see SinkKafkaProducer's MetricRegistry counters).
         props.put(ProducerConfig.METRIC_REPORTER_CLASSES_CONFIG, "");
         kafkaProducer = new KafkaProducer<>(props);
         return kafkaProducer;

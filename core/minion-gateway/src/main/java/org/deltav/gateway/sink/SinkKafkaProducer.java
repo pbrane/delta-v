@@ -35,21 +35,21 @@ import java.util.concurrent.CompletableFuture;
 public class SinkKafkaProducer {
 
     private final Producer<String, byte[]> producer;
-    private final MetricRegistry metrics;
+    private final MetricRegistry metricRegistry;
 
-    public SinkKafkaProducer(Producer<String, byte[]> producer, MetricRegistry metrics) {
+    public SinkKafkaProducer(Producer<String, byte[]> producer, MetricRegistry metricRegistry) {
         this.producer = producer;
-        this.metrics = metrics;
+        this.metricRegistry = metricRegistry;
     }
 
     public CompletableFuture<Void> send(String topic, String key, byte[] payload) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         producer.send(new ProducerRecord<>(topic, key, payload), (md, ex) -> {
             if (ex != null) {
-                metrics.counter("minion_gateway_sink_publish_failures").inc();
+                metricRegistry.counter("minion_gateway_sink_publish_failures").inc();
                 result.completeExceptionally(ex);
             } else {
-                metrics.counter("minion_gateway_sink_publish_total").inc();
+                metricRegistry.counter("minion_gateway_sink_publish_total").inc();
                 result.complete(null);
             }
         });
