@@ -77,6 +77,23 @@
                 <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
             </exclusions>
         </dependency>
+        <!-- horizon's TwinResponseProto / TwinRequestProto wire format on the
+             daemon-facing Kafka topic OpenNMS.twin.response.<location>. The
+             gateway's TwinChannelDispatcher (Task 8) translates between this
+             and the rc2 TwinUpdate proto used on the gateway-Minion gRPC
+             stream — same pattern as the rpc.kafka dep added in PR1. -->
+        <dependency>
+            <groupId>org.opennms.core.ipc.twin</groupId>
+            <artifactId>org.opennms.core.ipc.twin.common</artifactId>
+            <exclusions>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-beans</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-context</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-core</artifactId></exclusion>
+                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion>
+                <exclusion><groupId>org.ops4j.pax.logging</groupId><artifactId>pax-logging-api</artifactId></exclusion>
+                <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
+            </exclusions>
+        </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>

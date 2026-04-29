@@ -37,6 +37,14 @@ static_resources:
                 route:
                   cluster: minion_gateway
                   timeout: 0s            # streaming RPCs, no per-call timeout
+              # v1.2.0-rc2 PR2: Twin channel migration. Adds routing for the new
+              # TwinChannelService bidi stream used by gateway-side broadcaster.
+              - match:
+                  prefix: "/org.deltav.minion.grpc.v1.TwinChannelService/"
+                  grpc: {}
+                route:
+                  cluster: minion_gateway
+                  timeout: 0s            # streaming RPCs, no per-call timeout
           http_filters:
           - name: envoy.filters.http.router
             typed_config:
