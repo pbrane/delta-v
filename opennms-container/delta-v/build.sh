@@ -29,6 +29,24 @@ VERSION="$(cd "$REPO_ROOT" && ./mvnw help:evaluate -Dexpression=project.version 
 log() { echo "==> $*"; }
 err() { echo "ERROR: $*" >&2; exit 1; }
 
+# Tag the just-built image with the .env-declared VERSION too, if it differs
+# from the resolved POM $VERSION. Resolves the chronic foot-gun where pom.xml
+# bumps but .env doesn't, causing `docker compose up` to fail with
+# "pull access denied" against the now-stale .env tag.
+# Non-destructive: writes only to the local Docker daemon's tag namespace,
+# never modifies .env. See feedback_image_tag_version_mismatch.
+apply_env_version_alias() {
+    local image_name="$1"   # e.g. "deltav/minion-gateway"
+    local env_file="$SCRIPT_DIR/.env"
+    [ -f "$env_file" ] || return 0
+    local env_version
+    env_version=$(grep '^VERSION=' "$env_file" | head -1 | cut -d= -f2 | tr -d '"' | tr -d "'")
+    if [ -n "$env_version" ] && [ "$env_version" != "$VERSION" ]; then
+        docker tag "${image_name}:${VERSION}" "${image_name}:${env_version}"
+        log "  also tagged: ${image_name}:${env_version} (from .env, differs from POM $VERSION)"
+    fi
+}
+
 # Detect daemon-boot modules whose source is newer than their target JAR and
 # rebuild them in-place. Guards against the "stale JAR" failure mode where
 # `do_deltav_images` stages a weeks-old JAR into a freshly-built Docker image,
@@ -135,6 +153,7 @@ do_db_init_image() {
     ./mvnw -B -f core/db-init/pom.xml -DskipTests package
     cd "$REPO_ROOT/core/db-init"
     docker build -t "deltav/db-init:$VERSION" -t "deltav/db-init:latest" .
+    apply_env_version_alias "deltav/db-init"
 }
 
 do_minion_gateway_image() {
@@ -149,6 +168,7 @@ do_minion_gateway_image() {
         -t "deltav/minion-gateway:latest" \
         -f "$SCRIPT_DIR/minion-gateway/Dockerfile" \
         "$REPO_ROOT/core/minion-gateway/"
+    apply_env_version_alias "deltav/minion-gateway"
 }
 
 do_envoy_image() {
@@ -160,6 +180,7 @@ do_envoy_image() {
         -t "deltav/envoy:$VERSION" \
         -t "deltav/envoy:latest" \
         .
+    apply_env_version_alias "deltav/envoy"
 }
 
 do_flow_enricher_image() {
@@ -168,6 +189,7 @@ do_flow_enricher_image() {
     ./mvnw -B -f core/flow-enricher/pom.xml -DskipTests package
     cd "$REPO_ROOT/core/flow-enricher"
     docker build -t "deltav/flow-enricher:$VERSION" -t "deltav/flow-enricher:latest" .
+    apply_env_version_alias "deltav/flow-enricher"
 }
 
 do_prometheus_writer_image() {
@@ -176,6 +198,7 @@ do_prometheus_writer_image() {
     ./mvnw -B -f core/prometheus-writer/pom.xml -DskipTests package
     cd "$REPO_ROOT/core/prometheus-writer"
     docker build -t "deltav/prometheus-writer:$VERSION" -t "deltav/prometheus-writer:latest" .
+    apply_env_version_alias "deltav/prometheus-writer"
 }
 
 do_jre_image() {
@@ -221,6 +244,7 @@ do_deltav_images() {
         -t "deltav/daemon-base:$VERSION" \
         -t "deltav/daemon-base:latest" \
         .
+    apply_env_version_alias "deltav/daemon-base"
 
     # Phase 3: Build per-daemon images
     local daemon_names="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd"
@@ -236,6 +260,7 @@ do_deltav_images() {
             -t "deltav/$name:$VERSION" \
             -t "deltav/$name:latest" \
             .
+        apply_env_version_alias "deltav/$name"
     done
 
     # --- Stage Minion Boot fat JAR ---
@@ -255,6 +280,7 @@ do_deltav_images() {
         -t "deltav/minion-boot:$VERSION" \
         -t "deltav/minion-boot:latest" \
         .
+    apply_env_version_alias "deltav/minion-boot"
 
     # Clean up staging
     rm -rf "$SCRIPT_DIR/staging"
