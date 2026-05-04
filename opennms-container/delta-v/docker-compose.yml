@@ -230,7 +230,11 @@ services:
       MINION_ID: minion-default-01
       MINION_LOCATION: Default
       KAFKA_IPC_BOOTSTRAP_SERVERS: kafka:9092
-      MINION_TRANSPORT: ${MINION_TRANSPORT:-grpc}    # rc1 default; set to 'kafka' for emergency rollback (Task 7 wiring)
+      MINION_TRANSPORT: ${MINION_TRANSPORT:-grpc}    # rc1/rc2-pr1: covers RPC + Heartbeat
+      OPENNMS_MINION_TRANSPORT_TWIN: ${OPENNMS_MINION_TRANSPORT_TWIN:-grpc}      # rc2-pr2 retrofit: Twin rollback (Spring relaxed binding → opennms.minion.transport.twin)
+      MINION_SINK_SYSLOG_TRANSPORT: ${MINION_SINK_SYSLOG_TRANSPORT:-grpc}        # rc2-pr3: per-sink rollback flag
+      MINION_SINK_TRAP_TRANSPORT: ${MINION_SINK_TRAP_TRANSPORT:-grpc}            # rc2-pr3
+      MINION_SINK_TELEMETRY_TRANSPORT: ${MINION_SINK_TELEMETRY_TRANSPORT:-grpc}  # rc2-pr3 (covers all 4 flow protocols per Task 4.6)
       MINION_GATEWAY_HOST: envoy
       MINION_GATEWAY_PORT: 8443
       JAVA_OPTS: >-

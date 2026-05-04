@@ -7,8 +7,12 @@ option java_outer_classname = "TrapProto";
 
 import "google/protobuf/timestamp.proto";
 
+// One marshaled SNMP trap Sink-API message produced on the Minion by
+// TrapSinkModule.marshal(TrapInformationWrapper). The minion-gateway
+// forwards `payload` bytes verbatim to OpenNMS.Sink.Trap; horizon's
+// Trapd consumer calls TrapSinkModule.unmarshal(bytes) unchanged.
 message SnmpTrap {
-  bytes raw = 1;                        // raw SNMP PDU
+  bytes payload = 1;                    // TrapSinkModule.marshal() output
   string source_address = 2;
   int32 source_port = 3;
   google.protobuf.Timestamp received_at = 4;
@@ -18,7 +22,6 @@ message TrapAck {
   google.protobuf.Timestamp received_at = 1;
 }
 
-// rc2 implementation; rc1 ships definition only.
 service TrapService {
   rpc Publish(stream SnmpTrap) returns (stream TrapAck);
 }

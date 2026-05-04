@@ -26,6 +26,7 @@ import org.deltav.minion.telemetry.FlowUdpListener;
 import org.opennms.core.ipc.sink.api.AsyncDispatcher;
 import org.opennms.core.ipc.sink.api.MessageDispatcherFactory;
 import org.opennms.netmgt.dao.api.DistPollerDao;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
@@ -62,7 +63,8 @@ public class TelemetryListenerConfiguration {
     private int numThreads;
 
     @Bean
-    public FlowUdpListener flowUdpListener(MessageDispatcherFactory messageDispatcherFactory,
+    public FlowUdpListener flowUdpListener(@Qualifier("telemetryDispatcherFactory")
+                                           MessageDispatcherFactory messageDispatcherFactory,
                                            DistPollerDao distPollerDao) {
         Map<FlowProtocol, AsyncDispatcher<FlowTelemetryMessage>> dispatchers =
                 new EnumMap<>(FlowProtocol.class);

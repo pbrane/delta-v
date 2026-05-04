@@ -226,26 +226,34 @@ ok "Required services running (postgres, kafka, provisiond, perspectivepollerd, 
 # silently fails over to no path at all (no Kafka path, no gRPC path) since
 # the migration is hard-cut at the channel level.
 log "Checking gRPC RPC transport (rc2 PR1)..."
+# Note: capture-then-grep avoids SIGPIPE under set -o pipefail. `grep -q`
+# exits early on first match → upstream `docker logs` SIGPIPEs → pipefail
+# treats whole pipeline as failure even though the match was found
+# (per feedback_grep_q_sigpipe_in_pipefail).
 RPC_STREAM_DEADLINE=$(( $(date +%s) + 30 ))
 while (( $(date +%s) < RPC_STREAM_DEADLINE )); do
-    if docker logs delta-v-minion-gateway 2>&1 | grep -q "RPC stream opened for minion=.* location=${LOCATION_A}"; then
-        break
-    fi
+    GATEWAY_LOG=$(docker logs delta-v-minion-gateway 2>&1 || true)
+    case "$GATEWAY_LOG" in
+        *"RPC stream opened for minion="*"location=${LOCATION_A}"*) break ;;
+    esac
     sleep 3
 done
-if ! docker logs delta-v-minion-gateway 2>&1 | grep -q "RPC stream opened for minion=.* location=${LOCATION_A}"; then
-    err "minion-gateway never logged 'RPC stream opened' for location=${LOCATION_A}; gRPC RPC channel not live"
-fi
+GATEWAY_LOG=$(docker logs delta-v-minion-gateway 2>&1 || true)
+case "$GATEWAY_LOG" in
+    *"RPC stream opened for minion="*"location=${LOCATION_A}"*) ;;
+    *) err "minion-gateway never logged 'RPC stream opened' for location=${LOCATION_A}; gRPC RPC channel not live" ;;
+esac
 ok "gRPC RPC stream live for location=${LOCATION_A} (rc2 PR1)"
 # The mhuot-labs perspective stream is only present when labbox SSH tunnel
 # is up and the labbox Minion has connected. Logged-not-required: if it's
 # missing, perspective polls from that side will not reach a Minion, which
 # the existing Phase 3/4/5 assertions already cover.
-if docker logs delta-v-minion-gateway 2>&1 | grep -q "RPC stream opened for minion=.* location=${LOCATION_B}"; then
-    ok "gRPC RPC stream live for location=${LOCATION_B} (rc2 PR1, labbox)"
-else
-    log "  Note: no RPC stream from location=${LOCATION_B} yet — labbox tunnel may not be up"
-fi
+case "$GATEWAY_LOG" in
+    *"RPC stream opened for minion="*"location=${LOCATION_B}"*)
+        ok "gRPC RPC stream live for location=${LOCATION_B} (rc2 PR1, labbox)" ;;
+    *)
+        log "  Note: no RPC stream from location=${LOCATION_B} yet — labbox tunnel may not be up" ;;
+esac
 
 # The committed provisiond-configuration.xml has the mhuot-labs requisition-def
 # commented out (lab devices at 172.20.20.x need VPN). This test is the labbox-

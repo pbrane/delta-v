@@ -45,6 +45,28 @@ static_resources:
                 route:
                   cluster: minion_gateway
                   timeout: 0s            # streaming RPCs, no per-call timeout
+              # v1.2.0-rc2 PR3: Sink channel migration. Adds routing for the
+              # three new sink bidi services (Syslog, Trap, Telemetry) used by
+              # gateway-side translators. Without these prefix matches, Minion
+              # gets UNIMPLEMENTED on first stream open (PR1 Phase 4 lesson).
+              - match:
+                  prefix: "/org.deltav.minion.grpc.v1.SyslogService/"
+                  grpc: {}
+                route:
+                  cluster: minion_gateway
+                  timeout: 0s            # streaming RPCs, no per-call timeout
+              - match:
+                  prefix: "/org.deltav.minion.grpc.v1.TrapService/"
+                  grpc: {}
+                route:
+                  cluster: minion_gateway
+                  timeout: 0s            # streaming RPCs, no per-call timeout
+              - match:
+                  prefix: "/org.deltav.minion.grpc.v1.TelemetryService/"
+                  grpc: {}
+                route:
+                  cluster: minion_gateway
+                  timeout: 0s            # streaming RPCs, no per-call timeout
           http_filters:
           - name: envoy.filters.http.router
             typed_config:

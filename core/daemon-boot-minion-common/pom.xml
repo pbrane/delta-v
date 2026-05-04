@@ -183,8 +183,51 @@
             <groupId>org.opennms.features.poller</groupId>
             <artifactId>org.opennms.features.poller.api</artifactId>
             <exclusions>
+                <!-- horizon's poller.api drags in three pre-Boot4 transitives that conflict with
+                     this module's Spring Boot 4 / Spring 7 / Hibernate 6 stack. Exclusions match
+                     the precedent already established earlier in this POM (see daemon-common +
+                     IPC dependency blocks above). Per `feedback_fix_horizon_not_exclusions` the
+                     structurally correct fix is in horizon (poller.api should be split or its
+                     test-only deps moved to test scope) but the horizon change is out of scope
+                     for PR3; this exclusion block is the pragmatic block-the-leak fix that
+                     unblocks @SpringBootTest in this module. Track removal at the next horizon
+                     poller.api cleanup. -->
+                <!--
+                  ServiceMix Spring 4.2.x bundles. Without exclusion, @SpringBootTest in this
+                  module fails with NoSuchMethodError because Spring 4.2's
+                  ReflectionUtils$MethodFilter shadows the Spring 7 API at runtime classpath
+                  resolution.
+                -->
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-aop</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-aspects</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-beans</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-context</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-context-support</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-core</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-expression</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-instrument</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-jdbc</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-jms</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-messaging</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-orm</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-oxm</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-tx</artifactId></exclusion>
+                <!--
+                  Hibernate 3.x (transitive friend of the same poller.api dependency). The
+                  daemon-boot stack uses Hibernate 6; allowing the 3.x classes onto the test
+                  classpath produces JPA-API conflicts when @SpringBootTest stands up the JPA
+                  EntityManagerFactory.
+                -->
+                <exclusion><groupId>org.hibernate</groupId><artifactId>hibernate-core</artifactId></exclusion>
+                <exclusion><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.0-api</artifactId></exclusion>
                 <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion>
                 <exclusion><groupId>org.ops4j.pax.logging</groupId><artifactId>pax-logging-api</artifactId></exclusion>
+                <!--
+                  commons-logging is banned project-wide by the Maven Enforcer (use slf4j-api).
+                  Excluded here because poller.api carries it transitively.
+                -->
+                <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
             </exclusions>
         </dependency>
 

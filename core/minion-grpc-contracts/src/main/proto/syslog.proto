@@ -7,8 +7,18 @@ option java_outer_classname = "SyslogProto";
 
 import "google/protobuf/timestamp.proto";
 
+// One marshaled syslog Sink-API message produced on the Minion by
+// SyslogSinkModule.marshal(SyslogConnection). The minion-gateway forwards
+// `payload` bytes verbatim to OpenNMS.Sink.Syslog; the existing horizon
+// Syslogd consumer calls SyslogSinkModule.unmarshal(bytes) and is unaware
+// of the gRPC hop.
+//
+// `source_address` and `source_port` describe the original syslog datagram
+// origin; preserved here for self-describing logs and for routing keys
+// when the gateway publishes to Kafka. They are NOT used to reconstruct
+// the SyslogConnection — that's already encoded inside `payload`.
 message SyslogMessage {
-  bytes raw = 1;                        // exact UDP datagram bytes
+  bytes payload = 1;                    // SyslogSinkModule.marshal() output
   string source_address = 2;
   int32 source_port = 3;
   google.protobuf.Timestamp received_at = 4;
@@ -18,8 +28,6 @@ message SyslogAck {
   google.protobuf.Timestamp received_at = 1;
 }
 
-// rc2 implementation; rc1 ships definition only so the wire format is stable
-// before any client/server code lands.
 service SyslogService {
   rpc Publish(stream SyslogMessage) returns (stream SyslogAck);
 }

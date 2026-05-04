@@ -9,6 +9,9 @@ opennms:
     id: ${MINION_ID:minion-default-01}
     location: ${MINION_LOCATION:Default}
     transport: ${MINION_TRANSPORT:grpc}
+    transport.sink.syslog: ${MINION_SINK_SYSLOG_TRANSPORT:grpc}
+    transport.sink.trap: ${MINION_SINK_TRAP_TRANSPORT:grpc}
+    transport.sink.telemetry: ${MINION_SINK_TELEMETRY_TRANSPORT:grpc}
     gateway:
       host: ${MINION_GATEWAY_HOST:envoy}
       port: ${MINION_GATEWAY_PORT:8443}
