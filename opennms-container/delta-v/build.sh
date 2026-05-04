@@ -151,6 +151,17 @@ do_minion_gateway_image() {
         "$REPO_ROOT/core/minion-gateway/"
 }
 
+do_envoy_image() {
+    log "Building envoy image (deltav/envoy:$VERSION)..."
+    # Pure Docker build — Envoy is the upstream image plus envoy.yaml + curl
+    # (for the docker-compose healthcheck). No Maven involvement.
+    cd "$SCRIPT_DIR/envoy"
+    docker build \
+        -t "deltav/envoy:$VERSION" \
+        -t "deltav/envoy:latest" \
+        .
+}
+
 do_flow_enricher_image() {
     log "Building flow-enricher image (deltav/flow-enricher:$VERSION)..."
     cd "$REPO_ROOT"
@@ -278,8 +289,13 @@ do_deltav_images() {
     # is Spring gRPC + protobuf rather than the horizon-derived daemon stack.
     do_minion_gateway_image
 
+    # --- Build envoy (gRPC ingress in front of minion-gateway) ---
+    # envoyproxy/envoy:1.30.4 + envoy.yaml + curl (compose healthcheck needs it).
+    # No Maven; pure docker build.
+    do_envoy_image
+
     log "Delta-V images built:"
-    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer|minion-gateway" | sort | head -25
+    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy" | sort | head -25
 }
 
 
