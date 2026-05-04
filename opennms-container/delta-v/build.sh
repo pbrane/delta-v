@@ -137,6 +137,20 @@ do_db_init_image() {
     docker build -t "deltav/db-init:$VERSION" -t "deltav/db-init:latest" .
 }
 
+do_minion_gateway_image() {
+    log "Building minion-gateway image (deltav/minion-gateway:$VERSION)..."
+    cd "$REPO_ROOT"
+    # Use -pl ... -am install (not -f pom.xml package) because minion-gateway
+    # depends on org.opennms.core.minion-grpc-contracts; Spring Boot repackage
+    # needs the contracts JAR present in ~/.m2 (feedback_spring_boot_repackage_needs_clean).
+    ./mvnw -B -pl core/minion-gateway -am -DskipTests install
+    docker build \
+        -t "deltav/minion-gateway:$VERSION" \
+        -t "deltav/minion-gateway:latest" \
+        -f "$SCRIPT_DIR/minion-gateway/Dockerfile" \
+        "$REPO_ROOT/core/minion-gateway/"
+}
+
 do_flow_enricher_image() {
     log "Building flow-enricher image (deltav/flow-enricher:$VERSION)..."
     cd "$REPO_ROOT"
@@ -257,8 +271,15 @@ do_deltav_images() {
     # built as a standalone image rather than sharing daemon-base.
     do_prometheus_writer_image
 
+    # --- Build minion-gateway (gRPC ingress translator for Minion-facing surface) ---
+    # minion-gateway sits between Envoy and the internal Kafka topics, translating
+    # gRPC bidi calls from Minions into Kafka publishes. Built standalone (like
+    # db-init / flow-enricher / prometheus-writer) because its dependency profile
+    # is Spring gRPC + protobuf rather than the horizon-derived daemon stack.
+    do_minion_gateway_image
+
     log "Delta-V images built:"
-    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer" | sort | head -25
+    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer|minion-gateway" | sort | head -25
 }
 
 
