@@ -527,9 +527,19 @@ services:
             cp -R /seed/. /runtime/
             touch /runtime/.seeded
         else
-            echo "[provisiond-imports-init] /runtime already seeded — leaving alone"
+            echo "[provisiond-imports-init] /runtime already seeded — normalizing perms"
         fi
+        # Always normalize ownership AND permissions, regardless of seed state.
+        # Pre-existing volumes from earlier compose iterations occasionally end up
+        # with the runtime directory at mode 0666 (no execute bit), which silently
+        # blocks provisiond's opennms user from listing or writing inside — the
+        # cron-driven requisition import then fails with "Permission denied" on
+        # every fire (we hit this during PR3 Task 12 labbox testing). Idempotent
+        # chmod here makes the init container self-heal both fresh + stale volumes.
         chown -R 100:101 /runtime
+        chmod 755 /runtime
+        find /runtime -type d -exec chmod 755 {} +
+        find /runtime -type f -exec chmod 644 {} +
 
   provisiond:
     profiles: [lite, passive, full, metrics]
