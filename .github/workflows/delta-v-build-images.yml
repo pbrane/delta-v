@@ -248,12 +248,17 @@ jobs:
         # Build context is core/minion-gateway/ so the Dockerfile's
         # `COPY target/org.opennms.core.minion-gateway-*.jar` resolves against the
         # Maven-built fat JAR from the "Compile all modules" step.
+        # JRE_BASE override mirrors the daemon-base step's JRE_IMAGE override —
+        # without it, BuildKit tries to pull the unprefixed default
+        # `deltav/jre-deltav:21` from docker.io and fails (the local-only tag
+        # build.sh produces is not on a public registry).
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           docker buildx build \
             --platform ${{ env.PLATFORMS }} \
             -f opennms-container/delta-v/minion-gateway/Dockerfile \
+            --build-arg "JRE_BASE=${{ env.IMAGE_PREFIX }}/jre-deltav:21" \
             -t "${{ env.IMAGE_PREFIX }}/minion-gateway:${VERSION}" \
             -t "${{ env.IMAGE_PREFIX }}/minion-gateway:latest" \
             --push \
