@@ -27,6 +27,8 @@
 #
 #   Infrastructure:
 #     - ghcr.io/<owner>/minion-boot:<version>              Spring Boot Minion
+#     - ghcr.io/<owner>/minion-gateway:<version>           gRPC ingress translator (Minion → Kafka)
+#     - ghcr.io/<owner>/envoy:<version>                    gRPC ingress in front of minion-gateway
 #     - ghcr.io/<owner>/db-init:<version>                  Liquibase schema migration
 #     - ghcr.io/<owner>/flow-enricher:<version>            Flow decode + enrich → ClickHouse
 #     - ghcr.io/<owner>/prometheus-writer:<version>        Metrics → Prometheus Remote Write
@@ -237,6 +239,37 @@ jobs:
             --platform ${{ env.PLATFORMS }} \
             -t "${{ env.IMAGE_PREFIX }}/prometheus-writer:${VERSION}" \
             -t "${{ env.IMAGE_PREFIX }}/prometheus-writer:latest" \
+            --push \
+            .
+
+      - name: Build and push minion-gateway image
+        # minion-gateway's Dockerfile lives at opennms-container/delta-v/minion-gateway/Dockerfile
+        # (not core/minion-gateway/, unlike db-init / flow-enricher / prometheus-writer).
+        # Build context is core/minion-gateway/ so the Dockerfile's
+        # `COPY target/org.opennms.core.minion-gateway-*.jar` resolves against the
+        # Maven-built fat JAR from the "Compile all modules" step.
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -f opennms-container/delta-v/minion-gateway/Dockerfile \
+            -t "${{ env.IMAGE_PREFIX }}/minion-gateway:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/minion-gateway:latest" \
+            --push \
+            core/minion-gateway
+
+      - name: Build and push envoy image
+        # Pure docker build — Envoy is the upstream image plus envoy.yaml + curl.
+        # No Maven involvement.
+        working-directory: opennms-container/delta-v/envoy
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -t "${{ env.IMAGE_PREFIX }}/envoy:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/envoy:latest" \
             --push \
             .
 
