@@ -3,12 +3,6 @@
 # rc1 posture: h2c plaintext on :8443 inside the compose network. TLS
 # termination on this listener arrives in rc2 (per Phase 0 Decision 4).
 # Long-lived bidi streams: stream/route timeouts disabled (Decision 3).
-#
-# Build (ad-hoc until wired into build.sh):
-#   docker build \
-#     -t deltav/envoy:${VERSION} \
-#     -t deltav/envoy:latest \
-#     opennms-container/delta-v/envoy/
 
 FROM envoyproxy/envoy:v1.30.4
 
