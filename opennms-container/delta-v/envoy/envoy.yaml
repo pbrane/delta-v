@@ -77,6 +77,23 @@ static_resources:
     connect_timeout: 5s
     type: STRICT_DNS
     lb_policy: ROUND_ROBIN
+    # STRICT_DNS polls for endpoint changes — kept (not LOGICAL_DNS) so v1.3's
+    # multi-instance minion-gateway scale-out (Decision 7) is supported without
+    # config churn. But default settings are too aggressive for our use:
+    #   - dns_lookup_family AUTO does both A and AAAA every poll. The Docker
+    #     embedded resolver has no AAAA for in-network names, so AAAA forwards
+    #     to the host's resolver. If the host's /etc/resolv.conf has a `search`
+    #     domain (typical on a home network), Envoy ends up querying e.g.
+    #     `minion-gateway.homenet.example. AAAA` against the operator's ISP DNS,
+    #     which times out (5s) when that DNS flakes. Repeated failures briefly
+    #     mark the cluster as resolution-stale and stall both Minions' streams.
+    #     V4_ONLY skips the AAAA branch entirely. Docker bridge networks are
+    #     IPv4-only by default, so this loses no functionality.
+    #   - dns_refresh_rate defaults to 5s, which is overkill for a single
+    #     upstream that only changes during deploys. 30s reduces DNS chatter
+    #     6× without affecting failover latency for any realistic scenario.
+    dns_lookup_family: V4_ONLY
+    dns_refresh_rate: 30s
     http2_protocol_options: {}            # h2c upstream
     load_assignment:
       cluster_name: minion_gateway

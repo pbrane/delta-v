@@ -16,10 +16,30 @@
 #   docker compose up -d
 #   docker compose ps        # wait for all services to be healthy
 #   open http://localhost:8980/opennms  (admin/admin)
+#
+# DNS hygiene: every service merges the `no-search-domain` anchor below.
+# Docker copies the host's /etc/resolv.conf `search` directive into each
+# container's resolver, which causes bare-name lookups (e.g. `minion-gateway`)
+# to first try `minion-gateway.<host-search-domain>` against the operator's
+# upstream DNS. When that DNS flakes (typical of home-network DHCP-assigned
+# resolvers), Envoy's STRICT_DNS poller stalls and both Minion data flows pause
+# in lockstep. Setting `dns_search: "."` (the DNS root) per service tells
+# Docker to override the inherited search list; the container's resolver then
+# uses only Docker's embedded resolver (127.0.0.11) for in-network names,
+# eliminating the host's flaky upstream from the path. Apply via YAML merge:
+# every service starts with `<<: *no-search-domain`.
+#
+# Empirically verified: `dns_search: []` is treated by Docker as "no override"
+# (same as omitting). `dns_search: "."` produces `Overrides: [search]` in the
+# container resolv.conf metadata, confirming the override took effect.
+
+x-no-search-domain: &no-search-domain
+  dns_search: "."
 
 services:
 
   postgres:
+    <<: *no-search-domain
     image: postgres:15
     command: ["-c", "max_connections=350"]
     environment:
@@ -39,6 +59,7 @@ services:
       retries: 5
 
   kafka:
+    <<: *no-search-domain
     image: apache/kafka:latest
     environment:
       KAFKA_NODE_ID: "1"
@@ -72,6 +93,7 @@ services:
   # Liquibase migrations, then exits. All services that need PostgreSQL
   # should depend on this with condition: service_completed_successfully.
   db-init:
+    <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/db-init:${VERSION}
     container_name: delta-v-db-init
     depends_on:
@@ -88,6 +110,7 @@ services:
       JAVA_TOOL_OPTIONS: -Xms256m -Xmx512m
 
   snmp-agent:
+    <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/mock-snmp-agent:${VERSION}
     container_name: delta-v-snmp-agent
     hostname: snmp-agent
@@ -97,6 +120,7 @@ services:
       retries: 3
 
   l8opensim:
+    <<: *no-search-domain
     # Pinned to the digest validated in Task 1 spike. Update deliberately.
     image: ghcr.io/labmonkeys-space/l8opensim@sha256:714b83cbdda904dd748bc850cb6f6977815dbfece0ca1393ded22eb24fe61b07
     container_name: delta-v-l8opensim
@@ -140,6 +164,7 @@ services:
       - "19081:8080/tcp" # web UI + REST API
 
   l8opensim-provisioner:
+    <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/l8opensim-provisioner:${VERSION}
     container_name: delta-v-l8opensim-provisioner
     profiles: [lite, full, metrics]
@@ -168,6 +193,7 @@ services:
   # Sink/RPC channels follow in v1.3). Sole inbound surface for Minions per
   # the bidirectional zero-trust posture (project_minion_mandatory).
   minion-gateway:
+    <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/minion-gateway:${VERSION}
     container_name: delta-v-minion-gateway
     depends_on:
@@ -187,6 +213,7 @@ services:
   # termination is rc2 work). Long-lived bidi stream timeouts disabled
   # per Phase 0 Decision 3.
   envoy:
+    <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/envoy:${VERSION}
     container_name: delta-v-envoy
     depends_on:
@@ -203,6 +230,7 @@ services:
       start_period: 10s
 
   minion:
+    <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/minion-boot:${VERSION}
     container_name: delta-v-minion
     hostname: minion-default-01
@@ -253,6 +281,7 @@ services:
       start_period: 15s
 
   minion-lab:
+    <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/minion-boot:${VERSION}
     container_name: delta-v-minion-lab
     profiles: [lite, full, metrics]
@@ -284,6 +313,7 @@ services:
       start_period: 15s
 
   pollerd:
+    <<: *no-search-domain
     profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/pollerd:${VERSION}
     container_name: delta-v-pollerd
@@ -319,6 +349,7 @@ services:
       start_period: 20s
 
   collectd:
+    <<: *no-search-domain
     profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/collectd:${VERSION}
     container_name: delta-v-collectd
@@ -354,6 +385,7 @@ services:
       start_period: 20s
 
   discovery:
+    <<: *no-search-domain
     profiles: [passive, full]
     image: ${IMAGE_PREFIX:-deltav}/discovery:${VERSION}
     container_name: delta-v-discovery
@@ -384,6 +416,7 @@ services:
     stop_grace_period: 60s
 
   trapd:
+    <<: *no-search-domain
     profiles: [passive, full]
     image: ${IMAGE_PREFIX:-deltav}/trapd:${VERSION}
     container_name: delta-v-trapd
@@ -413,6 +446,7 @@ services:
       start_period: 20s
 
   syslogd:
+    <<: *no-search-domain
     profiles: [passive, full]
     image: ${IMAGE_PREFIX:-deltav}/syslogd:${VERSION}
     container_name: delta-v-syslogd
@@ -442,6 +476,7 @@ services:
       start_period: 20s
 
   eventtranslator:
+    <<: *no-search-domain
     profiles: [passive, full]
     image: ${IMAGE_PREFIX:-deltav}/eventtranslator:${VERSION}
     container_name: delta-v-eventtranslator
@@ -469,6 +504,7 @@ services:
       start_period: 20s
 
   enlinkd:
+    <<: *no-search-domain
     profiles: [full]
     image: ${IMAGE_PREFIX:-deltav}/enlinkd:${VERSION}
     container_name: delta-v-enlinkd
@@ -505,6 +541,7 @@ services:
   # itself (baked by Dockerfile.daemon-per's `COPY --chown=opennms:opennms`),
   # so there's no host bind mount to chown here anymore.
   provisiond-imports-init:
+    <<: *no-search-domain
     profiles: [lite, passive, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/provisiond-imports-init:${VERSION}
     container_name: delta-v-provisiond-imports-init
@@ -542,6 +579,7 @@ services:
         find /runtime -type f -exec chmod 644 {} +
 
   provisiond:
+    <<: *no-search-domain
     profiles: [lite, passive, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/provisiond:${VERSION}
     container_name: delta-v-provisiond
@@ -592,6 +630,7 @@ services:
     stop_grace_period: 60s
 
   bsmd:
+    <<: *no-search-domain
     profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/bsmd:${VERSION}
     container_name: delta-v-bsmd
@@ -621,6 +660,7 @@ services:
       start_period: 20s
 
   perspectivepollerd:
+    <<: *no-search-domain
     profiles: [full]
     image: ${IMAGE_PREFIX:-deltav}/perspectivepollerd:${VERSION}
     container_name: delta-v-perspectivepollerd
@@ -650,6 +690,7 @@ services:
       start_period: 20s
 
   alarmd:
+    <<: *no-search-domain
     profiles: [lite, passive, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/alarmd:${VERSION}
     container_name: delta-v-alarmd
@@ -677,6 +718,7 @@ services:
       start_period: 20s
 
   telemetryd:
+    <<: *no-search-domain
     profiles: [full]
     image: ${IMAGE_PREFIX:-deltav}/telemetryd:${VERSION}
     container_name: delta-v-telemetryd
@@ -704,6 +746,7 @@ services:
       start_period: 20s
 
   clickhouse:
+    <<: *no-search-domain
     profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/clickhouse:${VERSION}
     container_name: delta-v-clickhouse
@@ -732,6 +775,7 @@ services:
       start_period: 15s
 
   clickhouse-init:
+    <<: *no-search-domain
     profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/clickhouse-init:${VERSION}
     container_name: delta-v-clickhouse-init
@@ -748,6 +792,7 @@ services:
       DELTAV_CLICKHOUSE_FLOWS_AGG_TTL_DAYS: "90"
 
   flow-enricher:
+    <<: *no-search-domain
     profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/flow-enricher:${VERSION}
     container_name: delta-v-flow-enricher
@@ -774,6 +819,7 @@ services:
       start_period: 30s
 
   flow-default-testnode-1:
+    <<: *no-search-domain
     profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/flow-exporter:${VERSION}
     container_name: flow-default-testnode-1
@@ -792,6 +838,7 @@ services:
         ipv4_address: 172.18.0.21
 
   flow-sflow-testnode-1:
+    <<: *no-search-domain
     profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/sflow-exporter:${VERSION}
     container_name: flow-sflow-testnode-1
@@ -813,6 +860,7 @@ services:
         ipv4_address: 172.18.0.20
 
   flow-v5-testnode-1:
+    <<: *no-search-domain
     profiles: [lite, full, metrics]
     image: ${IMAGE_PREFIX:-deltav}/flow-exporter:${VERSION}
     container_name: flow-v5-testnode-1
@@ -831,6 +879,7 @@ services:
         ipv4_address: 172.18.0.22
 
   prometheus-writer:
+    <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/prometheus-writer:${VERSION}
     profiles: [lite, full, metrics]
     depends_on:
@@ -853,6 +902,7 @@ services:
       - "18080:8080"
 
   victoriametrics:
+    <<: *no-search-domain
     image: victoriametrics/victoria-metrics:v1.106.1
     profiles: [metrics, metrics-e2e]
     command:
@@ -875,6 +925,7 @@ services:
       - "18428:8428"
 
   grafana:
+    <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/grafana:${VERSION}
     profiles: [metrics, metrics-e2e]
     container_name: delta-v-grafana
