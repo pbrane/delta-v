@@ -121,8 +121,13 @@ services:
 
   l8opensim:
     <<: *no-search-domain
-    # Pinned to the digest validated in Task 1 spike. Update deliberately.
-    image: ghcr.io/labmonkeys-space/l8opensim@sha256:714b83cbdda904dd748bc850cb6f6977815dbfece0ca1393ded22eb24fe61b07
+    # Pinned to a digest under our control. Mirror of the labmonkeys-space
+    # build that was previously used (originally pinned to
+    # ghcr.io/labmonkeys-space/l8opensim@sha256:714b83cbdda9...). The upstream
+    # package was made non-public during rc2 smoke validation, breaking
+    # `docker compose pull` for downstream consumers; we mirror to
+    # ghcr.io/pbrane/ to remove the third-party SPOF. Update deliberately.
+    image: ghcr.io/pbrane/l8opensim@sha256:aec42138a627adc30a0f845ad73a5b96d6ca9e6987de343cb3eb80770bd4e3cf
     container_name: delta-v-l8opensim
     profiles: [lite, full, metrics]
     cap_add:
