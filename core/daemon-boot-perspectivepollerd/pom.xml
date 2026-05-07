@@ -238,6 +238,21 @@
             <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Phase 3: publish per-poll response-time records to the
+             deltav-timeseries Kafka topic. Mirrors the Pollerd publisher
+             from PR #220 — same wire contract (TimeseriesBatch protobuf),
+             same Spring Cloud Stream binder, distinguished by
+             ProducerType.PRODUCER_PERSPECTIVE_POLLERD. -->
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>org.opennms.core.deltav-kafka-contracts</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-stream-kafka</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

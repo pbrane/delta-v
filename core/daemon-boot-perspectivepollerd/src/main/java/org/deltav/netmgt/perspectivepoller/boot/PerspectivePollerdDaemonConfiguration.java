@@ -49,6 +49,7 @@ import org.opennms.netmgt.perspectivepoller.PerspectivePollerd;
 import org.opennms.netmgt.perspectivepoller.PerspectiveServiceTracker;
 import org.opennms.netmgt.poller.LocationAwarePollerClient;
 import org.opennms.netmgt.threshd.api.ThresholdingService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -131,20 +132,29 @@ public class PerspectivePollerdDaemonConfiguration {
     }
 
     /**
-     * The PerspectivePollerd daemon.
+     * The PerspectivePollerd daemon — wired as {@link InstrumentedPerspectivePollerd}
+     * so per-poll {@code deltav_perspective_*} counters fire and (when
+     * {@code deltav.perspective.timeseries.enabled=true}) response-time
+     * samples publish to the {@code deltav-timeseries} Kafka topic.
+     *
+     * <p>The bean's declared type stays {@link PerspectivePollerd} so
+     * downstream consumers ({@link AnnotationBasedEventListenerAdapter},
+     * the SmartLifecycle wrapper) bind unchanged.</p>
      *
      * <p>Constructor parameter 9 ({@code eventForwarder}) is typed as
      * {@code EventForwarder}, but {@code EventIpcManager} extends
      * {@code EventForwarder}, so passing the EventIpcManager bean is valid.
-     * Spring resolves by type compatibility.</p>
-     *
-     * <p>The forwarder slot is wrapped with {@link CountingPerspectiveEventForwarder}
+     * The forwarder slot is wrapped with {@link CountingPerspectiveEventForwarder}
      * so per-perspective lifecycle UEIs (nodeLostService /
-     * nodeRegainedService) are surfaced at {@code /actuator/prometheus}
-     * as {@code deltav_perspective_*} counters. The unwrapped
-     * {@code EventIpcManager} bean is still used by the
+     * nodeRegainedService) surface at {@code /actuator/prometheus}. The
+     * unwrapped {@code EventIpcManager} bean is still used by the
      * {@code AnnotationBasedEventListenerAdapter} beans for inbound
      * subscription registration.</p>
+     *
+     * <p>The publisher is supplied via {@link ObjectProvider} because
+     * {@link PerspectivePollerdTimeseriesConfiguration} is gated on a
+     * daemon-scoped flag; when disabled, no bean is registered and Phase 3
+     * publishing is a no-op.</p>
      */
     @Bean
     public PerspectivePollerd perspectivePollerd(
@@ -161,13 +171,16 @@ public class PerspectivePollerdDaemonConfiguration {
             OutageDao outageDao,
             TracerRegistry tracerRegistry,
             PerspectiveServiceTracker perspectiveServiceTracker,
-            io.micrometer.core.instrument.MeterRegistry meterRegistry) {
+            io.micrometer.core.instrument.MeterRegistry meterRegistry,
+            ObjectProvider<PerspectiveResponseTimePublisher> publisherProvider) {
         EventForwarder countingForwarder =
                 new CountingPerspectiveEventForwarder(eventIpcManager, meterRegistry);
-        return new PerspectivePollerd(sessionUtils, monitoringLocationDao, pollerConfig,
+        PerspectiveResponseTimePublisher publisher = publisherProvider.getIfAvailable();
+        return new InstrumentedPerspectivePollerd(sessionUtils, monitoringLocationDao, pollerConfig,
                 monitoredServiceDao, locationAwarePollerClient, applicationDao,
                 collectionAgentFactory, persisterFactory, countingForwarder,
-                thresholdingService, outageDao, tracerRegistry, perspectiveServiceTracker);
+                thresholdingService, outageDao, tracerRegistry, perspectiveServiceTracker,
+                meterRegistry, publisher);
     }
 
     /**

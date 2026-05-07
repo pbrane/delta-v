@@ -21,16 +21,14 @@ package org.deltav.netmgt.perspectivepoller.boot;
  * Names become {@code deltav_perspective_*} at {@code /actuator/prometheus}
  * after Micrometer's dot-to-underscore flattening.
  *
- * <p>Architecture note (vs pollerd): horizon's {@code PerspectivePollerd}
- * uses a Quartz-based scheduler and a private {@code lambda$execute$0}
- * inside {@code PerspectivePollJob} as its per-poll callback. There is no
- * public {@code PollContext}-equivalent seam to subclass without modifying
- * horizon source. As a result, beta2 instrumentation is bounded to the
- * {@code EventForwarder} wrap (outage UEI counting) — the same pattern
- * applied to discovery's daemon. Per-poll response-time {@code deltav_*}
- * counters and Phase 3 Kafka publishing for perspective polls require a
- * deeper hook (e.g., a wrapping {@code PersisterFactory}) and are tracked
- * as a post-beta2 follow-up.
+ * <p>Instrumentation seam: {@link InstrumentedPerspectivePollerd} overrides
+ * horizon's {@code persistResponseTimeData(PerspectivePolledService, PollStatus)}
+ * (called once per RPC-successful poll completion from
+ * {@code PerspectivePollJob.execute()}). RPC-level failures (timeouts,
+ * disconnects) never reach this seam — see {@code feedback_rpc_timeout_no_outages}.
+ *
+ * <p>The {@code EventForwarder} wrap ({@link CountingPerspectiveEventForwarder})
+ * supplies the outage UEI counters; that path remains unchanged.
  */
 public final class PerspectivePollerdDomainMetrics {
 
@@ -39,4 +37,11 @@ public final class PerspectivePollerdDomainMetrics {
     public static final String EVENTS_FORWARDED          = "deltav.perspective.events.forwarded";
     public static final String SERVICE_LOST_TOTAL        = "deltav.perspective.service.lost";
     public static final String SERVICE_REGAINED_TOTAL    = "deltav.perspective.service.regained";
+
+    public static final String POLLS_COMPLETED           = "deltav.perspective.polls.completed";
+    public static final String POLL_DURATION             = "deltav.perspective.poll.duration";
+
+    static final String TAG_LOCATION    = "location";
+    static final String TAG_PERSPECTIVE = "perspective";
+    static final String TAG_RESULT      = "result";
 }

@@ -687,6 +687,10 @@ services:
       OPENNMS_TSID_NODE_ID: "7"
       OPENNMS_RPC_KAFKA_ENABLED: "true"
       OPENNMS_RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Phase 3: publish per-poll response-time records to deltav-timeseries
+      # Kafka topic. Daemon-scoped flag — independent of Pollerd's
+      # DELTAV_TIMESERIES_ENABLED so the two can be toggled separately.
+      DELTAV_PERSPECTIVE_TIMESERIES_ENABLED: ${DELTAV_PERSPECTIVE_TIMESERIES_ENABLED:-true}
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s
