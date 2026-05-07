@@ -183,6 +183,20 @@ do_envoy_image() {
     apply_env_version_alias "deltav/envoy"
 }
 
+do_perspective_app_init_image() {
+    log "Building perspective-app-init image (deltav/perspective-app-init:$VERSION)..."
+    # Tiny Alpine + psql client + init.sh. Seeds the smoke-baseline
+    # perspective application after provisiond imports the perspective-smoke
+    # requisition. No Maven involvement.
+    cd "$SCRIPT_DIR"
+    docker build \
+        -f Dockerfile.perspective-app-init \
+        -t "deltav/perspective-app-init:$VERSION" \
+        -t "deltav/perspective-app-init:latest" \
+        .
+    apply_env_version_alias "deltav/perspective-app-init"
+}
+
 do_flow_enricher_image() {
     log "Building flow-enricher image (deltav/flow-enricher:$VERSION)..."
     cd "$REPO_ROOT"
@@ -320,8 +334,14 @@ do_deltav_images() {
     # No Maven; pure docker build.
     do_envoy_image
 
+    # --- Build perspective-app-init (smoke-baseline perspective seed) ---
+    # Tiny Alpine + psql client. Wires the Devices-API-Perspective-App
+    # application + service map + perspective locations after provisiond
+    # imports the perspective-smoke requisition.
+    do_perspective_app_init_image
+
     log "Delta-V images built:"
-    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy" | sort | head -25
+    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init" | sort | head -30
 }
 
 

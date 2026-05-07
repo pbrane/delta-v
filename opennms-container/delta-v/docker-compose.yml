@@ -167,6 +167,14 @@ services:
     ports:
       - "19161:161/udp"  # ad-hoc SNMP testing from the host
       - "19081:8080/tcp" # web UI + REST API
+    # Pinned IP so the perspective-smoke requisition can target a stable
+    # address. Default Minion routes via the Docker bridge to reach this;
+    # the l8opensim-lab Minion shares this netns so it sees 172.18.0.30 as
+    # one of its own interfaces (the "perspective" comes from the polling
+    # daemon's RPC dispatch, not the network path).
+    networks:
+      default:
+        ipv4_address: 172.18.0.30
 
   l8opensim-provisioner:
     <<: *no-search-domain
@@ -664,6 +672,27 @@ services:
       retries: 12
       start_period: 20s
 
+  # One-shot sidecar that creates the smoke-baseline perspective application
+  # (Devices-API-Perspective-App) once provisiond has imported the
+  # perspective-smoke requisition. PerspectivePollerd's tracker polls
+  # applications every 5s, so no daemon restart is needed.
+  perspective-app-init:
+    <<: *no-search-domain
+    profiles: [full]
+    image: ${IMAGE_PREFIX:-deltav}/perspective-app-init:${VERSION}
+    container_name: delta-v-perspective-app-init
+    restart: "no"
+    depends_on:
+      provisiond:
+        condition: service_healthy
+      minion-lab:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: opennms
+      PGPASSWORD: opennms
+      PGDATABASE: opennms
+
   perspectivepollerd:
     <<: *no-search-domain
     profiles: [full]
@@ -675,6 +704,8 @@ services:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
+      perspective-app-init:
+        condition: service_completed_successfully
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1g -XX:MaxMetaspaceSize=256m -Dorg.opennms.core.ipc.rpc.force-remote=true"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms

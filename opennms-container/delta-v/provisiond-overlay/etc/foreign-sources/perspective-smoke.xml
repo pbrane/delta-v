@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Smoke baseline foreign source for perspective monitoring. The single node
+  this requisition imports is polled from two perspectives (Default +
+  l8opensim-lab) by the perspective-app-init sidecar's application mapping.
+  Detectors are intentionally empty — the monitored service is provisioned
+  explicitly in the requisition, no auto-discovery needed.
+-->
+<foreign-source xmlns="http://xmlns.opennms.org/xsd/config/foreign-source"
+                name="perspective-smoke">
+  <scan-interval>1d</scan-interval>
+  <detectors/>
+  <policies/>
+</foreign-source>
