@@ -1,0 +1,20 @@
+# Delta-V perspective-app-init sidecar — one-shot creator of the smoke-baseline
+# perspective application. After provisiond imports the perspective-smoke
+# requisition (the node + service rows appear in postgres), this sidecar
+# inserts the matching `applications`, `application_service_map`, and
+# `application_perspective_location_map` rows so PerspectivePollerd's tracker
+# discovers the application and starts polling from both perspectives.
+#
+# Idempotent: ON CONFLICT clauses make every insert safe to re-run. The
+# sidecar is a `restart: "no"` one-shot in compose.
+FROM alpine:3.20
+
+LABEL org.opencontainers.image.title="Delta-V Perspective App Init" \
+      org.opencontainers.image.description="Seeds the smoke-baseline perspective application after provisiond import"
+
+RUN apk add --no-cache postgresql16-client
+
+COPY perspective-app-init/init.sh /init.sh
+RUN chmod +x /init.sh
+
+ENTRYPOINT ["/init.sh"]

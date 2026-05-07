@@ -46,6 +46,9 @@
   <requisition-def import-name="perspective-test" import-url-resource="file:///opt/deltav/etc/imports/perspective-test.xml">
     <cron-schedule>0 0/1 * * * ? *</cron-schedule>
   </requisition-def>
+  <requisition-def import-name="perspective-smoke" import-url-resource="file:///opt/deltav/etc/imports/perspective-smoke.xml">
+    <cron-schedule>0/30 * * * * ?</cron-schedule>
+  </requisition-def>
   <requisition-def import-name="flow-test"
                    import-url-resource="file:///opt/deltav/etc/imports/flow-test.xml">
     <cron-schedule>0/30 * * * * ?</cron-schedule>

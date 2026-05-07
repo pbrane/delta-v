@@ -36,6 +36,7 @@
 #     - ghcr.io/<owner>/clickhouse-init:<version>          One-shot DDL bootstrap sidecar
 #     - ghcr.io/<owner>/grafana:<version>                  Grafana + baked provisioning / dashboards
 #     - ghcr.io/<owner>/provisiond-imports-init:<version>  Seeds requisitions named volume on first boot
+#     - ghcr.io/<owner>/perspective-app-init:<version>     Seeds smoke-baseline perspective application
 #     - ghcr.io/<owner>/l8opensim-provisioner:<version>    POSTs 20-device seed to l8opensim
 #     - ghcr.io/<owner>/mock-snmp-agent:<version>          Mock SNMP agent (test infra)
 #     - ghcr.io/<owner>/flow-exporter:<version>            NetFlow v5/v9 test-node exporter
@@ -328,6 +329,19 @@ jobs:
             --push \
             .
 
+      - name: Build and push deltav/perspective-app-init image
+        working-directory: opennms-container/delta-v
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform ${{ env.PLATFORMS }} \
+            -f Dockerfile.perspective-app-init \
+            -t "${{ env.IMAGE_PREFIX }}/perspective-app-init:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/perspective-app-init:latest" \
+            --push \
+            .
+
       - name: Build and push deltav/l8opensim-provisioner image
         working-directory: opennms-container/delta-v
         env:
@@ -398,7 +412,7 @@ jobs:
           echo "     ./deploy.sh up lite"
           echo ""
           echo "### Images"
-          DAEMONS="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd minion-boot db-init flow-enricher prometheus-writer clickhouse clickhouse-init grafana provisiond-imports-init l8opensim-provisioner mock-snmp-agent flow-exporter sflow-exporter jre-deltav daemon-base"
+          DAEMONS="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd minion-boot db-init flow-enricher prometheus-writer clickhouse clickhouse-init grafana provisiond-imports-init perspective-app-init l8opensim-provisioner mock-snmp-agent flow-exporter sflow-exporter jre-deltav daemon-base"
           for name in $DAEMONS; do
             echo "  ${{ env.IMAGE_PREFIX }}/$name:${VERSION}"
           done
