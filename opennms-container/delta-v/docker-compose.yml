@@ -741,7 +741,10 @@ services:
       kafka:
         condition: service_healthy
     environment:
-      JAVA_OPTS: "-Xms512m -Xmx1g -XX:MaxMetaspaceSize=256m"
+      # Heap 1g → 1.5g for Drools: KieSession baseline ~50–200MB, plus a
+      # snapshot of all active alarms loaded at startup. Sized for typical
+      # 100s–1000s active-alarm deployments; very large sites may need more.
+      JAVA_OPTS: "-Xms512m -Xmx1536m -XX:MaxMetaspaceSize=256m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
       SPRING_DATASOURCE_USERNAME: opennms
       SPRING_DATASOURCE_PASSWORD: opennms
