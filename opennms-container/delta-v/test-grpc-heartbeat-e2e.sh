@@ -148,7 +148,7 @@ if ! $NO_RESTACK; then
     log "Bringing stack down (clean state)..."
     docker compose down -v --remove-orphans >/dev/null 2>&1 || true
 
-    log "Bringing stack up with MINION_TRANSPORT=grpc (default)..."
+    log "Bringing stack up..."
     # postgres + db-init come up first; then kafka, minion, minion-gateway, envoy.
     # `up -d` resolves the dependency graph and brings everything running.
     docker compose up -d postgres kafka db-init minion minion-gateway envoy >/dev/null
@@ -174,13 +174,6 @@ if [ "$pending" -gt 0 ]; then
     err "${pending} target service(s) did not reach healthy in time"
 fi
 ok "All target services healthy"
-
-# Confirm MINION_TRANSPORT actually resolved to grpc inside the Minion.
-ACTUAL_TRANSPORT=$(docker compose exec -T minion sh -c 'echo ${MINION_TRANSPORT:-unset}' 2>/dev/null | tr -d '\r' || echo "unknown")
-log "MINION_TRANSPORT inside minion container: ${ACTUAL_TRANSPORT}"
-if [ "$ACTUAL_TRANSPORT" != "grpc" ]; then
-    err "MINION_TRANSPORT='${ACTUAL_TRANSPORT}', expected 'grpc' — gRPC path not active"
-fi
 
 # Wait one heartbeat interval (30s schedule) for first publish to land.
 log "Waiting 35s for first Heartbeat publish..."

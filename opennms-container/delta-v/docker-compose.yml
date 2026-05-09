@@ -250,8 +250,6 @@ services:
     cap_add:
       - NET_RAW
     depends_on:
-      kafka:
-        condition: service_healthy
       envoy:
         condition: service_healthy
     # Stub reverse-DNS entries for the mhuot-labs requisition's 172.20.20.x
@@ -270,12 +268,6 @@ services:
     environment:
       MINION_ID: minion-default-01
       MINION_LOCATION: Default
-      KAFKA_IPC_BOOTSTRAP_SERVERS: kafka:9092
-      MINION_TRANSPORT: ${MINION_TRANSPORT:-grpc}    # rc1/rc2-pr1: covers RPC + Heartbeat
-      OPENNMS_MINION_TRANSPORT_TWIN: ${OPENNMS_MINION_TRANSPORT_TWIN:-grpc}      # rc2-pr2 retrofit: Twin rollback (Spring relaxed binding → opennms.minion.transport.twin)
-      MINION_SINK_SYSLOG_TRANSPORT: ${MINION_SINK_SYSLOG_TRANSPORT:-grpc}        # rc2-pr3: per-sink rollback flag
-      MINION_SINK_TRAP_TRANSPORT: ${MINION_SINK_TRAP_TRANSPORT:-grpc}            # rc2-pr3
-      MINION_SINK_TELEMETRY_TRANSPORT: ${MINION_SINK_TELEMETRY_TRANSPORT:-grpc}  # rc2-pr3 (covers all 4 flow protocols per Task 4.6)
       MINION_GATEWAY_HOST: envoy
       MINION_GATEWAY_PORT: 8443
       JAVA_OPTS: >-
@@ -302,14 +294,13 @@ services:
     cap_add:
       - NET_RAW
     depends_on:
-      kafka:
+      envoy:
         condition: service_healthy
       l8opensim-provisioner:
         condition: service_completed_successfully
     environment:
       MINION_ID: minion-l8opensim-lab-01
       MINION_LOCATION: l8opensim-lab
-      KAFKA_IPC_BOOTSTRAP_SERVERS: kafka:9092
       # Port-collision avoidance under shared netns: l8opensim binds 8080 for
       # its REST API, Minion's actuator defaults to 8080 too. Move Minion's
       # actuator to 8181.

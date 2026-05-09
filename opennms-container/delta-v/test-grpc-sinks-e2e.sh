@@ -48,12 +48,7 @@ SAMPLES_TARGET=${SAMPLES_TARGET:-100}      # batches/records for stable p99
 # Stack must be up. We don't bring it up here — the PR's full E2E loop
 # (Task 12) does that. This script assumes deploy.sh up full has run.
 # ──────────────────────────────────────────────────────────────────────
-log "Verifying stack is up + sink path is on gRPC"
-for sink in syslog trap telemetry; do
-    flag=$(docker compose exec -T minion sh -c "echo \${MINION_SINK_${sink^^}_TRANSPORT:-unset}" | tr -d '\r')
-    [ "$flag" = "grpc" ] || err "MINION_SINK_${sink^^}_TRANSPORT=$flag (expected grpc); abort"
-done
-ok "All three sink flags = grpc"
+log "Verifying stack is up"
 
 # ──────────────────────────────────────────────────────────────────────
 # Syslog: per-batch transport lag, target ≥100 batches

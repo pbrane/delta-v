@@ -9,9 +9,6 @@ SPRING_ARGS=""
 [ -n "$MINION_LOCATION" ]  && SPRING_ARGS="$SPRING_ARGS --opennms.minion.location=$MINION_LOCATION"
 [ -n "$MINION_LOG_LEVEL" ] && SPRING_ARGS="$SPRING_ARGS --logging.level.org.opennms=$MINION_LOG_LEVEL"
 
-# Kafka IPC bridge
-[ -n "$KAFKA_IPC_BOOTSTRAP_SERVERS" ] && SPRING_ARGS="$SPRING_ARGS --opennms.kafka.bootstrap-servers=$KAFKA_IPC_BOOTSTRAP_SERVERS"
-
 # Optional JMX
 if [ -n "$MINION_JMX_PORT" ]; then
     JAVA_OPTS="$JAVA_OPTS -Dcom.sun.management.jmxremote.port=$MINION_JMX_PORT"

@@ -26,14 +26,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * gRPC-backed Syslog sink dispatcher factory. Active when
- * {@code opennms.minion.transport.sink.syslog=grpc} (default per
- * Decision 4 sub-decision 4-ii). Reuses {@code minionGatewayChannel}
- * provided by {@link GrpcHeartbeatDispatcherConfiguration} (rc1).
- *
- * <p>Mutually exclusive with {@link KafkaSyslogDispatcherConfiguration}; both
- * register the same {@code @Bean(name = "syslogDispatcherFactory")} but only
- * one activates at a time via the per-sink transport flag.
+ * gRPC-backed Syslog sink dispatcher factory. Reuses {@code minionGatewayChannel}
+ * provided by {@link GrpcHeartbeatDispatcherConfiguration}.
  */
 @Configuration
 @ConditionalOnProperty(name = "opennms.minion.transport.sink.syslog",
