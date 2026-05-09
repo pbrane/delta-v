@@ -8,10 +8,6 @@ opennms:
   minion:
     id: ${MINION_ID:minion-default-01}
     location: ${MINION_LOCATION:Default}
-    transport: ${MINION_TRANSPORT:grpc}
-    transport.sink.syslog: ${MINION_SINK_SYSLOG_TRANSPORT:grpc}
-    transport.sink.trap: ${MINION_SINK_TRAP_TRANSPORT:grpc}
-    transport.sink.telemetry: ${MINION_SINK_TELEMETRY_TRANSPORT:grpc}
     gateway:
       host: ${MINION_GATEWAY_HOST:envoy}
       port: ${MINION_GATEWAY_PORT:8443}
@@ -32,8 +28,6 @@ opennms:
       queue-size: 10000
       num-threads: 2
     heartbeat.enabled: true
-  kafka:
-    bootstrap-servers: ${KAFKA_IPC_BOOTSTRAP_SERVERS:localhost:9092}
 
 management:
   endpoints:

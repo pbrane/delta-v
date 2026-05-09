@@ -275,21 +275,9 @@ IPC_CONSUMER_PID=$!
 sleep 8
 
 # ══════════════════════════════════════════════════════════════════
-# Pre-flight: assert gRPC SyslogService is engaged (not Kafka rollback)
-#
-# v1.2.0-rc2 PR3 migrated the Syslog sink from Minion→Kafka direct
-# publishing to Minion→gRPC→minion-gateway→Kafka. Without this assertion
-# a regression where the Kafka rollback path silently absorbs the test
-# load would be invisible at the Kafka-topic side (test still passes but
-# the gRPC path isn't exercised).
+# Pre-flight: provoke gateway-side stream open
 # ══════════════════════════════════════════════════════════════════
-log "Pre-flight: assert gRPC SyslogService is engaged"
-
-ACTUAL_TRANSPORT=$(docker compose exec -T minion sh -c 'echo "${MINION_SINK_SYSLOG_TRANSPORT:-unset}"' | tr -d '\r')
-log "  MINION_SINK_SYSLOG_TRANSPORT inside minion: ${ACTUAL_TRANSPORT}"
-if [ "${ACTUAL_TRANSPORT}" != "grpc" ]; then
-    err "Expected gRPC syslog path; got '${ACTUAL_TRANSPORT}'"
-fi
+log "Pre-flight: provoke gateway-side stream open"
 
 # Drive one syslog datagram to provoke gateway-side stream open.
 echo "<14>1 $(date -u +%Y-%m-%dT%H:%M:%SZ) preflight preflight - - preflight-syslog-message" \

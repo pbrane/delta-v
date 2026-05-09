@@ -160,21 +160,8 @@ for table in "${EXPECTED_TABLES[@]}"; do
 done
 
 # ══════════════════════════════════════════════════════════════════
-# Pre-flight: assert gRPC TelemetryService is engaged (not Kafka rollback)
-#
-# v1.2.0-rc2 PR3 migrated the Telemetry sink (covering all four flow
-# protocols — IPFIX, Netflow v5/v9, sFlow) from Minion→Kafka direct
-# publishing to Minion→gRPC→minion-gateway→Kafka. Without this assertion
-# a regression where the Kafka rollback path silently absorbs the test
-# load would be invisible at the ClickHouse side.
+# Pre-flight: confirm gateway-side flow stream opens
 # ══════════════════════════════════════════════════════════════════
-log "Pre-flight: assert gRPC TelemetryService is engaged"
-
-ACTUAL_TRANSPORT=$(docker compose exec -T minion sh -c 'echo "${MINION_SINK_TELEMETRY_TRANSPORT:-unset}"' | tr -d '\r')
-log "  MINION_SINK_TELEMETRY_TRANSPORT inside minion: ${ACTUAL_TRANSPORT}"
-if [ "${ACTUAL_TRANSPORT}" != "grpc" ]; then
-    err "Expected gRPC telemetry path; got '${ACTUAL_TRANSPORT}'"
-fi
 
 # Flow exporters in the `full` profile (flow-default-testnode + sFlow + v5)
 # emit continuously; we don't need to drive synthetic traffic. Wait up to

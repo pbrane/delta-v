@@ -29,14 +29,8 @@ import org.springframework.context.annotation.Configuration;
  * gRPC-backed Telemetry sink dispatcher factory. A single factory serves all
  * four flow protocols (IPFIX, Netflow v5, Netflow v9, sFlow); the underlying
  * {@link GrpcSinkDispatcherFactory} routes per-module-id to the matching
- * {@code TelemetryService.Publish*} RPC. Active when
- * {@code opennms.minion.transport.sink.telemetry=grpc} (default per Decision 4
- * sub-decision 4-ii). Reuses {@code minionGatewayChannel} provided by
- * {@link GrpcHeartbeatDispatcherConfiguration} (rc1).
- *
- * <p>Mutually exclusive with {@link KafkaTelemetryDispatcherConfiguration}; both
- * register the same {@code @Bean(name = "telemetryDispatcherFactory")} but only
- * one activates at a time via the per-sink transport flag.
+ * {@code TelemetryService.Publish*} RPC. Reuses {@code minionGatewayChannel}
+ * provided by {@link GrpcHeartbeatDispatcherConfiguration}.
  */
 @Configuration
 @ConditionalOnProperty(name = "opennms.minion.transport.sink.telemetry",

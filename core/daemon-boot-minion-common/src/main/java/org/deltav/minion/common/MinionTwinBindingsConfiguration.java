@@ -26,18 +26,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Transport-agnostic Spring configuration for Minion-side Twin subscribers.
+ * Spring configuration for Minion-side Twin subscribers.
  *
- * <p>Active when {@code opennms.minion.twin.enabled=true} (default), regardless
- * of {@code opennms.minion.transport.twin} value. Owns the per-Minion subscriber
- * beans (e.g., {@link PassiveStatusTwinSubscriber}) and the
- * {@link GrpcTwinStreamConfiguration.TwinSubscriptionRegistration} marker beans
- * that the gRPC stream uses to know which consumer keys to SUBSCRIBE to.
+ * <p>Active when {@code opennms.minion.twin.enabled=true} (default). Owns the
+ * per-Minion subscriber beans (e.g., {@link PassiveStatusTwinSubscriber}) and
+ * the {@link GrpcTwinStreamConfiguration.TwinSubscriptionRegistration} marker
+ * beans that the gRPC stream uses to know which consumer keys to SUBSCRIBE to.
  *
  * <p>The phase-200 {@link SmartLifecycle} binds each subscriber to the
- * transport-active {@link TwinSubscriber} bean (provided by either
- * {@link KafkaTwinSubscriberConfiguration} at phase 100 in Kafka mode or
- * {@link GrpcTwinStreamConfiguration} at bean-construction time in gRPC mode).
+ * {@link TwinSubscriber} bean provided by {@link GrpcTwinStreamConfiguration}.
  * Binding registers a local callback on the subscriber's
  * {@code AbstractTwinSubscriber.subscribe(...)} dispatch table — when
  * {@code accept(TwinUpdate)} is called by the transport layer, the registered
@@ -45,18 +42,16 @@ import org.springframework.context.annotation.Configuration;
  *
  * <p>Phase ordering:
  * <ul>
- *   <li>Phase 100: KafkaTwinSubscriber.init() (Kafka mode only)</li>
  *   <li>Phase 200: this lifecycle — passiveStatusTwinSubscriber.bind(twinSubscriber)</li>
- *   <li>Phase 350: GrpcTwinStreamConfiguration twinStreamLifecycle (gRPC mode only)
- *       — opens bidi stream and sends SUBSCRIBE per
+ *   <li>Phase 350: GrpcTwinStreamConfiguration twinStreamLifecycle — opens bidi
+ *       stream and sends SUBSCRIBE per
  *       {@link GrpcTwinStreamConfiguration.TwinSubscriptionRegistration} bean</li>
  * </ul>
  *
- * <p>In gRPC mode, the bindings register callbacks on the
- * {@code LocalTwinSubscriberImpl} bean. When the gRPC stream delivers a
- * TwinUpdate, {@code MinionTwinStreamClient} calls
- * {@code localTwinSubscriber.accept(update)} which fires the registered
- * callbacks. This decouples the transport-specific wire reader from the
+ * <p>The bindings register callbacks on the {@code LocalTwinSubscriberImpl}
+ * bean. When the gRPC stream delivers a TwinUpdate,
+ * {@code MinionTwinStreamClient} calls {@code localTwinSubscriber.accept(update)}
+ * which fires the registered callbacks. This decouples the wire reader from the
  * Minion-internal subscriber dispatch.
  */
 @Configuration

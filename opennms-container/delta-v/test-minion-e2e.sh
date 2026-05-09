@@ -199,20 +199,8 @@ IPC_CONSUMER_PID=$!
 sleep 8
 
 # ══════════════════════════════════════════════════════════════════
-# Pre-flight: assert gRPC TrapService is engaged (not Kafka rollback)
-#
-# v1.2.0-rc2 PR3 migrated the Trap sink from Minion→Kafka direct
-# publishing to Minion→gRPC→minion-gateway→Kafka. Without this assertion
-# a regression where the Kafka rollback path silently absorbs the test
-# load would be invisible at the Kafka-topic side.
+# Pre-flight: provoke gateway-side stream open
 # ══════════════════════════════════════════════════════════════════
-log "Pre-flight: assert gRPC TrapService is engaged"
-
-ACTUAL_TRANSPORT=$(docker compose exec -T minion sh -c 'echo "${MINION_SINK_TRAP_TRANSPORT:-unset}"' | tr -d '\r')
-log "  MINION_SINK_TRAP_TRANSPORT inside minion: ${ACTUAL_TRANSPORT}"
-if [ "${ACTUAL_TRANSPORT}" != "grpc" ]; then
-    err "Expected gRPC trap path; got '${ACTUAL_TRANSPORT}'"
-fi
 
 # Drive one trap to provoke gateway-side stream open.
 snmptrap -v 2c -c "$TRAP_COMMUNITY" "${TRAP_HOST}:${TRAP_PORT}" '' \

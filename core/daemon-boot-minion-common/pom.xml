@@ -46,7 +46,7 @@
 
         <!-- ============================================================ -->
         <!-- Shared daemon infrastructure (SmartLifecycle, OpennmsHome,   -->
-        <!-- NoOpTracerRegistry, Kafka event transport, DataSource)       -->
+        <!-- NoOpTracerRegistry, DataSource)                              -->
         <!-- ============================================================ -->
         <dependency>
             <groupId>org.deltav.core</groupId>
@@ -85,28 +85,6 @@
         </dependency>
 
         <!-- ============================================================ -->
-        <!-- IPC: Kafka RPC Server                                        -->
-        <!-- ============================================================ -->
-        <dependency>
-            <groupId>org.opennms.core.ipc.rpc</groupId>
-            <artifactId>org.opennms.core.ipc.rpc.kafka</artifactId>
-            <exclusions>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-aop</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-beans</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-context</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-core</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-expression</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-tx</artifactId></exclusion>
-                <exclusion><groupId>org.hibernate</groupId><artifactId>hibernate-core</artifactId></exclusion>
-                <exclusion><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.0-api</artifactId></exclusion>
-                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion>
-                <exclusion><groupId>org.ops4j.pax.logging</groupId><artifactId>pax-logging-api</artifactId></exclusion>
-                <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
-                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- ============================================================ -->
         <!-- IPC: Sink Common (AbstractMessageDispatcherFactory)          -->
         <!-- ============================================================ -->
         <dependency>
@@ -125,33 +103,11 @@
         </dependency>
 
         <!-- ============================================================ -->
-        <!-- IPC: Kafka Sink Client (producer)                            -->
+        <!-- IPC: Twin Common (LocalTwinSubscriberImpl)                   -->
         <!-- ============================================================ -->
         <dependency>
-            <groupId>org.opennms.core.ipc.sink.kafka</groupId>
-            <artifactId>org.opennms.core.ipc.sink.kafka.client</artifactId>
-            <exclusions>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-aop</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-beans</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-context</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-core</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-expression</artifactId></exclusion>
-                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-tx</artifactId></exclusion>
-                <exclusion><groupId>org.hibernate</groupId><artifactId>hibernate-core</artifactId></exclusion>
-                <exclusion><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.0-api</artifactId></exclusion>
-                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion>
-                <exclusion><groupId>org.ops4j.pax.logging</groupId><artifactId>pax-logging-api</artifactId></exclusion>
-                <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
-                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- ============================================================ -->
-        <!-- IPC: Kafka Twin Subscriber                                   -->
-        <!-- ============================================================ -->
-        <dependency>
-            <groupId>org.opennms.core.ipc.twin.kafka</groupId>
-            <artifactId>org.opennms.core.ipc.twin.kafka.subscriber</artifactId>
+            <groupId>org.opennms.core.ipc.twin</groupId>
+            <artifactId>org.opennms.core.ipc.twin.common</artifactId>
             <exclusions>
                 <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-aop</artifactId></exclusion>
                 <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-beans</artifactId></exclusion>
@@ -315,22 +271,6 @@
             <groupId>org.opennms.core</groupId>
             <artifactId>org.opennms.core.model-jakarta</artifactId>
             <version>${project.version}</version>
-        </dependency>
-
-        <!-- ============================================================ -->
-        <!-- OSGi API interfaces (for ConfigurationAdmin adapter)         -->
-        <!-- ============================================================ -->
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>osgi.cmpn</artifactId>
-            <version>7.0.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>osgi.core</artifactId>
-            <version>7.0.0</version>
-            <scope>provided</scope>
         </dependency>
 
         <!-- ============================================================ -->
