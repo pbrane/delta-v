@@ -37,9 +37,9 @@ import org.springframework.beans.factory.InitializingBean;
 /**
  * Bridges Kafka Sink topic consumption to the local {@link LocalMessageConsumerManager}.
  *
- * <p>Minion forwards messages (traps, syslogs, telemetry) to Kafka Sink topics
- * ({@code OpenNMS.Sink.{moduleId}}). This bridge consumes from that topic and
- * dispatches to the local consumer manager.</p>
+ * <p>minion-gateway publishes Minion-forwarded messages (traps, syslogs, telemetry)
+ * to Kafka Sink topics ({@code DeltaV.Sink.{moduleId}}). This bridge consumes from
+ * that topic and dispatches to the local consumer manager.</p>
  *
  * <p>Reusable by any daemon that consumes from Minion Sink topics.</p>
  */
@@ -91,7 +91,7 @@ public class KafkaSinkBridge implements InitializingBean, DisposableBean {
         }
         if (closed.get()) return;
 
-        final String topic = "OpenNMS.Sink." + module.getId();
+        final String topic = "DeltaV.Sink." + module.getId();
         LOG.info("KafkaSinkBridge starting: topic={}, bootstrapServers={}, groupId={}",
                 topic, bootstrapServers, groupId);
 

@@ -7,7 +7,7 @@
 #   1. Envoy cluster.minion_gateway.upstream_rq_total advances during
 #      Heartbeat traffic — Minion is publishing via gRPC, not Kafka.
 #   2. minion-gateway translates and republishes <MinionIdentityDTO>
-#      XML on OpenNMS.Sink.Heartbeat (matches horizon wire format).
+#      XML on DeltaV.Sink.Heartbeat (matches horizon wire format).
 #   3. gRPC-Heartbeat p99 RTT (CreateTime − payload <timestamp>) ≤
 #      Kafka baseline p99 + threshold (11 ms by default).
 #
@@ -219,10 +219,10 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════════
-# Assertion 2: <MinionIdentityDTO> records on OpenNMS.Sink.Heartbeat
+# Assertion 2: <MinionIdentityDTO> records on DeltaV.Sink.Heartbeat
 # ══════════════════════════════════════════════════════════════════
 log ""
-log "Assertion 2: ≥2 <MinionIdentityDTO> records on OpenNMS.Sink.Heartbeat"
+log "Assertion 2: ≥2 <MinionIdentityDTO> records on DeltaV.Sink.Heartbeat"
 
 # 90s window covers ≥2 publishes at 30s heartbeat interval (with slack
 # for consumer-group rebalance). Default offset=latest skips historical
@@ -230,7 +230,7 @@ log "Assertion 2: ≥2 <MinionIdentityDTO> records on OpenNMS.Sink.Heartbeat"
 HEARTBEAT_SAMPLE="${TEST_TMPDIR}/heartbeats.sample"
 docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
     --bootstrap-server localhost:9092 \
-    --topic OpenNMS.Sink.Heartbeat \
+    --topic DeltaV.Sink.Heartbeat \
     --max-messages 6 \
     --timeout-ms 90000 \
     > "$HEARTBEAT_SAMPLE" 2>/dev/null || true
@@ -260,7 +260,7 @@ else
 
     docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
         --bootstrap-server localhost:9092 \
-        --topic OpenNMS.Sink.Heartbeat \
+        --topic DeltaV.Sink.Heartbeat \
         --property print.timestamp=true \
         > "$HEARTBEATS_RAW" 2>&1 &
     CONSUMER_PID=$!

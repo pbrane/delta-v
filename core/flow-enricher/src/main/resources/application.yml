@@ -15,11 +15,10 @@ spring:
     stream:
       bindings:
         # Multi-topic input: comma-separated destinations let one binding
-        # consume from all four flow Sink topics in parallel. Defaults to the
-        # legacy OpenNMS.Sink.* prefix until the DeltaV.Sink.* rename lands;
-        # operators can override the whole list via DELTAV_FLOWS_SINK_TOPICS.
+        # consume from all four flow Sink topics in parallel. Operators can
+        # override the whole list via DELTAV_FLOWS_SINK_TOPICS.
         enrichFlows-in-0:
-          destination: ${DELTAV_FLOWS_SINK_TOPICS:OpenNMS.Sink.Telemetry-Netflow-5,OpenNMS.Sink.Telemetry-Netflow-9,OpenNMS.Sink.Telemetry-IPFIX,OpenNMS.Sink.Telemetry-SFlow}
+          destination: ${DELTAV_FLOWS_SINK_TOPICS:DeltaV.Sink.Telemetry-Netflow-5,DeltaV.Sink.Telemetry-Netflow-9,DeltaV.Sink.Telemetry-IPFIX,DeltaV.Sink.Telemetry-SFlow}
           group: deltav-flow-enricher
         enrichFlows-out-0:
           destination: ${DELTAV_FLOWS_OUTPUT_TOPIC:deltav-flows}

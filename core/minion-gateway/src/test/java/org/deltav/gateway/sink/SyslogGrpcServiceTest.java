@@ -38,7 +38,7 @@ class SyslogGrpcServiceTest {
     @Test
     void onNext_publishesToOpenNmsSinkSyslogTopicWithIdentityKey() {
         SinkKafkaProducer producer = mock(SinkKafkaProducer.class);
-        when(producer.send(eq("OpenNMS.Sink.Syslog"), eq("Default@minion-A"), argThat(b -> new String(b).equals("payload"))))
+        when(producer.send(eq("DeltaV.Sink.Syslog"), eq("Default@minion-A"), argThat(b -> new String(b).equals("payload"))))
             .thenReturn(CompletableFuture.completedFuture(null));
         SyslogGrpcService svc = new SyslogGrpcService(producer);
 
@@ -55,7 +55,7 @@ class SyslogGrpcServiceTest {
                 .build());
         });
 
-        verify(producer).send(eq("OpenNMS.Sink.Syslog"), eq("Default@minion-A"),
+        verify(producer).send(eq("DeltaV.Sink.Syslog"), eq("Default@minion-A"),
             argThat(b -> new String(b).equals("payload")));
     }
 

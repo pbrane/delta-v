@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
  * <p><strong>moduleId source:</strong> the {@link SinkMessage} envelope does
  * not carry a {@code moduleId} field; in the Sink IPC protocol the module
  * identifier is derived from the Kafka topic name
- * ({@code OpenNMS.Sink.{moduleId}}). Callers that know the topic should use
+ * ({@code DeltaV.Sink.{moduleId}}). Callers that know the topic should use
  * the {@link #deserialize(String, byte[])} overload to supply the moduleId
  * explicitly. The {@link #deserialize(byte[])} overload populates the
  * {@link DeserializedSinkMessage#moduleId() moduleId} field as {@code null}.

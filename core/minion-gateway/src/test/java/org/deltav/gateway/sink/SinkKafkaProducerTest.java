@@ -39,13 +39,13 @@ class SinkKafkaProducerTest {
         SinkKafkaProducer producer = new SinkKafkaProducer(mock, metrics);
 
         CompletableFuture<Void> result = producer.send(
-            "OpenNMS.Sink.Syslog", "Default@minion-A", "payload-bytes".getBytes());
+            "DeltaV.Sink.Syslog", "Default@minion-A", "payload-bytes".getBytes());
 
         result.get(2, TimeUnit.SECONDS);
 
         assertThat(mock.history()).hasSize(1);
         ProducerRecord<String, byte[]> record = mock.history().get(0);
-        assertThat(record.topic()).isEqualTo("OpenNMS.Sink.Syslog");
+        assertThat(record.topic()).isEqualTo("DeltaV.Sink.Syslog");
         assertThat(record.key()).isEqualTo("Default@minion-A");
 
         // Published bytes must be a SinkMessage protobuf containing the payload —
@@ -67,7 +67,7 @@ class SinkKafkaProducerTest {
         SinkKafkaProducer producer = new SinkKafkaProducer(mock, metrics);
 
         CompletableFuture<Void> result = producer.send(
-            "OpenNMS.Sink.Syslog", "k", new byte[0]);
+            "DeltaV.Sink.Syslog", "k", new byte[0]);
 
         mock.errorNext(new RuntimeException("broker down"));
 

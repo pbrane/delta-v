@@ -36,7 +36,7 @@ public class MinionGatewayApplication {
 
     /**
      * Bridges horizon's Dropwizard MetricRegistry (used by the Kafka producer
-     * republishing to OpenNMS.Sink.Heartbeat) into Micrometer so meters appear
+     * republishing to DeltaV.Sink.Heartbeat) into Micrometer so meters appear
      * at /actuator/prometheus under the "opennms_" prefix per
      * feedback_meter_naming_horizon_vs_deltav. Spring gRPC's native
      * Micrometer meters (grpc.server.*) are emitted directly without

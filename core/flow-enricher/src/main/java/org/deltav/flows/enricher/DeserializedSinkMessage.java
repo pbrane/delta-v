@@ -31,7 +31,7 @@ import org.opennms.netmgt.telemetry.common.ipc.TelemetryProtos;
  * carry a {@code moduleId} field &mdash; its fields are {@code messageId},
  * {@code content}, {@code currentChunkNumber}, {@code totalChunks}, and
  * {@code tracingInfo}. The Sink IPC framework derives the module identifier
- * from the Kafka topic name ({@code OpenNMS.Sink.{moduleId}}; see
+ * from the Kafka topic name ({@code DeltaV.Sink.{moduleId}}; see
  * {@code KafkaSinkBridge} in {@code core/daemon-sink-kafka}).
  *
  * <p>The single-argument {@link SinkMessageDeserializer#deserialize(byte[])}

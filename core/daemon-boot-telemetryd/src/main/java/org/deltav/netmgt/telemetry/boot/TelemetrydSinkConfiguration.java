@@ -29,7 +29,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>Provides a {@link TelemetryMessageConsumerManager} that spawns one
  * {@link KafkaSinkBridge} per telemetry protocol
  * (Netflow-5, IPFIX, sFlow, etc.). Each bridge consumes from its own Kafka
- * Sink topic (e.g., OpenNMS.Sink.Telemetry-Netflow-5).</p>
+ * Sink topic (e.g., DeltaV.Sink.Telemetry-Netflow-5).</p>
  *
  * <p>The {@link LocalMessageDispatcherFactory} routes dispatched messages
  * directly to the consumer manager in-process -- no remote transport.</p>

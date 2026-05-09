@@ -7,7 +7,7 @@
 # materialized views (application, source_ip, conversation, dscp) are populated.
 #
 # Pipeline:
-#   softflowd/exporter → Telemetryd (UDP 9999) → Kafka OpenNMS.Sink.Flows →
+#   softflowd/exporter → Telemetryd (UDP 9999) → Kafka DeltaV.Sink.Flows →
 #   flow-enricher (enrich + split) → Kafka deltav-flows →
 #   ClickHouse Kafka engine (flows_kafka) → ingest MV → flows_raw →
 #   dimension MVs (flows_by_application_1m, flows_by_source_ip_1m,

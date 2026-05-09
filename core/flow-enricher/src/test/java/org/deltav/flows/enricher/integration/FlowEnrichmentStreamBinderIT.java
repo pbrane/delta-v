@@ -132,9 +132,9 @@ class FlowEnrichmentStreamBinderIT {
     // application.yml's enrichFlows-in-0.destination. The test binder
     // provisions one SubscribableChannel per entry, keyed by
     // "<destination>.destination".
-    private static final String NF5_DESTINATION = "OpenNMS.Sink.Telemetry-Netflow-5";
-    private static final String NF9_DESTINATION = "OpenNMS.Sink.Telemetry-Netflow-9";
-    private static final String IPFIX_DESTINATION = "OpenNMS.Sink.Telemetry-IPFIX";
+    private static final String NF5_DESTINATION = "DeltaV.Sink.Telemetry-Netflow-5";
+    private static final String NF9_DESTINATION = "DeltaV.Sink.Telemetry-Netflow-9";
+    private static final String IPFIX_DESTINATION = "DeltaV.Sink.Telemetry-IPFIX";
     // SFLOW_DESTINATION omitted because this IT does not drive raw sFlow
     // wire bytes through the enricher. The real SFlowUdpParser bean is
     // constructed in this context (via the LogPreservingThreadFactory shim)
@@ -333,7 +333,7 @@ class FlowEnrichmentStreamBinderIT {
     @Test
     void unknownTopicPrefixDropsMessage() throws Exception {
         // Use a destination the enricher is NOT bound to: the input side is
-        // bound to the four OpenNMS.Sink.* channels, so to exercise the
+        // bound to the four DeltaV.Sink.* channels, so to exercise the
         // "unknown prefix" branch we must send through one of the bound
         // destinations but with a header that carries a prefix the enricher
         // doesn't recognize. We do that by overriding RECEIVED_TOPIC on the

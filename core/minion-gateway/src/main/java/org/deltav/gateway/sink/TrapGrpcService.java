@@ -32,7 +32,7 @@ import static org.deltav.gateway.grpc.MinionIdentityServerInterceptor.MINION_LOC
 
 /**
  * Bidi-streaming gRPC TrapService. Per-onNext: forwards opaque payload
- * bytes to {@code OpenNMS.Sink.Trap} keyed by {@code <location>@<minion-id>}.
+ * bytes to {@code DeltaV.Sink.Trap} keyed by {@code <location>@<minion-id>}.
  *
  * <p>Per Decision 6 (sinks are lossy by design): Kafka publish failures
  * log and continue; the gRPC stream is not torn down on a single
@@ -43,7 +43,7 @@ import static org.deltav.gateway.grpc.MinionIdentityServerInterceptor.MINION_LOC
 public class TrapGrpcService extends TrapServiceGrpc.TrapServiceImplBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TrapGrpcService.class);
-    private static final String TOPIC = "OpenNMS.Sink.Trap";
+    private static final String TOPIC = "DeltaV.Sink.Trap";
 
     private final SinkKafkaProducer producer;
 

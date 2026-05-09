@@ -57,7 +57,7 @@ class FlowEnrichmentFunctionTest {
 
     private static final String EXPORTER_ADDRESS = "192.0.2.10";
     private static final String MINION_LOCATION = "Default";
-    private static final String NF5_TOPIC = "OpenNMS.Sink.Telemetry-Netflow-5";
+    private static final String NF5_TOPIC = "DeltaV.Sink.Telemetry-Netflow-5";
     private static final String NF5_MODULE_ID = "Telemetry-Netflow-5";
 
     private SinkMessageDeserializer deserializer;
@@ -141,7 +141,7 @@ class FlowEnrichmentFunctionTest {
         byte[] kafkaBytes = buildValidSinkMessageBytes();
 
         List<byte[]> result = function.processMessage(
-                messageWithTopic("OpenNMS.Sink.Telemetry-Made-Up", kafkaBytes));
+                messageWithTopic("DeltaV.Sink.Telemetry-Made-Up", kafkaBytes));
 
         assertThat(result).isEmpty();
     }

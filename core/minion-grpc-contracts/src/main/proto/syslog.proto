@@ -9,7 +9,7 @@ import "google/protobuf/timestamp.proto";
 
 // One marshaled syslog Sink-API message produced on the Minion by
 // SyslogSinkModule.marshal(SyslogConnection). The minion-gateway forwards
-// `payload` bytes verbatim to OpenNMS.Sink.Syslog; the existing horizon
+// `payload` bytes verbatim to DeltaV.Sink.Syslog; the existing horizon
 // Syslogd consumer calls SyslogSinkModule.unmarshal(bytes) and is unaware
 // of the gRPC hop.
 //

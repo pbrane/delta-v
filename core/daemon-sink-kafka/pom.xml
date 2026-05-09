@@ -17,7 +17,7 @@
     <name>OpenNMS :: Core :: Daemon Sink :: Kafka</name>
     <description>
         Shared Kafka Sink bridge infrastructure for Spring Boot daemon containers.
-        Consumes from Minion Sink topics (OpenNMS.Sink.*) and dispatches to local consumers.
+        Consumes from Minion Sink topics (DeltaV.Sink.*) and dispatches to local consumers.
     </description>
 
     <dependencies>

@@ -33,7 +33,7 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Republishes translated Heartbeat records to {@code OpenNMS.Sink.Heartbeat}
+ * Republishes translated Heartbeat records to {@code DeltaV.Sink.Heartbeat}
  * so the existing horizon consumer keys correctly off identity.
  *
  * <p>Per {@code feedback_meter_naming_horizon_vs_deltav}, the publish counters

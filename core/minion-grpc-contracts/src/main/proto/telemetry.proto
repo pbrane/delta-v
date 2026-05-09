@@ -25,7 +25,7 @@ message TelemetryAck {
 }
 
 // One method per protocol so minion-gateway routes to the correct
-// OpenNMS.Sink.Telemetry-* topic without inspecting payload.
+// DeltaV.Sink.Telemetry-* topic without inspecting payload.
 service TelemetryService {
   rpc PublishIpfix(stream TelemetryDatagram) returns (stream TelemetryAck);
   rpc PublishNetflow5(stream TelemetryDatagram) returns (stream TelemetryAck);

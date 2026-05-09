@@ -9,7 +9,7 @@ import "google/protobuf/timestamp.proto";
 
 // One marshaled SNMP trap Sink-API message produced on the Minion by
 // TrapSinkModule.marshal(TrapInformationWrapper). The minion-gateway
-// forwards `payload` bytes verbatim to OpenNMS.Sink.Trap; horizon's
+// forwards `payload` bytes verbatim to DeltaV.Sink.Trap; horizon's
 // Trapd consumer calls TrapSinkModule.unmarshal(bytes) unchanged.
 message SnmpTrap {
   bytes payload = 1;                    // TrapSinkModule.marshal() output

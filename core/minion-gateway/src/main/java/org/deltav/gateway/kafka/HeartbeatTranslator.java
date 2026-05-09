@@ -33,7 +33,7 @@ import java.time.format.DateTimeFormatter;
  */
 public final class HeartbeatTranslator {
 
-    public static final String TOPIC = "OpenNMS.Sink.Heartbeat";
+    public static final String TOPIC = "DeltaV.Sink.Heartbeat";
 
     private static final DateTimeFormatter ISO =
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").withZone(ZoneOffset.UTC);

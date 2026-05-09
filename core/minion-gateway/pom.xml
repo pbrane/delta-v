@@ -78,7 +78,7 @@
             </exclusions>
         </dependency>
         <!-- horizon's SinkMessageProto wire format on the daemon-facing
-             Kafka topics OpenNMS.Sink.<Type>. The gateway wraps the
+             Kafka topics DeltaV.Sink.&lt;Type&gt;. The gateway wraps the
              gRPC-delivered opaque payload bytes in a SinkMessage protobuf
              before publishing — horizon's KafkaSinkBridge.pollLoop calls
              SinkMessage.parseFrom(record.value()) and would throw

@@ -95,7 +95,7 @@ class HeartbeatGrpcServiceTest {
         ArgumentCaptor<ProducerRecord<String, byte[]>> captor =
             ArgumentCaptor.forClass(ProducerRecord.class);
         org.mockito.Mockito.verify(mockProducer).send(captor.capture());
-        assertThat(captor.getValue().topic()).isEqualTo("OpenNMS.Sink.Heartbeat");
+        assertThat(captor.getValue().topic()).isEqualTo("DeltaV.Sink.Heartbeat");
         assertThat(captor.getValue().key()).isEqualTo("loc-DC1@minion-A");
 
         sender.onCompleted();
