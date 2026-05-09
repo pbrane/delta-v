@@ -30,7 +30,6 @@ import org.opennms.netmgt.alarmd.NorthbounderManager;
 import org.opennms.netmgt.events.api.AnnotationBasedEventListenerAdapter;
 import org.opennms.netmgt.events.api.EventSubscriptionService;
 import org.opennms.netmgt.model.AlarmAssociation;
-import org.opennms.netmgt.model.OnmsAcknowledgment;
 import org.opennms.netmgt.model.OnmsAlarm;
 import org.opennms.netmgt.model.OnmsCategory;
 import org.opennms.netmgt.model.OnmsDistPoller;
@@ -101,7 +100,6 @@ public class AlarmdConfiguration {
     public PersistenceManagedTypes persistenceManagedTypes() {
         return PersistenceManagedTypes.of(
             OnmsAlarm.class.getName(),
-            OnmsAcknowledgment.class.getName(),
             AlarmAssociation.class.getName(),
             OnmsCategory.class.getName(),
             OnmsDistPoller.class.getName(),
