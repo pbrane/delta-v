@@ -57,12 +57,7 @@ import org.springframework.messaging.Message;
  *
  * <h2>Module ID extraction</h2>
  *
- * <p>The Kafka topic follows one of two naming schemes:
- * <ul>
- *   <li>{@code OpenNMS.Sink.<moduleId>} &mdash; when the Minion was configured
- *       against an upstream horizon-style broker</li>
- *   <li>{@code DeltaV.Sink.<moduleId>} &mdash; the delta-v-native prefix</li>
- * </ul>
+ * <p>The Kafka topic follows the scheme {@code DeltaV.Sink.<moduleId>}.
  * The prefix is stripped to yield a module ID such as
  * {@code Telemetry-Netflow-5}, which is used as the dispatch key into the
  * processor map. Any other prefix (including a missing header) causes the
@@ -101,7 +96,6 @@ public class FlowEnrichmentFunction {
 
     private static final Logger LOG = LoggerFactory.getLogger(FlowEnrichmentFunction.class);
 
-    private static final String OPENNMS_SINK_PREFIX = "OpenNMS.Sink.";
     private static final String DELTAV_SINK_PREFIX = "DeltaV.Sink.";
 
     private final SinkMessageDeserializer deserializer;
@@ -271,9 +265,6 @@ public class FlowEnrichmentFunction {
     private static String extractModuleId(String topicName) {
         if (topicName == null) {
             return null;
-        }
-        if (topicName.startsWith(OPENNMS_SINK_PREFIX)) {
-            return topicName.substring(OPENNMS_SINK_PREFIX.length());
         }
         if (topicName.startsWith(DELTAV_SINK_PREFIX)) {
             return topicName.substring(DELTAV_SINK_PREFIX.length());

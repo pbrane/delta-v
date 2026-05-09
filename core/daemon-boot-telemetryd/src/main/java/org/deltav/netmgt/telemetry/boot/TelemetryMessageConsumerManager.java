@@ -33,7 +33,7 @@ import org.springframework.beans.factory.DisposableBean;
  *
  * <p>Unlike the single-module LocalMessageConsumerManager (used by Trapd/Syslogd),
  * this manager spawns a separate KafkaSinkBridge per registered SinkModule.
- * Each bridge consumes from its own Kafka topic (e.g., OpenNMS.Sink.Telemetry-Netflow-5).</p>
+ * Each bridge consumes from its own Kafka topic (e.g., DeltaV.Sink.Telemetry-Netflow-5).</p>
  *
  * <p>When {@code Telemetryd.start()} runs, it creates {@code TelemetrySinkModule} instances
  * per queue and registers consumers with this manager. The {@code startConsumingForModule()}

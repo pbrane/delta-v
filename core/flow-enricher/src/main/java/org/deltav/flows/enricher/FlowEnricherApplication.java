@@ -24,7 +24,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * Entry point for the Delta-V flow-enricher service.
  *
  * <p>Spring Boot 4.0 + Spring Cloud Stream (Kafka binder) consumer that reads
- * raw flow telemetry from OpenNMS Sink topics, enriches each flow with node
+ * raw flow telemetry from Delta-V Sink topics, enriches each flow with node
  * lookup, locality, and SNMP-interface marking, and publishes enriched
  * FlowDocument protobuf messages to the {@code deltav-flows} topic — the
  * public contract topic for community downstream consumers.

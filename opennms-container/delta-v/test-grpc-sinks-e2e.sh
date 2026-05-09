@@ -56,7 +56,7 @@ log "Verifying stack is up"
 log "Syslog: driving 1000 datagrams (10ms spacing) to fill ≥100 batches"
 SYSLOG_FILE=$(mktemp -t pr3-syslog-baseline.XXXXXX)
 docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
-    --bootstrap-server localhost:9092 --topic OpenNMS.Sink.Syslog \
+    --bootstrap-server localhost:9092 --topic DeltaV.Sink.Syslog \
     --max-messages 200 --formatter-property print.timestamp=true \
     --timeout-ms 60000 > "$SYSLOG_FILE" 2>&1 &
 CONSUMER_PID=$!
@@ -118,7 +118,7 @@ ok "Syslog gate passed"
 log "Trap: driving 500 SNMP traps (~22 msgs/batch → ~22 batches; bump sample if needed)"
 TRAP_FILE=$(mktemp -t pr3-trap-baseline.XXXXXX)
 docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
-    --bootstrap-server localhost:9092 --topic OpenNMS.Sink.Trap \
+    --bootstrap-server localhost:9092 --topic DeltaV.Sink.Trap \
     --max-messages 50 --formatter-property print.timestamp=true \
     --timeout-ms 60000 > "$TRAP_FILE" 2>&1 &
 CONSUMER_PID=$!
@@ -172,7 +172,7 @@ ok "Trap gate passed"
 log "Telemetry-IPFIX: capturing 100 records of natural exporter traffic"
 TELEMETRY_FILE=$(mktemp -t pr3-telemetry-baseline.XXXXXX)
 docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
-    --bootstrap-server localhost:9092 --topic OpenNMS.Sink.Telemetry-IPFIX \
+    --bootstrap-server localhost:9092 --topic DeltaV.Sink.Telemetry-IPFIX \
     --max-messages 100 --formatter-property print.timestamp=true \
     --timeout-ms 60000 > "$TELEMETRY_FILE" 2>&1 || true
 

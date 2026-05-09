@@ -40,7 +40,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>When enabled, opens UDP port {@code opennms.minion.telemetry.port}
  * (default 4729) to receive Netflow v5/v9, IPFIX, and sFlow datagrams
  * and forwards each one to the appropriate
- * {@code OpenNMS.Sink.Telemetry-*} Kafka topic via the Sink API.</p>
+ * {@code DeltaV.Sink.Telemetry-*} Kafka topic via the Sink API.</p>
  *
  * <p>Lifecycle phase 400: listeners start last, after Sink client
  * (200) and RPC server (300) are ready. Matches the Trap and Syslog

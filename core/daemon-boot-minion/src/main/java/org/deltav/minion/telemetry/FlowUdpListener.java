@@ -46,7 +46,7 @@ import io.netty.channel.socket.nio.NioDatagramChannel;
  * Netty-based UDP listener that receives flow protocol datagrams on a
  * single port, detects the protocol via {@link FlowProtocol#detect}, and
  * dispatches each datagram to a per-protocol {@link AsyncDispatcher}
- * targeting the {@code OpenNMS.Sink.Telemetry-{protocol}} Kafka topic.
+ * targeting the {@code DeltaV.Sink.Telemetry-{protocol}} Kafka topic.
  *
  * <p>Owns its own single-thread {@link NioEventLoopGroup}. The existing
  * Minion Trap listener uses horizon's {@code TrapListener} (internal

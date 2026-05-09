@@ -35,7 +35,7 @@ class HeartbeatTranslatorTest {
 
         var record = HeartbeatTranslator.toKafkaRecord(hb, "minion-A", "loc-DC1");
 
-        assertThat(record.topic()).isEqualTo("OpenNMS.Sink.Heartbeat");
+        assertThat(record.topic()).isEqualTo("DeltaV.Sink.Heartbeat");
         assertThat(record.key()).isEqualTo("loc-DC1@minion-A");
     }
 

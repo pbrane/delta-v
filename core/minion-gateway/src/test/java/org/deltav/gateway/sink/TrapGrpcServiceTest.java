@@ -38,7 +38,7 @@ class TrapGrpcServiceTest {
     @Test
     void onNext_publishesToOpenNmsSinkTrapTopic() {
         SinkKafkaProducer producer = mock(SinkKafkaProducer.class);
-        when(producer.send(eq("OpenNMS.Sink.Trap"), eq("Default@minion-A"),
+        when(producer.send(eq("DeltaV.Sink.Trap"), eq("Default@minion-A"),
                            argThat(b -> new String(b).equals("trap-bytes"))))
             .thenReturn(CompletableFuture.completedFuture(null));
         TrapGrpcService svc = new TrapGrpcService(producer);
@@ -55,7 +55,7 @@ class TrapGrpcServiceTest {
                 .setPayload(ByteString.copyFromUtf8("trap-bytes")).build());
         });
 
-        verify(producer).send(eq("OpenNMS.Sink.Trap"), eq("Default@minion-A"),
+        verify(producer).send(eq("DeltaV.Sink.Trap"), eq("Default@minion-A"),
             argThat(b -> new String(b).equals("trap-bytes")));
     }
 }

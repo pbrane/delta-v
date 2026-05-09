@@ -53,7 +53,7 @@ import java.util.concurrent.TimeUnit;
  * End-to-end IT: real-startup minion-gateway daemon, real Kafka broker
  * (Testcontainers), gRPC client publishes one Heartbeat with identity
  * metadata and asserts the matching record on
- * {@code OpenNMS.Sink.Heartbeat}.
+ * {@code DeltaV.Sink.Heartbeat}.
  *
  * <p>Uses the {@link ApplicationContextInitializer} pattern (rather than
  * {@code @DynamicPropertySource}) to start the Kafka container before the
@@ -130,7 +130,7 @@ class HeartbeatGrpcServiceIT {
         cp.put("value.deserializer", ByteArrayDeserializer.class);
 
         try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(cp)) {
-            consumer.subscribe(Collections.singletonList("OpenNMS.Sink.Heartbeat"));
+            consumer.subscribe(Collections.singletonList("DeltaV.Sink.Heartbeat"));
             List<ConsumerRecord<String, byte[]>> all = new java.util.ArrayList<>();
             long deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos();
             while (all.isEmpty() && System.nanoTime() < deadline) {

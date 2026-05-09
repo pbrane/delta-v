@@ -41,8 +41,9 @@ import org.springframework.beans.factory.InitializingBean;
 /**
  * Bridges Kafka Sink topic consumption to the {@link TelemetryMessageConsumerManager}.
  *
- * <p>In the Delta-V architecture, Minion forwards telemetry data to per-queue Kafka Sink
- * topics (e.g., {@code OpenNMS.Sink.Telemetry-Netflow-5}, {@code OpenNMS.Sink.Telemetry-IPFIX}).
+ * <p>In the Delta-V architecture, minion-gateway publishes Minion-forwarded telemetry data
+ * to per-queue Kafka Sink topics (e.g., {@code DeltaV.Sink.Telemetry-Netflow-5},
+ * {@code DeltaV.Sink.Telemetry-IPFIX}).
  * Each bridge instance consumes from one topic and dispatches to the consumer manager,
  * which delivers to the appropriate telemetry adapter.</p>
  *
@@ -106,7 +107,7 @@ public class KafkaSinkBridge implements InitializingBean, DisposableBean {
 
         final String bootstrapServers = System.getProperty(PROP_BOOTSTRAP_SERVERS, DEFAULT_BOOTSTRAP_SERVERS);
         final String groupId = System.getProperty(PROP_GROUP_ID, DEFAULT_GROUP_ID);
-        final String topic = "OpenNMS.Sink." + module.getId();
+        final String topic = "DeltaV.Sink." + module.getId();
         LOG.info("KafkaSinkBridge starting: topic={}, bootstrapServers={}, groupId={}", topic, bootstrapServers, groupId);
 
         Properties props = new Properties();

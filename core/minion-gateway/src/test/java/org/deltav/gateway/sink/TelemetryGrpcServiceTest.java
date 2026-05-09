@@ -38,7 +38,7 @@ class TelemetryGrpcServiceTest {
     @Test
     void publishIpfix_routesToIpfixTopicWithIdentityKey() {
         SinkKafkaProducer producer = mock(SinkKafkaProducer.class);
-        when(producer.send(eq("OpenNMS.Sink.Telemetry-IPFIX"), eq("Default@minion-A"),
+        when(producer.send(eq("DeltaV.Sink.Telemetry-IPFIX"), eq("Default@minion-A"),
                            argThat(b -> new String(b).equals("ipfix-bytes"))))
             .thenReturn(CompletableFuture.completedFuture(null));
         TelemetryGrpcService svc = new TelemetryGrpcService(producer);
@@ -55,14 +55,14 @@ class TelemetryGrpcServiceTest {
                 .setPayload(ByteString.copyFromUtf8("ipfix-bytes")).build());
         });
 
-        verify(producer).send(eq("OpenNMS.Sink.Telemetry-IPFIX"), eq("Default@minion-A"),
+        verify(producer).send(eq("DeltaV.Sink.Telemetry-IPFIX"), eq("Default@minion-A"),
             argThat(b -> new String(b).equals("ipfix-bytes")));
     }
 
     @Test
     void publishNetflow5_routesToNetflow5TopicWithIdentityKey() {
         SinkKafkaProducer producer = mock(SinkKafkaProducer.class);
-        when(producer.send(eq("OpenNMS.Sink.Telemetry-Netflow-5"), eq("Default@minion-A"),
+        when(producer.send(eq("DeltaV.Sink.Telemetry-Netflow-5"), eq("Default@minion-A"),
                            argThat(b -> new String(b).equals("nf5-bytes"))))
             .thenReturn(CompletableFuture.completedFuture(null));
         TelemetryGrpcService svc = new TelemetryGrpcService(producer);
@@ -79,14 +79,14 @@ class TelemetryGrpcServiceTest {
                 .setPayload(ByteString.copyFromUtf8("nf5-bytes")).build());
         });
 
-        verify(producer).send(eq("OpenNMS.Sink.Telemetry-Netflow-5"), eq("Default@minion-A"),
+        verify(producer).send(eq("DeltaV.Sink.Telemetry-Netflow-5"), eq("Default@minion-A"),
             argThat(b -> new String(b).equals("nf5-bytes")));
     }
 
     @Test
     void publishNetflow9_routesToNetflow9TopicWithIdentityKey() {
         SinkKafkaProducer producer = mock(SinkKafkaProducer.class);
-        when(producer.send(eq("OpenNMS.Sink.Telemetry-Netflow-9"), eq("Default@minion-A"),
+        when(producer.send(eq("DeltaV.Sink.Telemetry-Netflow-9"), eq("Default@minion-A"),
                            argThat(b -> new String(b).equals("nf9-bytes"))))
             .thenReturn(CompletableFuture.completedFuture(null));
         TelemetryGrpcService svc = new TelemetryGrpcService(producer);
@@ -103,14 +103,14 @@ class TelemetryGrpcServiceTest {
                 .setPayload(ByteString.copyFromUtf8("nf9-bytes")).build());
         });
 
-        verify(producer).send(eq("OpenNMS.Sink.Telemetry-Netflow-9"), eq("Default@minion-A"),
+        verify(producer).send(eq("DeltaV.Sink.Telemetry-Netflow-9"), eq("Default@minion-A"),
             argThat(b -> new String(b).equals("nf9-bytes")));
     }
 
     @Test
     void publishSflow_routesToSflowTopicWithIdentityKey() {
         SinkKafkaProducer producer = mock(SinkKafkaProducer.class);
-        when(producer.send(eq("OpenNMS.Sink.Telemetry-SFlow"), eq("Default@minion-A"),
+        when(producer.send(eq("DeltaV.Sink.Telemetry-SFlow"), eq("Default@minion-A"),
                            argThat(b -> new String(b).equals("sflow-bytes"))))
             .thenReturn(CompletableFuture.completedFuture(null));
         TelemetryGrpcService svc = new TelemetryGrpcService(producer);
@@ -127,7 +127,7 @@ class TelemetryGrpcServiceTest {
                 .setPayload(ByteString.copyFromUtf8("sflow-bytes")).build());
         });
 
-        verify(producer).send(eq("OpenNMS.Sink.Telemetry-SFlow"), eq("Default@minion-A"),
+        verify(producer).send(eq("DeltaV.Sink.Telemetry-SFlow"), eq("Default@minion-A"),
             argThat(b -> new String(b).equals("sflow-bytes")));
     }
 }

@@ -178,7 +178,7 @@ log "Starting Kafka event consumers..."
 # Watch the Sink topic to verify Minion → Trapd forwarding
 docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
     --bootstrap-server localhost:9092 \
-    --topic OpenNMS.Sink.Trap \
+    --topic DeltaV.Sink.Trap \
     > "$SINK_LOG" 2>/dev/null &
 SINK_CONSUMER_PID=$!
 

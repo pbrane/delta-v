@@ -29,7 +29,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 /**
  * Sink module that ships per-datagram {@link FlowTelemetryMessage}
- * envelopes to Kafka topic {@code OpenNMS.Sink.Telemetry-{protocol}}.
+ * envelopes to Kafka topic {@code DeltaV.Sink.Telemetry-{protocol}}.
  *
  * <p>Each UDP datagram received by {@code FlowUdpListener} becomes one
  * Kafka message. There is no aggregation in this first cut — the

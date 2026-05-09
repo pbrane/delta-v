@@ -32,7 +32,7 @@ import static org.deltav.gateway.grpc.MinionIdentityServerInterceptor.MINION_LOC
 
 /**
  * Bidi-streaming gRPC TelemetryService. Four protocol-specific {@code publish*}
- * methods route opaque payload bytes to {@code OpenNMS.Sink.Telemetry-<proto>}
+ * methods route opaque payload bytes to {@code DeltaV.Sink.Telemetry-<proto>}
  * topics keyed by {@code <location>@<minion-id>}. Routing is by RPC method,
  * not by inspecting payload — the Minion picks the topic by calling the
  * matching method on the generated stub.
@@ -46,10 +46,10 @@ import static org.deltav.gateway.grpc.MinionIdentityServerInterceptor.MINION_LOC
 public class TelemetryGrpcService extends TelemetryServiceGrpc.TelemetryServiceImplBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TelemetryGrpcService.class);
-    private static final String IPFIX_TOPIC = "OpenNMS.Sink.Telemetry-IPFIX";
-    private static final String NETFLOW5_TOPIC = "OpenNMS.Sink.Telemetry-Netflow-5";
-    private static final String NETFLOW9_TOPIC = "OpenNMS.Sink.Telemetry-Netflow-9";
-    private static final String SFLOW_TOPIC = "OpenNMS.Sink.Telemetry-SFlow";
+    private static final String IPFIX_TOPIC = "DeltaV.Sink.Telemetry-IPFIX";
+    private static final String NETFLOW5_TOPIC = "DeltaV.Sink.Telemetry-Netflow-5";
+    private static final String NETFLOW9_TOPIC = "DeltaV.Sink.Telemetry-Netflow-9";
+    private static final String SFLOW_TOPIC = "DeltaV.Sink.Telemetry-SFlow";
 
     private final SinkKafkaProducer producer;
 

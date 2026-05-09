@@ -5,7 +5,7 @@
 # Sends syslog messages through the Minion and verifies alarm creation/clearing
 # in PostgreSQL and REST API.
 #
-# Flow: Host → Minion (UDP 1514) → Kafka Sink (OpenNMS.Sink.Syslog) →
+# Flow: Host → Minion (UDP 1514) → Kafka Sink (DeltaV.Sink.Syslog) →
 #       Syslogd KafkaSinkBridge → SyslogSinkConsumer → ConvertToEvent →
 #       KafkaEventForwarder (enriches alarm-data from eventconf) →
 #       Kafka fault-events → Alarmd → PostgreSQL
@@ -255,7 +255,7 @@ log "Starting Kafka event consumers..."
 # Watch the Syslog Sink topic to verify Minion → Syslogd forwarding
 docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
     --bootstrap-server localhost:9092 \
-    --topic OpenNMS.Sink.Syslog \
+    --topic DeltaV.Sink.Syslog \
     > "$SINK_LOG" 2>/dev/null &
 SINK_CONSUMER_PID=$!
 

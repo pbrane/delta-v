@@ -32,7 +32,7 @@ import static org.deltav.gateway.grpc.MinionIdentityServerInterceptor.MINION_LOC
 
 /**
  * Bidi-streaming gRPC SyslogService. Per-onNext: forwards opaque payload
- * bytes to {@code OpenNMS.Sink.Syslog} keyed by {@code <location>@<minion-id>}.
+ * bytes to {@code DeltaV.Sink.Syslog} keyed by {@code <location>@<minion-id>}.
  *
  * <p>Per Decision 6 (sinks are lossy by design): Kafka publish failures
  * log and continue; the gRPC stream is not torn down on a single
@@ -43,7 +43,7 @@ import static org.deltav.gateway.grpc.MinionIdentityServerInterceptor.MINION_LOC
 public class SyslogGrpcService extends SyslogServiceGrpc.SyslogServiceImplBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(SyslogGrpcService.class);
-    private static final String TOPIC = "OpenNMS.Sink.Syslog";
+    private static final String TOPIC = "DeltaV.Sink.Syslog";
 
     private final SinkKafkaProducer producer;
 
