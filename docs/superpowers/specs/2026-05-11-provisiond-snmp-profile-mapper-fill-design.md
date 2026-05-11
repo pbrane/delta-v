@@ -261,3 +261,35 @@ void getAgentConfigFromProfilesReturnsEmptyWhenNoProfilesConfigured() throws Exc
 ## Open question for implementation
 
 Whether existing Spring-context ITs (`NodeContextProducerSpringContextIT` etc.) need `database-schema.xml` on the test classpath, or whether they already mock around the `filterDaoInitializer` boot path. Determined during implementation; resolved either by adding the test resource or by adjusting test scope.
+
+## Implementation watchpoints (added 2026-05-11 from spec review)
+
+These are verification gates the implementation plan must cover explicitly, not just assume.
+
+### 1. Test context pollution
+
+Adding `filterDaoInitializer` to `ProvisiondBootConfiguration` may break existing Spring-context ITs if they boot the full configuration without a `DataSource` mock or `database-schema.xml` on the test classpath. Specifically check `NodeContextProducerSpringContextIT`, `NodeContextKafkaIT`, and any other `*IT` that imports `ProvisiondBootConfiguration` or `@SpringBootTest`-bootstraps the daemon.
+
+**Mitigation options** (decided per-test during implementation):
+- Add `src/test/resources/etc/database-schema.xml` (byte copy) so `filterDaoInitializer` can boot with whatever `DataSource` the test already has.
+- Use `@MockBean(FilterDao.class)` on tests that don't care about the filter path — Spring Boot will replace the real bean before `snmpProfileMapper` resolves, sidestepping `JdbcFilterDao` construction.
+- For tests with no `DataSource` at all, scope the test's Spring config to exclude `filterDaoInitializer` (e.g., `@SpringBootTest(classes = ...)` listing only the beans under test).
+
+**Verification gate:** all existing provisiond tests pass on the feature branch before adding new tests. If any break, fix per the mitigation options above before proceeding.
+
+### 2. Transitive dependency hygiene
+
+The new Maven dep on `org.opennms.core.snmp:org.opennms.core.snmp.profile-mapper` may pull in transitive ServiceMix / OSGi bundles that pollute the Spring Boot 4 classpath. Per `feedback_karaf_is_dead`: Karaf is dead; classpath cleanup matters.
+
+**Verification gate:** Run `./mvnw -pl :daemon-boot-provisiond dependency:tree -Dscope=compile` after adding the dep. Audit the diff for new entries containing `servicemix`, `karaf`, `org.osgi`, `org.apache.felix`, or `aries`. Add `<exclusions>` to the dep declaration for any such transitives (pattern: see existing exclusions in the same pom).
+
+### 3. Postgres-at-boot timing
+
+The design assumes `JdbcFilterDao.afterPropertiesSet()` and `FilterDaoFactory.setInstance(...)` are lazy — they validate inputs and store the singleton reference but don't open a JDBC connection or run a query. If that assumption is wrong, provisiond will crash at boot whenever it races ahead of the `db-init` container in the docker-compose / K8s startup sequence.
+
+**Verification gate:** Read `JdbcFilterDao.afterPropertiesSet()` source in `delta-v-horizon/.../filter/.../JdbcFilterDao.java` before merge. Confirm no `getConnection()` or `executeQuery()` calls in the boot path. If the assumption fails:
+- Defer FilterDao construction until first use (lazy init wrapper), OR
+- Add a `@DependsOn` on a Postgres-readiness probe bean if one exists in daemon-common, OR
+- Add explicit Spring `@PostConstruct` ordering that runs after the db-init container's readiness signal.
+
+If the assumption holds (most likely), no code change needed — just document the verification in the PR description.
