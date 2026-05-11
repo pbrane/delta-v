@@ -118,10 +118,12 @@ import org.opennms.netmgt.provision.service.ProvisioningAdapterManager;
 import org.opennms.netmgt.provision.service.lifecycle.DefaultLifeCycleRepository;
 import org.opennms.netmgt.provision.service.lifecycle.LifeCycle;
 import org.opennms.netmgt.provision.service.lifecycle.LifeCycleRepository;
+import org.opennms.core.snmp.profile.mapper.impl.SnmpProfileMapperImpl;
 import org.opennms.netmgt.snmp.SnmpProfileMapper;
 import org.opennms.netmgt.snmp.proxy.LocationAwareSnmpClient;
 import org.opennms.netmgt.snmp.proxy.common.LocationAwareSnmpClientRpcImpl;
 import org.slf4j.Logger;
+import org.springframework.context.annotation.DependsOn;
 import org.slf4j.LoggerFactory;
 import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -289,8 +291,12 @@ public class ProvisiondBootConfiguration {
     }
 
     @Bean
-    public SnmpProfileMapper snmpProfileMapper() {
-        return new NoOpSnmpProfileMapper();
+    @DependsOn("filterDaoInitializer")
+    public SnmpProfileMapper snmpProfileMapper(
+            FilterDao filterDao,
+            SnmpAgentConfigFactory snmpAgentConfigFactory,
+            LocationAwareSnmpClient locationAwareSnmpClient) {
+        return new SnmpProfileMapperImpl(filterDao, snmpAgentConfigFactory, locationAwareSnmpClient);
     }
 
     // SNMP detector factories are registered via @Import(DetectorRegistryConfiguration.class)
