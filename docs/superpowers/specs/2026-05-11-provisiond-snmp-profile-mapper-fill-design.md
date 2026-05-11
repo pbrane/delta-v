@@ -33,7 +33,7 @@ Required runtime deps in provisiond's Spring context:
 | `LocationAwareSnmpClient` | Yes | `ProvisiondBootConfiguration.java:264` (RPC-backed) |
 | `FilterDao` | **No** | Must be added (new `filterDaoInitializer` bean) |
 | `DataSource` | Yes | Existing daemon-common bean (HikariCP) |
-| `etc/database-schema.xml` | **No** | Must be added to `provisiond-overlay/etc/` |
+| `database-schema.xml` on classpath | **Yes (transitive)** | `opennms-config:1.0.13` already in provisiond's dep tree (transitive via existing deps) bundles `/database-schema.xml` as a classpath resource — same path collectd uses. **No overlay file required.** Verified 2026-05-11 via `./mvnw -pl :org.opennms.core.daemon-boot-provisiond dependency:list`. |
 
 ## Approach (selected: Path A — full FilterDao + database-schema.xml)
 
@@ -66,9 +66,8 @@ core/daemon-boot-provisiond/src/main/java/org/deltav/netmgt/provision/boot/
         — DELETED. No backward-compatibility shim; no @Deprecated. Dead per
           feedback_karaf_is_dead.
 
-opennms-container/delta-v/provisiond-overlay/etc/
-    database-schema.xml
-        + NEW file, byte-for-byte copy of collectd-overlay/etc/database-schema.xml
+(no overlay file needed — see "database-schema.xml on classpath" in
+ the table above; transitive opennms-config:1.0.13 dep bundles it)
 
 core/daemon-boot-provisiond/src/test/java/org/deltav/netmgt/provision/boot/
     SnmpProfileMapperWiringTest.java
@@ -114,7 +113,7 @@ All bean wiring uses constructor-injection factory methods (per project CLAUDE.m
 ### Boot-time
 
 1. `DataSource` bean resolves (already wired in daemon-common).
-2. `filterDaoInitializer(DataSource)` runs — constructs `JdbcFilterDao`, sets DataSource, loads `etc/database-schema.xml` via Jackson XmlMapper into `DatabaseSchemaConfigFactory`, calls `afterPropertiesSet()`, then calls `FilterDaoFactory.setInstance(this)` for the horizon static-singleton side effect.
+2. `filterDaoInitializer(DataSource)` runs — constructs `JdbcFilterDao`, sets DataSource, loads `/database-schema.xml` from the **classpath** (transitive `opennms-config` JAR) via Jackson XmlMapper into `DatabaseSchemaConfigFactory`, calls `afterPropertiesSet()`, then calls `FilterDaoFactory.setInstance(this)` for the horizon static-singleton side effect.
 3. `snmpProfileMapper(FilterDao, SnmpAgentConfigFactory, LocationAwareSnmpClient)` runs — constructs `SnmpProfileMapperImpl`, which calls `Objects.requireNonNull` on each dep (fail-fast if wiring is broken).
 4. `defaultProvisionService(..., SnmpProfileMapper)` receives the real impl, not the NoOp.
 
@@ -156,8 +155,8 @@ CompletableFuture<Optional<SnmpAgentConfig>>
 
 | Failure | Outcome |
 |---|---|
-| `database-schema.xml` missing in `provisiond-overlay/etc/` | `filterDaoInitializer` throws at boot → daemon fails fast → container orchestrator surfaces via restart-count. **Correct behavior** — image is misbuilt; no silent fallback. |
-| `database-schema.xml` malformed | Same — Jackson XmlMapper throws `JsonProcessingException` at boot. |
+| `/database-schema.xml` not on classpath | `filterDaoInitializer` throws at boot → daemon fails fast → container orchestrator surfaces via restart-count. Cannot occur in practice because `opennms-config:1.0.13` is a transitive dep that always carries the resource. **Correct behavior** if it ever does — fail-fast, no silent fallback. |
+| `/database-schema.xml` malformed | Same — Jackson XmlMapper throws `JsonProcessingException` at boot. (Schema lives in a versioned horizon JAR, so malformation is a horizon-source bug, not a delta-v config drift.) |
 | `DataSource` not yet available | Cannot occur unless someone forces eager init; Spring resolves DataSource bean before `filterDaoInitializer` via DI ordering. |
 | `JdbcFilterDao.afterPropertiesSet()` fails (schema config invalid) | Bubbles up; daemon fails fast (matches collectd behavior at `CollectdJpaConfiguration.java:199`). |
 | Postgres unreachable at boot | `JdbcFilterDao` is lazy — DataSource not queried until first `isValid()` call. Boot succeeds; Postgres dependency deferred to runtime. |
@@ -268,12 +267,12 @@ These are verification gates the implementation plan must cover explicitly, not 
 
 ### 1. Test context pollution
 
-Adding `filterDaoInitializer` to `ProvisiondBootConfiguration` may break existing Spring-context ITs if they boot the full configuration without a `DataSource` mock or `database-schema.xml` on the test classpath. Specifically check `NodeContextProducerSpringContextIT`, `NodeContextKafkaIT`, and any other `*IT` that imports `ProvisiondBootConfiguration` or `@SpringBootTest`-bootstraps the daemon.
+Adding `filterDaoInitializer` to `ProvisiondBootConfiguration` may break existing Spring-context ITs if they boot the full configuration without a `DataSource`. Specifically check `NodeContextProducerSpringContextIT`, `NodeContextKafkaIT`, and any other `*IT` that imports `ProvisiondBootConfiguration` or `@SpringBootTest`-bootstraps the daemon. The `database-schema.xml` classpath resource is fine in tests (comes from the same transitive `opennms-config` JAR); the only test-side concern is whether tests have a real DataSource.
 
 **Mitigation options** (decided per-test during implementation):
-- Add `src/test/resources/etc/database-schema.xml` (byte copy) so `filterDaoInitializer` can boot with whatever `DataSource` the test already has.
-- Use `@MockBean(FilterDao.class)` on tests that don't care about the filter path — Spring Boot will replace the real bean before `snmpProfileMapper` resolves, sidestepping `JdbcFilterDao` construction.
+- Use `@MockBean(FilterDao.class)` on tests that don't care about the filter path — Spring Boot will replace the real bean before `snmpProfileMapper` resolves, sidestepping `JdbcFilterDao` construction entirely.
 - For tests with no `DataSource` at all, scope the test's Spring config to exclude `filterDaoInitializer` (e.g., `@SpringBootTest(classes = ...)` listing only the beans under test).
+- For tests with Testcontainers Postgres already wired, expect them to pick up the new bean transparently — no change required.
 
 **Verification gate:** all existing provisiond tests pass on the feature branch before adding new tests. If any break, fix per the mitigation options above before proceeding.
 
