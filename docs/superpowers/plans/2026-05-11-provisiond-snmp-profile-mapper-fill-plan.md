@@ -184,7 +184,9 @@ import org.opennms.core.snmp.profile.mapper.impl.SnmpProfileMapperImpl;
 import org.springframework.context.annotation.DependsOn;
 ```
 
-Remove the import line `import org.opennms.netmgt.snmp.SnmpProfileMapper;` — no wait, we still use the *interface* `SnmpProfileMapper` as the bean return type. Keep that import. The `NoOpSnmpProfileMapper` import (likely on a nearby line in the same file or the package) is what we'll remove next. Find any line `import org.deltav.netmgt.provision.boot.NoOpSnmpProfileMapper;` — same-package imports are not present in Java, so this is moot. The class is referenced directly by name.
+**Keep** `import org.opennms.netmgt.snmp.SnmpProfileMapper;` — the interface is still the bean return type.
+
+`NoOpSnmpProfileMapper` is in the same package (`org.deltav.netmgt.provision.boot`), so there is no import line for it to remove (same-package classes aren't imported in Java).
 
 - [ ] **Step 2: Replace the `snmpProfileMapper` bean method**
 
@@ -256,6 +258,12 @@ If anything else shows up: investigate and remove the reference before continuin
 Run:
 ```bash
 git rm core/daemon-boot-provisiond/src/main/java/org/deltav/netmgt/provision/boot/NoOpSnmpProfileMapper.java
+```
+
+If `git rm` fails (e.g. the file isn't tracked because the working tree drifted), fall back to:
+```bash
+rm core/daemon-boot-provisiond/src/main/java/org/deltav/netmgt/provision/boot/NoOpSnmpProfileMapper.java
+git add -u core/daemon-boot-provisiond/src/main/java/org/deltav/netmgt/provision/boot/
 ```
 
 - [ ] **Step 3: Compile**
