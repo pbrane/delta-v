@@ -216,6 +216,7 @@
       <dependency><groupId>org.opennms.core.ipc.twin.kafka</groupId><artifactId>org.opennms.core.ipc.twin.kafka.subscriber</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.core.snmp</groupId><artifactId>org.opennms.core.snmp.config</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.core.snmp</groupId><artifactId>org.opennms.core.snmp.implementations.snmp4j</artifactId><version>${deltav.horizon.version}</version></dependency>
+      <dependency><groupId>org.opennms.core.snmp</groupId><artifactId>org.opennms.core.snmp.profile-mapper</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.core.snmp</groupId><artifactId>org.opennms.core.snmp.proxy.rpc-impl</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.core.tracing</groupId><artifactId>org.opennms.core.tracing.api</artifactId><version>${deltav.horizon.version}</version></dependency>
       <dependency><groupId>org.opennms.features</groupId><artifactId>inmemory-timeseries-plugin</artifactId><version>${deltav.horizon.version}</version></dependency>

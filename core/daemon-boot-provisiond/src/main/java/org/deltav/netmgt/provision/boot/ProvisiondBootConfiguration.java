@@ -18,6 +18,7 @@ package org.deltav.netmgt.provision.boot;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,9 @@ import org.opennms.core.mate.api.EntityScopeProvider;
 import org.opennms.core.soa.ServiceRegistry;
 import org.opennms.core.soa.support.DefaultServiceRegistry;
 import org.opennms.core.tasks.DefaultTaskCoordinator;
+import org.opennms.netmgt.config.api.DefaultDatabaseSchemaConfig;
 import org.opennms.netmgt.config.api.SnmpAgentConfigFactory;
+import org.opennms.netmgt.config.filter.DatabaseSchema;
 import org.opennms.netmgt.dao.api.DistPollerDao;
 import org.opennms.netmgt.dao.api.InterfaceToNodeCache;
 import org.opennms.netmgt.dao.api.CategoryDao;
@@ -65,6 +68,9 @@ import org.opennms.netmgt.dao.api.SnmpInterfaceDao;
 import org.opennms.netmgt.events.api.AnnotationBasedEventListenerAdapter;
 import org.opennms.netmgt.events.api.EventForwarder;
 import org.opennms.netmgt.events.api.EventSubscriptionService;
+import org.opennms.netmgt.filter.FilterDaoFactory;
+import org.opennms.netmgt.filter.JdbcFilterDao;
+import org.opennms.netmgt.filter.api.FilterDao;
 import org.opennms.netmgt.model.AlarmAssociation;
 import org.opennms.netmgt.model.HwEntityAttributeType;
 import org.opennms.netmgt.model.OnmsAlarm;
@@ -112,6 +118,7 @@ import org.opennms.netmgt.provision.service.ProvisioningAdapterManager;
 import org.opennms.netmgt.provision.service.lifecycle.DefaultLifeCycleRepository;
 import org.opennms.netmgt.provision.service.lifecycle.LifeCycle;
 import org.opennms.netmgt.provision.service.lifecycle.LifeCycleRepository;
+import org.opennms.core.snmp.profile.mapper.impl.SnmpProfileMapperImpl;
 import org.opennms.netmgt.snmp.SnmpProfileMapper;
 import org.opennms.netmgt.snmp.proxy.LocationAwareSnmpClient;
 import org.opennms.netmgt.snmp.proxy.common.LocationAwareSnmpClientRpcImpl;
@@ -121,6 +128,7 @@ import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.io.FileSystemResource;
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
 import org.springframework.context.SmartLifecycle;
@@ -247,9 +255,48 @@ public class ProvisiondBootConfiguration {
         return factory;
     }
 
+    /**
+     * Initializes FilterDaoFactory with a JDBC-backed FilterDao.
+     * Required by SnmpProfileMapperImpl (filter-expression evaluation in <snmp-profile>
+     * elements) and by horizon code paths that still consult FilterDaoFactory.getInstance().
+     *
+     * <p>Pattern matches CollectdJpaConfiguration.filterDaoInitializer.
+     * The bean name "filterDaoInitializer" is intentional so consumers can use
+     * @DependsOn("filterDaoInitializer") to guarantee the static-singleton side
+     * effect ran before they resolve.</p>
+     */
     @Bean
-    public SnmpProfileMapper snmpProfileMapper() {
-        return new NoOpSnmpProfileMapper();
+    public JdbcFilterDao filterDaoInitializer(DataSource dataSource) {
+        LOG.info("Initializing FilterDaoFactory with JdbcFilterDao");
+        var jdbcFilterDao = new JdbcFilterDao();
+        jdbcFilterDao.setDataSource(dataSource);
+        var schemaConfig = loadDatabaseSchemaConfig();
+        jdbcFilterDao.setDatabaseSchemaConfigFactory(schemaConfig);
+        jdbcFilterDao.afterPropertiesSet();
+        FilterDaoFactory.setInstance(jdbcFilterDao);
+        return jdbcFilterDao;
+    }
+
+    private DefaultDatabaseSchemaConfig loadDatabaseSchemaConfig() {
+        try (var is = getClass().getResourceAsStream("/database-schema.xml")) {
+            if (is == null) {
+                throw new IllegalStateException(
+                        "database-schema.xml not found on classpath — expected from opennms-config jar");
+            }
+            var schema = XML_MAPPER.readValue(is, DatabaseSchema.class);
+            return new DefaultDatabaseSchemaConfig(schema);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to load database-schema.xml from classpath", e);
+        }
+    }
+
+    @Bean
+    @DependsOn("filterDaoInitializer")
+    public SnmpProfileMapper snmpProfileMapper(
+            FilterDao filterDao,
+            SnmpAgentConfigFactory snmpAgentConfigFactory,
+            LocationAwareSnmpClient locationAwareSnmpClient) {
+        return new SnmpProfileMapperImpl(filterDao, snmpAgentConfigFactory, locationAwareSnmpClient);
     }
 
     // SNMP detector factories are registered via @Import(DetectorRegistryConfiguration.class)
