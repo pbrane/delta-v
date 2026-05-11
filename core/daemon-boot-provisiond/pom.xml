@@ -272,6 +272,20 @@
             </exclusions>
         </dependency>
 
+        <!-- SNMP profile mapper — backs the SnmpProfileMapperImpl bean in provisiond -->
+        <dependency>
+            <groupId>org.opennms.core.snmp</groupId>
+            <artifactId>org.opennms.core.snmp.profile-mapper</artifactId>
+            <exclusions>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-beans</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-context</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-core</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>org.apache.servicemix.bundles.spring-tx</artifactId></exclusion>
+                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion>
+                <exclusion><groupId>org.ops4j.pax.logging</groupId><artifactId>pax-logging-api</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- ========== SNMP provisioning adapters ========== -->
         <!-- HW inventory adapter DISABLED: HwEntityAttributeType entity not recognized by Hibernate 7.
              Needs jakarta-transform of opennms-model or explicit entity workaround. -->
