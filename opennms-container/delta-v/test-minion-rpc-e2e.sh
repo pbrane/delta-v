@@ -216,12 +216,20 @@ fi
 log ""
 log "Phase 1: Provisioning canary node targeting snmp-agent (${SNMP_AGENT_IP}) at location=Default..."
 
-# Generate the requisition inline with the resolved IP. This file is overwritten
-# on each test run — not committed to git (matches the delta-v.xml pattern
-# used by test-collectd-e2e.sh).
-mkdir -p provisiond-overlay/etc/imports
-CANARY_REQ="provisiond-overlay/etc/imports/${FOREIGN_SOURCE}.xml"
-cat > "$CANARY_REQ" <<REQEOF
+# Generate the requisition inline with the resolved IP.
+#
+# Write directly into the running provisiond container's named-volume mount at
+# /opt/deltav/etc/imports/. The host bind-mount path provisiond-overlay/etc/imports/
+# is NOT mounted into provisiond (per feedback_named_volume_autopopulate +
+# project_provisiond_seed_split_followup): provisiond reads only from the
+# provisiond_imports named volume, which the init sidecar seeds from
+# provisiond-overlay/etc/imports-seed/ at first boot. Writing to the host bind-mount
+# path silently does nothing — tests previously "passed" only because the baked
+# seed file's hardcoded IP (172.18.0.2) happens to match dev-env Docker network
+# defaults. Writing into the container makes the dynamic IP injection actually take
+# effect, so the test fails fast on networks where the snmp-agent isn't at .2.
+CANARY_REQ_IN_CONTAINER="/opt/deltav/etc/imports/${FOREIGN_SOURCE}.xml"
+docker exec -i delta-v-provisiond tee "${CANARY_REQ_IN_CONTAINER}" > /dev/null <<REQEOF
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import"
               date-stamp="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
               foreign-source="${FOREIGN_SOURCE}">
@@ -233,7 +241,7 @@ cat > "$CANARY_REQ" <<REQEOF
    </node>
 </model-import>
 REQEOF
-ok "Requisition generated at ${CANARY_REQ}"
+ok "Requisition written into container at ${CANARY_REQ_IN_CONTAINER}"
 
 # Update provisiond-configuration.xml to auto-import this foreign source.
 # If an existing config has other requisition-defs (e.g., delta-v, mhuot-labs),
@@ -373,8 +381,9 @@ else
 fi
 
 # Verify polls actually COMPLETED — not just dispatched. A poll that times out
-# on Minion (e.g., PSM page-sequence serialization bug) would still show dispatch
-# in logs but never update lastgood/lastfail timestamps.
+# on Minion (e.g., a monitor that can't reach the target, or a result that fails
+# to round-trip back) would still show dispatch in logs but never update
+# lastgood/lastfail timestamps.
 LASTPOLL_QUERY="SELECT count(*) FROM ifservices s JOIN ipinterface ip ON s.ipinterfaceid = ip.id JOIN node n ON ip.nodeid = n.nodeid WHERE n.foreignsource = '${FOREIGN_SOURCE}' AND (s.lastgood IS NOT NULL OR s.lastfail IS NOT NULL)"
 if wait_for_db "$LASTPOLL_QUERY" 120 "poll results recorded (lastgood/lastfail timestamp)" 10; then
     ok "Poll results recorded — polls completed successfully via Minion RPC (not just dispatched)"
@@ -382,8 +391,9 @@ else
     fail "No poll results recorded within 120s — polls may be dispatched but timing out on Minion"
     show_diagnostics
     log ""
-    log "Hint: Check Minion logs for XML parse errors (PSM page-sequence serialization bug)"
-    log "      or Kafka consumer rebalances (max.poll.interval.ms exceeded)"
+    log "Hint: check that the requisition IP (${SNMP_AGENT_IP}) is actually reachable from the Minion container."
+    log "      The PSM page-sequence serialization bug (#125) is fixed; see project_psm_bug_false_positive memo."
+    log "      Also check the pollerd outage table — feedback indicates intermittent row-write latency."
     log ""
     log "Results: $PASS passed, $FAIL failed"
     exit 1
