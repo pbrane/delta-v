@@ -350,50 +350,44 @@ fi
 log ""
 log "Phase 3: Verifying Pollerd is polling canary services via Minion RPC..."
 
-# Wait for Pollerd to schedule the newly-detected services and make first poll attempts.
-# Pollerd reacts to nodeGainedService events; first poll typically happens within 30-60s.
-log "Waiting up to ${POLL_TIMEOUT}s for Pollerd to poll canary services..."
+# Verify Pollerd is actively polling the canary services via Minion RPC.
+#
+# The check looks for a RECENT poll timestamp (lastgood OR lastfail updated
+# within the last RECENT_POLL_WINDOW seconds), not "ever polled." This handles
+# all four cases correctly:
+#   1. Polls actively succeeding         → recent lastgood    → PASS
+#   2. Polls actively failing            → recent lastfail    → PASS (polling works,
+#                                                                     reachability is a
+#                                                                     separate issue)
+#   3. Polls dispatched but never return → no recent update   → FAIL (right answer)
+#   4. Pollerd not scheduling at all     → no recent update   → FAIL (right answer)
+#
+# Previous version grep'd pollerd container logs for the node label/IP, but
+# pollerd only emits log lines on state changes (Unknown → Up / Up → Down).
+# In steady state, polling is silent — the log-grep falsely claimed "no poll
+# activity" while polling was working fine. See
+# project_pollerd_kafka_producer_metadata_timeout memo for the investigation.
+RECENT_POLL_WINDOW=120
+log "Waiting up to ${POLL_TIMEOUT}s for Pollerd to record a recent poll on canary services..."
 
-POLL_EVIDENCE_FOUND=false
-ELAPSED=0
-while [ $ELAPSED -lt "$POLL_TIMEOUT" ]; do
-    # Look for Pollerd log entries mentioning the canary node or its IP.
-    # Delta-V Pollerd's log format includes service + IP on poll dispatches.
-    if docker compose logs --since="5m" pollerd 2>/dev/null | grep -qE "(snmp-agent-canary|${SNMP_AGENT_IP//./\\.})" ; then
-        POLL_EVIDENCE_FOUND=true
-        break
-    fi
-    sleep "$POLL_INTERVAL"
-    ELAPSED=$((ELAPSED + POLL_INTERVAL))
-    if [ $((ELAPSED % 60)) -eq 0 ]; then
-        log "  ... ${ELAPSED}s elapsed"
-    fi
-done
-
-if $POLL_EVIDENCE_FOUND; then
-    ok "Pollerd poll activity observed for canary node (proves polling dispatched to Minion RPC)"
+RECENT_POLL_QUERY="
+SELECT count(*) FROM ifservices s
+JOIN ipinterface ip ON s.ipinterfaceid = ip.id
+JOIN node n ON ip.nodeid = n.nodeid
+WHERE n.foreignsource = '${FOREIGN_SOURCE}'
+  AND GREATEST(s.lastgood, s.lastfail) > NOW() - INTERVAL '${RECENT_POLL_WINDOW} seconds'
+"
+if wait_for_db "$RECENT_POLL_QUERY" "$POLL_TIMEOUT" "recent poll on canary services (within last ${RECENT_POLL_WINDOW}s)" 10; then
+    ok "Pollerd actively polling — recent lastgood/lastfail timestamp within ${RECENT_POLL_WINDOW}s window"
 else
-    fail "No Pollerd poll activity observed for canary node within ${POLL_TIMEOUT}s — Monitor RPC path may be broken"
+    fail "No recent poll timestamp on any canary service within ${POLL_TIMEOUT}s"
     show_diagnostics
     log ""
-    log "Results: $PASS passed, $FAIL failed"
-    exit 1
-fi
-
-# Verify polls actually COMPLETED — not just dispatched. A poll that times out
-# on Minion (e.g., a monitor that can't reach the target, or a result that fails
-# to round-trip back) would still show dispatch in logs but never update
-# lastgood/lastfail timestamps.
-LASTPOLL_QUERY="SELECT count(*) FROM ifservices s JOIN ipinterface ip ON s.ipinterfaceid = ip.id JOIN node n ON ip.nodeid = n.nodeid WHERE n.foreignsource = '${FOREIGN_SOURCE}' AND (s.lastgood IS NOT NULL OR s.lastfail IS NOT NULL)"
-if wait_for_db "$LASTPOLL_QUERY" 120 "poll results recorded (lastgood/lastfail timestamp)" 10; then
-    ok "Poll results recorded — polls completed successfully via Minion RPC (not just dispatched)"
-else
-    fail "No poll results recorded within 120s — polls may be dispatched but timing out on Minion"
-    show_diagnostics
-    log ""
-    log "Hint: check that the requisition IP (${SNMP_AGENT_IP}) is actually reachable from the Minion container."
-    log "      The PSM page-sequence serialization bug (#125) is fixed; see project_psm_bug_false_positive memo."
-    log "      Also check the pollerd outage table — feedback indicates intermittent row-write latency."
+    log "Hint: pollerd is either not scheduling polls for this node, or RPC requests"
+    log "      to minion-gateway are timing out. Check pollerd logs for"
+    log "      'Topic OpenNMS.Default.rpc-request not present in metadata' (the producer-"
+    log "      side metadata-fetch timeout per project_pollerd_kafka_producer_metadata_timeout)."
+    log "      Note: PSM (#125) is fixed; that hint is no longer relevant."
     log ""
     log "Results: $PASS passed, $FAIL failed"
     exit 1
