@@ -18,7 +18,6 @@ package org.deltav.netmgt.enlinkd.boot;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
