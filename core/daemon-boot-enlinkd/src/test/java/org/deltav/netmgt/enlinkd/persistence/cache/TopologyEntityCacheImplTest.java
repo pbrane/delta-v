@@ -97,4 +97,65 @@ class TopologyEntityCacheImplTest {
         verify(dao).getSnmpTopologyEntities();
         verify(dao).getIpTopologyEntities();
     }
+
+    @Test
+    void refreshReloadsAllElevenCaches() {
+        TopologyEntityDao dao = mock(TopologyEntityDao.class);
+        when(dao.getNodeTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getCdpLinkTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getIsIsLinkTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getLldpLinkTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getOspfLinkTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getOspfAreaTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getCdpElementTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getIsIsElementTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getLldpElementTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getSnmpTopologyEntities()).thenReturn(Collections.emptyList());
+        when(dao.getIpTopologyEntities()).thenReturn(Collections.emptyList());
+
+        TopologyEntityCacheImpl cache = new TopologyEntityCacheImpl(dao, 300);
+
+        // Prime all 11 caches so each has a value to refresh
+        cache.getNodeTopologyEntities();
+        cache.getCdpLinkTopologyEntities();
+        cache.getIsIsLinkTopologyEntities();
+        cache.getLldpLinkTopologyEntities();
+        cache.getOspfLinkTopologyEntities();
+        cache.getOspfAreaTopologyEntities();
+        cache.getCdpElementTopologyEntities();
+        cache.getIsIsElementTopologyEntities();
+        cache.getLldpElementTopologyEntities();
+        cache.getSnmpInterfaceTopologyEntities();
+        cache.getIpInterfaceTopologyEntities();
+
+        // Each DAO method should have been called exactly once so far
+        verify(dao, times(1)).getNodeTopologyEntities();
+        verify(dao, times(1)).getCdpLinkTopologyEntities();
+        verify(dao, times(1)).getIsIsLinkTopologyEntities();
+        verify(dao, times(1)).getLldpLinkTopologyEntities();
+        verify(dao, times(1)).getOspfLinkTopologyEntities();
+        verify(dao, times(1)).getOspfAreaTopologyEntities();
+        verify(dao, times(1)).getCdpElementTopologyEntities();
+        verify(dao, times(1)).getIsIsElementTopologyEntities();
+        verify(dao, times(1)).getLldpElementTopologyEntities();
+        verify(dao, times(1)).getSnmpTopologyEntities();
+        verify(dao, times(1)).getIpTopologyEntities();
+
+        cache.refresh();
+
+        // refresh() should trigger one additional DAO call per cache (Guava's default
+        // CacheLoader.reload() invokes load() synchronously when refreshAfterWrite is
+        // not configured), so we now expect 2 invocations per DAO method.
+        verify(dao, times(2)).getNodeTopologyEntities();
+        verify(dao, times(2)).getCdpLinkTopologyEntities();
+        verify(dao, times(2)).getIsIsLinkTopologyEntities();
+        verify(dao, times(2)).getLldpLinkTopologyEntities();
+        verify(dao, times(2)).getOspfLinkTopologyEntities();
+        verify(dao, times(2)).getOspfAreaTopologyEntities();
+        verify(dao, times(2)).getCdpElementTopologyEntities();
+        verify(dao, times(2)).getIsIsElementTopologyEntities();
+        verify(dao, times(2)).getLldpElementTopologyEntities();
+        verify(dao, times(2)).getSnmpTopologyEntities();
+        verify(dao, times(2)).getIpTopologyEntities();
+    }
 }

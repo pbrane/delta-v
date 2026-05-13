@@ -161,6 +161,12 @@ public class TopologyEntityCacheImpl implements TopologyEntityCache {
         return ipInterfaceTopologyEntities.getUnchecked(CACHE_KEY);
     }
 
+    /**
+     * Triggers a reload of all 11 caches. Per-cache reloads are not atomic, so
+     * consumers reading mid-refresh may briefly see a mix of fresh and stale
+     * entries across entity types. This matches horizon's behavior; topology
+     * displays are eventually consistent, not transactional.
+     */
     @Override
     public void refresh() {
         nodeTopologyEntities.refresh(CACHE_KEY);
