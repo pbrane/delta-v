@@ -18,7 +18,6 @@ package org.deltav.netmgt.enlinkd.boot;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -27,6 +26,7 @@ import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
+import org.deltav.netmgt.enlinkd.persistence.cache.TopologyEntityCacheImpl;
 import org.opennms.core.mate.api.EntityScopeProvider;
 import org.opennms.core.rpc.api.RpcClientFactory;
 import org.opennms.netmgt.config.EnhancedLinkdConfig;
@@ -63,19 +63,10 @@ import org.opennms.netmgt.enlinkd.persistence.impl.LldpLinkDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.OspfAreaDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.OspfElementDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.OspfLinkDaoJpa;
+import org.opennms.netmgt.enlinkd.persistence.impl.TopologyEntityDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.UserDefinedLinkDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.api.TopologyEntityCache;
-import org.opennms.netmgt.enlinkd.model.CdpElementTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.CdpLinkTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.IpInterfaceTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.IsIsElementTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.IsIsLinkTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.LldpElementTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.LldpLinkTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.NodeTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.OspfAreaTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.OspfLinkTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.SnmpInterfaceTopologyEntity;
+import org.opennms.netmgt.enlinkd.persistence.api.TopologyEntityDao;
 import org.opennms.netmgt.enlinkd.service.api.BridgeTopologyService;
 import org.opennms.netmgt.enlinkd.service.api.CdpTopologyService;
 import org.opennms.netmgt.enlinkd.service.api.IpNetToMediaTopologyService;
@@ -172,30 +163,27 @@ public class EnlinkdDaemonConfiguration {
         return new CountingOnmsTopologyDao(new OnmsTopologyDaoInMemoryImpl(), meterRegistry);
     }
 
-    // ── 5. TopologyEntityCache (no-op) ───────────────────────────────
+    // ── 5. TopologyEntityCache (real JPA-backed) ─────────────────────
 
     /**
-     * No-op TopologyEntityCache. The real {@code TopologyEntityCacheImpl} depends
-     * on {@code TopologyEntityDao} from the Hibernate-based persistence impl.
-     * Enlinkd topology updaters use the cache for building topology views;
-     * returning empty lists means topology views will be populated on first refresh.
+     * Real DAO over the topology projection tables. Replaces the no-op
+     * that was here pre-PR — produces empty lists no more.
      */
     @Bean
-    public TopologyEntityCache topologyEntityCache() {
-        return new TopologyEntityCache() {
-            @Override public List<NodeTopologyEntity> getNodeTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<CdpLinkTopologyEntity> getCdpLinkTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<OspfLinkTopologyEntity> getOspfLinkTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<OspfAreaTopologyEntity> getOspfAreaTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<IsIsLinkTopologyEntity> getIsIsLinkTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<LldpLinkTopologyEntity> getLldpLinkTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<CdpElementTopologyEntity> getCdpElementTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<IsIsElementTopologyEntity> getIsIsElementTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<LldpElementTopologyEntity> getLldpElementTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<SnmpInterfaceTopologyEntity> getSnmpInterfaceTopologyEntities() { return Collections.emptyList(); }
-            @Override public List<IpInterfaceTopologyEntity> getIpInterfaceTopologyEntities() { return Collections.emptyList(); }
-            @Override public void refresh() { /* no-op */ }
-        };
+    public TopologyEntityDao topologyEntityDao() {
+        return new TopologyEntityDaoJpa();
+    }
+
+    /**
+     * Guava-backed cache wrapping {@link TopologyEntityDao}. TTL is set
+     * via {@code deltav.enlinkd.topology-cache.duration-seconds} (default
+     * 300s, matching horizon's behavior).
+     */
+    @Bean
+    public TopologyEntityCache topologyEntityCache(
+            TopologyEntityDao topologyEntityDao,
+            @Value("${deltav.enlinkd.topology-cache.duration-seconds:300}") int cacheDurationSeconds) {
+        return new TopologyEntityCacheImpl(topologyEntityDao, cacheDurationSeconds);
     }
 
     // ── 6. Topology Services ─────────────────────────────────────────
