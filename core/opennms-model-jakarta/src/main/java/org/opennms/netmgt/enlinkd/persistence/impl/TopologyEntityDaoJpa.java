@@ -17,7 +17,6 @@
  */
 package org.opennms.netmgt.enlinkd.persistence.impl;
 
-import java.util.Collections;
 import java.util.List;
 
 import org.opennms.netmgt.enlinkd.model.CdpElementTopologyEntity;
@@ -44,69 +43,119 @@ import jakarta.persistence.PersistenceContext;
  * {@code spring.orm.hibernate3} package — removed in Spring 5+ and not
  * available in delta-v's Spring 7 / Spring Boot 4 runtime.
  *
- * <p>All queries are read-only JPQL constructor projections. The 11 method
- * bodies are filled in a follow-up commit; this skeleton exists so the
- * Testcontainers IT can wire and fail on empty results.</p>
+ * <p>All queries are read-only JPQL constructor projections ported from
+ * horizon's {@code TopologyEntityDaoHibernate} (HQL → JPQL).</p>
  */
 @Repository
 @Transactional(readOnly = true)
 public class TopologyEntityDaoJpa implements TopologyEntityDao {
 
     @PersistenceContext
-    private EntityManager em; // populated by JPQL queries in the follow-up commit
+    private EntityManager em;
 
     @Override
     public List<NodeTopologyEntity> getNodeTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.NodeTopologyEntity("
+                        + "n.id, n.type, n.sysObjectId, n.label, n.location) "
+                        + "from org.opennms.netmgt.model.OnmsNode n",
+                NodeTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<CdpLinkTopologyEntity> getCdpLinkTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.CdpLinkTopologyEntity("
+                        + "l.id, l.node.id, l.cdpCacheIfIndex, l.cdpInterfaceName, "
+                        + "l.cdpCacheAddress, l.cdpCacheDeviceId, l.cdpCacheDevicePort) "
+                        + "from org.opennms.netmgt.enlinkd.model.CdpLink l",
+                CdpLinkTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<IsIsLinkTopologyEntity> getIsIsLinkTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.IsIsLinkTopologyEntity("
+                        + "l.id, l.node.id, l.isisISAdjIndex, l.isisCircIfIndex, "
+                        + "l.isisISAdjNeighSysID, l.isisISAdjNeighSNPAAddress) "
+                        + "from org.opennms.netmgt.enlinkd.model.IsIsLink l",
+                IsIsLinkTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<LldpLinkTopologyEntity> getLldpLinkTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.LldpLinkTopologyEntity("
+                        + "l.id, l.node.id, l.lldpRemChassisId, l.lldpRemSysname, "
+                        + "l.lldpRemPortId, l.lldpRemPortIdSubType, l.lldpRemPortDescr, "
+                        + "l.lldpPortId, l.lldpPortIdSubType, l.lldpPortDescr, l.lldpPortIfindex) "
+                        + "from org.opennms.netmgt.enlinkd.model.LldpLink l",
+                LldpLinkTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<OspfLinkTopologyEntity> getOspfLinkTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.OspfLinkTopologyEntity("
+                        + "l.id, l.node.id, l.ospfIpAddr, l.ospfIpMask, l.ospfRemIpAddr, "
+                        + "l.ospfIfIndex, l.ospfIfAreaId) "
+                        + "from org.opennms.netmgt.enlinkd.model.OspfLink l",
+                OspfLinkTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<OspfAreaTopologyEntity> getOspfAreaTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.OspfAreaTopologyEntity("
+                        + "a.id, a.node.id, a.ospfAreaId, a.ospfAuthType, a.ospfImportAsExtern, "
+                        + "a.ospfAreaBdrRtrCount, a.ospfAsBdrRtrCount, a.ospfAreaLsaCount) "
+                        + "from org.opennms.netmgt.enlinkd.model.OspfArea a",
+                OspfAreaTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<SnmpInterfaceTopologyEntity> getSnmpTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.SnmpInterfaceTopologyEntity("
+                        + "i.id, i.ifIndex, i.ifName, i.ifAlias, i.ifSpeed, i.node.id) "
+                        + "from org.opennms.netmgt.model.OnmsSnmpInterface i",
+                SnmpInterfaceTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<IpInterfaceTopologyEntity> getIpTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.IpInterfaceTopologyEntity("
+                        + "i.id, i.ipAddress, i.netMask, i.isManaged, i.snmpPrimary, "
+                        + "i.node.id, i.snmpInterface.id) "
+                        + "from org.opennms.netmgt.model.OnmsIpInterface i",
+                IpInterfaceTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<CdpElementTopologyEntity> getCdpElementTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.CdpElementTopologyEntity("
+                        + "e.id, e.cdpGlobalDeviceId, e.node.id) "
+                        + "from org.opennms.netmgt.enlinkd.model.CdpElement e",
+                CdpElementTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<IsIsElementTopologyEntity> getIsIsElementTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.IsIsElementTopologyEntity("
+                        + "e.id, e.isisSysID, e.node.id) "
+                        + "from org.opennms.netmgt.enlinkd.model.IsIsElement e",
+                IsIsElementTopologyEntity.class).getResultList();
     }
 
     @Override
     public List<LldpElementTopologyEntity> getLldpElementTopologyEntities() {
-        return Collections.emptyList();
+        return em.createQuery(
+                "select new org.opennms.netmgt.enlinkd.model.LldpElementTopologyEntity("
+                        + "e.id, e.lldpChassisId, e.lldpSysname, e.node.id) "
+                        + "from org.opennms.netmgt.enlinkd.model.LldpElement e",
+                LldpElementTopologyEntity.class).getResultList();
     }
 }

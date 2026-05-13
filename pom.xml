@@ -41,7 +41,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- Horizon JAR version (published by pbrane/delta-v-horizon) -->
-    <deltav.horizon.version>1.0.13</deltav.horizon.version>
+    <deltav.horizon.version>1.0.14</deltav.horizon.version>
 
     <!-- Spring Cloud release train (for flow-enricher / flow-aggregator) -->
     <spring-cloud.version>2025.1.1</spring-cloud.version>
