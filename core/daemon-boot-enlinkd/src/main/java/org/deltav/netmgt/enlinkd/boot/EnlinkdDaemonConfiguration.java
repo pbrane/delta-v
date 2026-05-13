@@ -63,7 +63,6 @@ import org.opennms.netmgt.enlinkd.persistence.impl.LldpLinkDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.OspfAreaDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.OspfElementDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.OspfLinkDaoJpa;
-import org.opennms.netmgt.enlinkd.persistence.impl.TopologyEntityDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.UserDefinedLinkDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.api.TopologyEntityCache;
 import org.opennms.netmgt.enlinkd.persistence.api.TopologyEntityDao;
@@ -166,18 +165,10 @@ public class EnlinkdDaemonConfiguration {
     // ── 5. TopologyEntityCache (real JPA-backed) ─────────────────────
 
     /**
-     * Real DAO over the topology projection tables. Replaces the no-op
-     * that was here pre-PR — produces empty lists no more.
-     */
-    @Bean
-    public TopologyEntityDao topologyEntityDao() {
-        return new TopologyEntityDaoJpa();
-    }
-
-    /**
-     * Guava-backed cache wrapping {@link TopologyEntityDao}. TTL is set
-     * via {@code deltav.enlinkd.topology-cache.duration-seconds} (default
-     * 300s, matching horizon's behavior).
+     * Guava-backed cache wrapping the {@link TopologyEntityDao} provided by
+     * {@link EnlinkdJpaConfiguration}. TTL is set via
+     * {@code deltav.enlinkd.topology-cache.duration-seconds} (default 300s,
+     * matching horizon's behavior).
      */
     @Bean
     public TopologyEntityCache topologyEntityCache(

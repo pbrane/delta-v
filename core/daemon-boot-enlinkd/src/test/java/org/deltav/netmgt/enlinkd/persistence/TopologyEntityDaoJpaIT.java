@@ -59,7 +59,6 @@ import org.opennms.netmgt.enlinkd.model.OspfLink;
 import org.opennms.netmgt.enlinkd.model.OspfLinkTopologyEntity;
 import org.opennms.netmgt.enlinkd.model.SnmpInterfaceTopologyEntity;
 import org.opennms.netmgt.enlinkd.persistence.api.TopologyEntityDao;
-import org.opennms.netmgt.enlinkd.persistence.impl.TopologyEntityDaoJpa;
 import org.opennms.netmgt.events.api.EventIpcManager;
 import org.opennms.netmgt.model.OnmsIpInterface;
 import org.opennms.netmgt.model.OnmsNode;
@@ -68,9 +67,6 @@ import org.opennms.netmgt.model.PrimaryType;
 import org.opennms.netmgt.model.monitoringLocations.OnmsMonitoringLocation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -97,17 +93,12 @@ import jakarta.persistence.PersistenceContext;
  * setup; bypassing the Spring context would require re-deriving that configuration. The {@code @MockitoBean} declarations below
  * suppress production beans (Kafka producers/consumers, {@code EnhancedLinkd} daemon initialization, config XML loading) that
  * would otherwise crash at context startup in the absence of the production runtime environment.</p>
- *
- * <p>All 11 tests currently FAIL with "expected size 1 but was 0" because
- * {@link TopologyEntityDaoJpa} returns empty lists — driving Task 4's
- * query implementation.</p>
  */
 @SpringBootTest(classes = org.deltav.netmgt.enlinkd.boot.EnlinkdBootApplication.class,
                 webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 @Testcontainers
 @Transactional
-@Import(TopologyEntityDaoJpaIT.TestConfig.class)
 class TopologyEntityDaoJpaIT {
 
     @Container
@@ -122,19 +113,6 @@ class TopologyEntityDaoJpaIT {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("opennms.kafka.bootstrap-servers", () -> "localhost:9092");
-    }
-
-    /**
-     * Registers the {@link TopologyEntityDaoJpa} bean being tested — it is
-     * not in the component-scan packages of {@code EnlinkdBootApplication} and
-     * will be wired in Task 5 (EnlinkdDaemonConfiguration integration).
-     */
-    @TestConfiguration
-    static class TestConfig {
-        @Bean
-        public TopologyEntityDao topologyEntityDao() {
-            return new TopologyEntityDaoJpa();
-        }
     }
 
     /**

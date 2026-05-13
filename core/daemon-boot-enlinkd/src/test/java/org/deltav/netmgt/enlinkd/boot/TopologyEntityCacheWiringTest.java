@@ -19,6 +19,7 @@ package org.deltav.netmgt.enlinkd.boot;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 
@@ -26,21 +27,14 @@ import org.deltav.netmgt.enlinkd.persistence.cache.TopologyEntityCacheImpl;
 import org.junit.jupiter.api.Test;
 import org.opennms.netmgt.enlinkd.persistence.api.TopologyEntityCache;
 import org.opennms.netmgt.enlinkd.persistence.api.TopologyEntityDao;
-import org.opennms.netmgt.enlinkd.persistence.impl.TopologyEntityDaoJpa;
 
 /**
- * Wiring-only test for EnlinkdDaemonConfiguration's TopologyEntityCache /
- * TopologyEntityDao beans. Asserts the beans are the real delta-v impls
- * (not the deleted anonymous no-op) and that the cache delegates to the
- * injected DAO. No Spring context, no DataSource, no Postgres.
+ * Wiring-only test for EnlinkdDaemonConfiguration's TopologyEntityCache bean.
+ * Asserts the cache is the real delta-v impl (not the deleted anonymous no-op)
+ * and that it delegates to the injected DAO. No Spring context, no DataSource,
+ * no Postgres. DAO bean wiring is covered in TopologyEntityDaoWiringTest.
  */
 class TopologyEntityCacheWiringTest {
-
-    @Test
-    void topologyEntityDaoBeanIsRealJpaImpl() {
-        TopologyEntityDao dao = new EnlinkdDaemonConfiguration().topologyEntityDao();
-        assertThat(dao).isInstanceOf(TopologyEntityDaoJpa.class);
-    }
 
     @Test
     void topologyEntityCacheBeanIsDeltavImpl() {
@@ -52,7 +46,7 @@ class TopologyEntityCacheWiringTest {
     @Test
     void cacheDelegatesToInjectedDao() {
         TopologyEntityDao mockDao = mock(TopologyEntityDao.class);
-        org.mockito.Mockito.when(mockDao.getNodeTopologyEntities()).thenReturn(Collections.emptyList());
+        when(mockDao.getNodeTopologyEntities()).thenReturn(Collections.emptyList());
 
         TopologyEntityCache cache = new EnlinkdDaemonConfiguration().topologyEntityCache(mockDao, 300);
         cache.getNodeTopologyEntities();
