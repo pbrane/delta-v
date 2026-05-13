@@ -53,7 +53,7 @@ import jakarta.persistence.PersistenceContext;
 public class TopologyEntityDaoJpa implements TopologyEntityDao {
 
     @PersistenceContext
-    private EntityManager em;
+    private EntityManager em; // populated by JPQL queries in the follow-up commit
 
     @Override
     public List<NodeTopologyEntity> getNodeTopologyEntities() {
@@ -101,12 +101,12 @@ public class TopologyEntityDaoJpa implements TopologyEntityDao {
     }
 
     @Override
-    public List<LldpElementTopologyEntity> getLldpElementTopologyEntities() {
+    public List<IsIsElementTopologyEntity> getIsIsElementTopologyEntities() {
         return Collections.emptyList();
     }
 
     @Override
-    public List<IsIsElementTopologyEntity> getIsIsElementTopologyEntities() {
+    public List<LldpElementTopologyEntity> getLldpElementTopologyEntities() {
         return Collections.emptyList();
     }
 }
