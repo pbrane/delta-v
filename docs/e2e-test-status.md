@@ -17,8 +17,8 @@ Each `opennms-container/delta-v/test-*-e2e.sh` script runs independently. There'
 | `test-syslog-e2e.sh` | 16/16 ✅ | KEEP (note: includes alarm create+clear via syslog path — works) |
 | `test-timeseries-e2e.sh` | PASS ✅ | KEEP | — |
 | `test-node-context-e2e.sh` | PASS ✅ | KEEP | — |
-| `test-e2e.sh` (alarm lifecycle, traps) | 7/12 ❌ | **DEFER — investigate trap-translation asymmetry** | Phases 2 + 3 fail; trap-driven `SNMP_Link_Down` UEI never reaches `alarms` table though `SNMP_Link_Up` (clear-side) does |
-| `test-passive-e2e.sh` | 16/18 ❌ | **DEFER — alarmd lifecycle gap** | Passive serviceDown alarms (syslog-driven `uei.opennms.org/syslogd/cloud/serviceDown`) — some assertions broken |
+| `test-e2e.sh` (alarm lifecycle, traps) | 13/13 ✅ (after fix) | KEEP | **Was 7/12 — fixed in this branch via 3 hardening tweaks ported from test-minion-e2e.sh: consumer warmup 3s→8s, ALARM_TIMEOUT 30s→45s, IFINDEX 1→3.** The alarmd pipeline was never broken; the test harness had stale 2026-04-01 timing that pre-dated the gRPC migration. |
+| `test-passive-e2e.sh` | 16/18 ❌ | **DEFER — likely same bit-rot, port the same hardening** | Last touched before the gRPC migration. Phase-2/3 alarm assertions probably failing for the same Kafka-consumer-rebalance reason. Apply the same fix recipe and re-run before concluding it's an alarmd issue. |
 | `test-minion-rpc-e2e.sh` | 8/9 ❌ | **DEFER — pollerd Kafka producer bug** | Phase 3 only; see `project_pollerd_kafka_producer_metadata_timeout` |
 | `test-flows-e2e.sh` | 17/19 ❌ | **FIX ENVIRONMENT** | V9 + sFlow testnodes can't bind their docker-compose subnet IPs (envoy + minion grab `172.18.0.20/21` first) |
 | `test-prometheus-writer-e2e.sh` | FAIL ❌ | **DEFER — known startup race** | `NodeContextKafkaBootstrap` race (`records_consumed_total=0`); see `project_collectd_publisher_inert_investigation` |
@@ -58,10 +58,12 @@ These tests require physical Containerlab cEOS hardware that lives on the lab ma
 
 ## Recommended next actions
 
-1. **Triage `test-e2e.sh` vs `test-minion-e2e.sh`** — 30-60 min investigation. Compare what they do differently. The differential is likely 1-3 things (different snmptrap invocation, different source IP, different timing). Isolating it converts `test-e2e.sh` from "deferred — alarmd gap" to either "fixed" or "deferred — narrower known bug".
-2. **Surface the `test-flows-e2e.sh` IP conflict as a compose fix** — small one-PR fix (allocate IPs in the compose file explicitly). Frees up 2/19 assertions.
-3. **Move `test-enlinkd-e2e.sh` and `test-perspective-e2e.sh` out of any laptop-run script** — they currently sit alongside the laptop-runnable tests and silently fail (or skip) when run there. A subdirectory like `opennms-container/delta-v/lab/` or a clear naming convention (`test-lab-*-e2e.sh`) would make the boundary obvious.
-4. **Add per-script status to CI artifacts** — when "93/93 across the suite" was achievable, no per-script breakdown was recorded. If we ever want to bisect a regression in the future, having `test-X-e2e.sh: N/M` for each script in CI output is what we'd need.
+1. ~~**Triage `test-e2e.sh` vs `test-minion-e2e.sh`**~~ — ✅ DONE in this branch. 3 hardening tweaks: consumer warmup 3s→8s, ALARM_TIMEOUT 30s→45s, IFINDEX 1→3. Pipeline confirmed working (13/13 PASS). The alarmd-lifecycle-gap memory items (`project_alarmd_alarm_lifecycle_gap`, `project_alarmd_state_management_strategy_open`) need an update to note that the trap→alarm lane is NOT actually broken at the daemon — only the test harness was stale.
+2. **Apply the same hardening to `test-passive-e2e.sh`** — same author, same era, same probable root cause. Likely converts another DEFER to a KEEP.
+3. **Surface the `test-flows-e2e.sh` IP conflict as a compose fix** — small one-PR fix (allocate IPs in the compose file explicitly). Frees up 2/19 assertions.
+4. **Move `test-enlinkd-e2e.sh` and `test-perspective-e2e.sh` out of any laptop-run script** — they currently sit alongside the laptop-runnable tests and silently fail (or skip) when run there. A subdirectory like `opennms-container/delta-v/lab/` or a clear naming convention (`test-lab-*-e2e.sh`) would make the boundary obvious.
+5. **Add per-script status to CI artifacts** — when "93/93 across the suite" was achievable, no per-script breakdown was recorded. If we ever want to bisect a regression in the future, having `test-X-e2e.sh: N/M` for each script in CI output is what we'd need.
+6. **Audit other 2026-04-period test scripts for similar bit-rot** — any `test-*-e2e.sh` last touched before the gRPC migration (2026-05-08) is suspect. The 3s consumer warmup is the highest-signal red flag to grep for.
 
 ## Not in scope of this doc
 
