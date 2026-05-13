@@ -52,7 +52,6 @@ import org.opennms.netmgt.enlinkd.model.LldpLinkTopologyEntity;
 import org.opennms.netmgt.enlinkd.model.NodeTopologyEntity;
 import org.opennms.netmgt.enlinkd.model.OspfArea;
 import org.opennms.netmgt.enlinkd.model.OspfAreaTopologyEntity;
-import org.opennms.netmgt.enlinkd.model.OspfElement;
 import org.opennms.netmgt.enlinkd.model.OspfElement.TruthValue;
 import org.opennms.netmgt.enlinkd.model.CdpLink.CiscoNetworkProtocolType;
 import org.opennms.netmgt.enlinkd.model.CdpElement.CdpGlobalDeviceIdFormat;
@@ -91,6 +90,13 @@ import jakarta.persistence.PersistenceContext;
  * <p>JPQL constructor projection ({@code select new FQCN(...)}) is
  * resolved reflectively at query-execution time, so a field-order swap
  * compiles cleanly and fails at runtime. This IT catches that class of bug.</p>
+ *
+ * <p>A full {@code @SpringBootTest} is used rather than {@link org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest}
+ * (or the spec's {@code Persistence.createEntityManagerFactory}) because {@code TopologyEntityDaoJpa} is registered as
+ * a Spring bean via {@code @Repository} and the surrounding {@code EnlinkdJpaConfiguration} owns the {@code EntityManagerFactory}
+ * setup; bypassing the Spring context would require re-deriving that configuration. The {@code @MockitoBean} declarations below
+ * suppress production beans (Kafka producers/consumers, {@code EnhancedLinkd} daemon initialization, config XML loading) that
+ * would otherwise crash at context startup in the absence of the production runtime environment.</p>
  *
  * <p>All 11 tests currently FAIL with "expected size 1 but was 0" because
  * {@link TopologyEntityDaoJpa} returns empty lists — driving Task 4's
