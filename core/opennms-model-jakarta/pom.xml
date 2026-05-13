@@ -96,8 +96,21 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Enlinkd enum types are now defined as inner classes in our Jakarta entities.
-             No dependency on enlinkd-persistence-api needed. -->
+        <!-- Enlinkd persistence API — TopologyEntityDao interface + *TopologyEntity projection
+             POJOs needed by TopologyEntityDaoJpa. Version is BOM-managed (1.0.13).
+             Exclusions mirror daemon-boot-enlinkd to keep legacy spring/hibernate chains out. -->
+        <dependency>
+            <groupId>org.opennms.features.enlinkd</groupId>
+            <artifactId>org.opennms.features.enlinkd.persistence.api</artifactId>
+            <exclusions>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-security-dependencies</artifactId></exclusion>
+                <exclusion><groupId>org.hibernate</groupId><artifactId>hibernate-core</artifactId></exclusion>
+                <exclusion><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.0-api</artifactId></exclusion>
+                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
+            </exclusions>
+        </dependency>
 
         <!-- opennms-rrd-api — compile-only for ResourceTypeUtils.getResourcePathWithRepository
              signature. Horizon's features.timeseries-1.0.11 calls this static method on the
