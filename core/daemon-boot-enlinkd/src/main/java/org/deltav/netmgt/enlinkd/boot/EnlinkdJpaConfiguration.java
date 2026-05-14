@@ -47,6 +47,7 @@ import org.opennms.netmgt.enlinkd.persistence.impl.LldpLinkDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.OspfAreaDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.OspfElementDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.OspfLinkDaoJpa;
+import org.opennms.netmgt.enlinkd.persistence.impl.TopologyEntityDaoJpa;
 import org.opennms.netmgt.enlinkd.persistence.impl.UserDefinedLinkDaoJpa;
 import org.opennms.netmgt.model.OnmsApplication;
 import org.opennms.netmgt.model.OnmsCategory;
@@ -252,6 +253,11 @@ public class EnlinkdJpaConfiguration {
     @Bean
     public UserDefinedLinkDaoJpa userDefinedLinkDaoJpa() {
         return new UserDefinedLinkDaoJpa();
+    }
+
+    @Bean
+    public TopologyEntityDaoJpa topologyEntityDaoJpa() {
+        return new TopologyEntityDaoJpa();
     }
 
 }
