@@ -31,9 +31,9 @@ TRAP_HOST="localhost"
 TRAP_PORT="11162"                    # Minion's mapped trap port (11162 → 1162/udp)
 TRAP_COMMUNITY="public"
 NODE_SCAN_TIMEOUT=180
-ALARM_TIMEOUT=30
+ALARM_TIMEOUT=45                     # Multi-hop Kafka chain (Trapd→fault→eventtranslator→fault) can exceed 30s on a busy dev laptop
 # Alarm verification uses PostgreSQL directly (no webapp dependency)
-IFINDEX=1
+IFINDEX=3                            # Distinct from test-minion-e2e.sh (=2) so concurrent/back-to-back runs don't share a reduction-key
 
 # ── Usage ─────────────────────────────────────────────────────────
 usage() {
@@ -173,7 +173,11 @@ docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
     > "$IPC_LOG" 2>/dev/null &
 IPC_CONSUMER_PID=$!
 
-sleep 3
+# Give Kafka consumers time to join their consumer groups and start receiving.
+# Without `--from-beginning`, the console-consumer sits at `latest` offset on
+# join — events produced before group rebalance completes are missed. 3s is
+# not enough; 8s matches test-minion-e2e.sh's hardening from 2026-05-09.
+sleep 8
 
 # ══════════════════════════════════════════════════════════════════
 # Phase 1: Node Provisioning via coldStart Trap
