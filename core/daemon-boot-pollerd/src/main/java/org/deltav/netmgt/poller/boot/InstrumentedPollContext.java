@@ -19,6 +19,9 @@ package org.deltav.netmgt.poller.boot;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 
+import org.deltav.poller.timeseries.ResponseTimePublisher;
+import org.deltav.poller.timeseries.ResponseTimeSample;
+import org.deltav.timeseries.proto.ProducerType;
 import org.opennms.core.tsid.TsidFactory;
 import org.opennms.netmgt.config.PollerConfig;
 import org.opennms.netmgt.events.api.EventIpcManager;
@@ -32,23 +35,27 @@ import org.opennms.netmgt.poller.pollables.PollableService;
  * {@link StandalonePollContext} subclass that increments {@code deltav_pollerd_*}
  * Micrometer counters on every poll completion and outage transition, and
  * optionally publishes per-poll response-time samples to the
- * {@code deltav-timeseries} Kafka topic via {@link PollResultPublisher}.
+ * {@code deltav-timeseries} Kafka topic via the shared
+ * {@link ResponseTimePublisher}.
  *
- * <p>The publisher is wired only when {@code deltav.timeseries.enabled=true}
- * in {@code application.yml}; otherwise it is null and Phase 3 publishing
- * is a no-op (Phase 2 metrics still fire). This matches the collectd module's
- * conditional pattern.
+ * <p>The publisher is wired only when {@code deltav.timeseries.enabled=true};
+ * otherwise it is null and Phase 3 publishing is a no-op (Phase 2 counters
+ * still fire). Producer identity for the shared publisher is supplied here:
+ * {@code PRODUCER_POLLERD} / {@code "pollerd"}.
  */
 public class InstrumentedPollContext extends StandalonePollContext {
 
+    private static final ProducerType PRODUCER_TYPE = ProducerType.PRODUCER_POLLERD;
+    private static final String PRODUCER_LABEL = "pollerd";
+
     private final MeterRegistry registry;
-    private final PollResultPublisher publisher;
+    private final ResponseTimePublisher publisher;
     private final Timer pollDuration;
 
     public InstrumentedPollContext(EventIpcManager eventManager, PollerConfig pollerConfig,
                                    QueryManager queryManager, LocationAwarePingClient pingClient,
                                    TsidFactory tsidFactory, String localHostName, String name,
-                                   MeterRegistry registry, PollResultPublisher publisher) {
+                                   MeterRegistry registry, ResponseTimePublisher publisher) {
         super(eventManager, pollerConfig, queryManager, pingClient, tsidFactory, localHostName, name);
         this.registry = registry;
         this.publisher = publisher;
@@ -59,8 +66,8 @@ public class InstrumentedPollContext extends StandalonePollContext {
     public void trackPoll(PollableService service, PollStatus status) {
         super.trackPoll(service, status);
         recordPoll(service, status);
-        if (publisher != null) {
-            publisher.publish(service, status);
+        if (publisher != null && service != null && hasResponseTime(status)) {
+            publisher.publish(toSample(service, status));
         }
     }
 
@@ -89,6 +96,25 @@ public class InstrumentedPollContext extends StandalonePollContext {
             pollDuration.record((long) (status.getResponseTime() * 1_000_000.0),
                     java.util.concurrent.TimeUnit.NANOSECONDS);
         }
+    }
+
+    private static boolean hasResponseTime(PollStatus status) {
+        return status != null && status.getResponseTime() != null
+                && !Double.isNaN(status.getResponseTime());
+    }
+
+    private static ResponseTimeSample toSample(PollableService service, PollStatus status) {
+        long timestampMs = status.getTimestamp() != null
+                ? status.getTimestamp().getTime() : System.currentTimeMillis();
+        String location = service.getNodeLocation() != null ? service.getNodeLocation() : "Default";
+        return new ResponseTimeSample(
+                service.getNodeId(),
+                service.getSvcName(),
+                location,
+                status.getResponseTime(),
+                timestampMs,
+                PRODUCER_TYPE,
+                PRODUCER_LABEL);
     }
 
     private static String location(PollableService service) {

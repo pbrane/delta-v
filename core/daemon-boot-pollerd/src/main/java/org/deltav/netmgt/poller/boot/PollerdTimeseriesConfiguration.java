@@ -19,7 +19,7 @@ package org.deltav.netmgt.poller.boot;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import org.apache.kafka.clients.admin.NewTopic;
-import org.deltav.timeseries.proto.ProducerType;
+import org.deltav.poller.timeseries.ResponseTimePublisher;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.stream.function.StreamBridge;
@@ -61,9 +61,8 @@ public class PollerdTimeseriesConfiguration {
     }
 
     @Bean
-    public PollResultPublisher pollResultPublisher(StreamBridge streamBridge,
-                                                   MeterRegistry meterRegistry) {
-        return new PollResultPublisher(streamBridge, meterRegistry,
-                ProducerType.PRODUCER_POLLERD, "pollerd");
+    public ResponseTimePublisher responseTimePublisher(StreamBridge streamBridge,
+                                                       MeterRegistry meterRegistry) {
+        return new ResponseTimePublisher(streamBridge, meterRegistry);
     }
 }
