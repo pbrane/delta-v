@@ -19,6 +19,9 @@ package org.deltav.netmgt.perspectivepoller.boot;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 
+import org.deltav.poller.timeseries.ResponseTimePublisher;
+import org.deltav.poller.timeseries.ResponseTimeSample;
+import org.deltav.timeseries.proto.ProducerType;
 import org.opennms.core.tracing.api.TracerRegistry;
 import org.opennms.netmgt.collection.api.CollectionAgentFactory;
 import org.opennms.netmgt.collection.api.PersisterFactory;
@@ -50,7 +53,7 @@ import org.opennms.netmgt.threshd.api.ThresholdingService;
  *       by {@code perspective}, {@code location}, and {@code result}.</li>
  *   <li>Records {@code deltav_perspective_poll_duration_seconds} from the
  *       poll's measured response time.</li>
- *   <li>If {@link PerspectiveResponseTimePublisher} is wired (Phase 3
+ *   <li>If the shared {@link ResponseTimePublisher} is wired (Phase 3
  *       enabled), forwards the sample to the {@code deltav-timeseries}
  *       Kafka topic.</li>
  * </ol>
@@ -62,8 +65,11 @@ import org.opennms.netmgt.threshd.api.ThresholdingService;
  */
 public class InstrumentedPerspectivePollerd extends PerspectivePollerd {
 
+    private static final ProducerType PRODUCER_TYPE = ProducerType.PRODUCER_PERSPECTIVE_POLLERD;
+    private static final String PRODUCER_LABEL = "perspectivepollerd";
+
     private final MeterRegistry meterRegistry;
-    private final PerspectiveResponseTimePublisher publisher;
+    private final ResponseTimePublisher publisher;
     private final Timer pollDuration;
 
     public InstrumentedPerspectivePollerd(SessionUtils sessionUtils,
@@ -80,7 +86,7 @@ public class InstrumentedPerspectivePollerd extends PerspectivePollerd {
                                           TracerRegistry tracerRegistry,
                                           PerspectiveServiceTracker tracker,
                                           MeterRegistry meterRegistry,
-                                          PerspectiveResponseTimePublisher publisher) {
+                                          ResponseTimePublisher publisher) {
         super(sessionUtils, monitoringLocationDao, pollerConfig, monitoredServiceDao,
                 locationAwarePollerClient, applicationDao, collectionAgentFactory,
                 persisterFactory, eventForwarder, thresholdingService, outageDao,
@@ -96,8 +102,8 @@ public class InstrumentedPerspectivePollerd extends PerspectivePollerd {
             super.persistResponseTimeData(polledService, pollStatus);
         } finally {
             recordPoll(polledService, pollStatus);
-            if (publisher != null) {
-                publisher.publish(polledService, pollStatus);
+            if (publisher != null && polledService != null && hasResponseTime(pollStatus)) {
+                publisher.publish(toSample(polledService, pollStatus));
             }
         }
     }
@@ -121,5 +127,25 @@ public class InstrumentedPerspectivePollerd extends PerspectivePollerd {
             pollDuration.record((long) (status.getResponseTime() * 1_000_000.0),
                     java.util.concurrent.TimeUnit.NANOSECONDS);
         }
+    }
+
+    private static boolean hasResponseTime(PollStatus status) {
+        return status != null && status.getResponseTime() != null
+                && !Double.isNaN(status.getResponseTime());
+    }
+
+    private static ResponseTimeSample toSample(PerspectivePolledService svc, PollStatus status) {
+        long timestampMs = status.getTimestamp() != null
+                ? status.getTimestamp().getTime() : System.currentTimeMillis();
+        String perspective = svc.getPerspectiveLocation() != null
+                ? svc.getPerspectiveLocation() : "Default";
+        return new ResponseTimeSample(
+                svc.getNodeId(),
+                svc.getServiceName(),
+                perspective,
+                status.getResponseTime(),
+                timestampMs,
+                PRODUCER_TYPE,
+                PRODUCER_LABEL);
     }
 }

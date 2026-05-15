@@ -342,7 +342,7 @@ services:
       # Phase 3 (delta-v#220, v1.2.0-beta2): publish per-poll response-time
       # samples to the deltav-timeseries Kafka topic. Without this,
       # PollerdTimeseriesConfiguration's @ConditionalOnProperty stays inactive
-      # and InstrumentedPollContext sees a null PollResultPublisher (Phase 2
+      # and InstrumentedPollContext sees a null ResponseTimePublisher (Phase 2
       # /actuator/prometheus counters still emit; Phase 3 publish is a no-op).
       DELTAV_TIMESERIES_ENABLED: ${DELTAV_TIMESERIES_ENABLED:-true}
     healthcheck:

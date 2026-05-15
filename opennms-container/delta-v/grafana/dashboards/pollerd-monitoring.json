@@ -1,0 +1,228 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Direct Pollerd service-poll latency and throughput. Panels query the Phase 3 publisher series (deltav-timeseries Kafka topic → prometheus-writer → VictoriaMetrics) and Pollerd's /actuator/prometheus counters.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "axisLabel": "response time",
+            "axisPlacement": "auto"
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "opennms_response_time_response{producer=\"pollerd\"}",
+          "instant": false,
+          "legendFormat": "{{location}} → {{node_label}}/{{resource_instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Service response time (ms)",
+      "type": "timeseries",
+      "description": "Each line is one (location, target service) pair as measured by direct Pollerd polls."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 500 }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 0 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "avg by (location) (opennms_response_time_response{producer=\"pollerd\"})",
+          "instant": true,
+          "legendFormat": "{{location}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest avg response time by location",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "id": 3,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": ["mean"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "rate(deltav_pollerd_polls_completed_total[1m])",
+          "legendFormat": "{{location}} ({{result}})",
+          "refId": "A"
+        }
+      ],
+      "title": "Polls/sec by location + result",
+      "type": "timeseries",
+      "description": "Direct from Pollerd's /actuator/prometheus (deltav_pollerd_polls_completed_total). Faceted by location and result so 'down' polls stand out from 'up' ones."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "id": 4,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": ["sum"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "rate(deltav_timeseries_batches_failed_total{producer=\"pollerd\"}[5m])",
+          "legendFormat": "{{location}} ({{reason}})",
+          "refId": "A"
+        }
+      ],
+      "title": "Phase 3 publish failures (pollerd)",
+      "type": "timeseries",
+      "description": "Rate of deltav_timeseries_batches_failed_total scoped to producer=pollerd. Should stay flat at zero; non-zero indicates Kafka or serialization issues with the Phase 3 publisher."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 18 },
+      "id": 5,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": ["sum"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "increase(deltav_timeseries_batches_published_total{producer=\"pollerd\"}[5m])",
+          "legendFormat": "{{location}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Phase 3 records published (5m bucket)",
+      "type": "timeseries",
+      "description": "Confirms Pollerd's publisher is emitting to deltav-timeseries. Each bucket = records sent in the prior 5 minutes, by location. Zero across the board means the publisher is not running or deltav.timeseries.enabled is off."
+    }
+  ],
+  "preload": false,
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["delta-v", "pollerd", "polling"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Pollerd Monitoring",
+  "uid": "pollerd-monitoring",
+  "version": 1,
+  "weekStart": ""
+}

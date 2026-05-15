@@ -19,6 +19,7 @@ package org.deltav.netmgt.perspectivepoller.boot;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import org.apache.kafka.clients.admin.NewTopic;
+import org.deltav.poller.timeseries.ResponseTimePublisher;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.stream.function.StreamBridge;
@@ -62,8 +63,8 @@ public class PerspectivePollerdTimeseriesConfiguration {
     }
 
     @Bean
-    public PerspectiveResponseTimePublisher perspectiveResponseTimePublisher(StreamBridge streamBridge,
-                                                                             MeterRegistry meterRegistry) {
-        return new PerspectiveResponseTimePublisher(streamBridge, meterRegistry);
+    public ResponseTimePublisher responseTimePublisher(StreamBridge streamBridge,
+                                                       MeterRegistry meterRegistry) {
+        return new ResponseTimePublisher(streamBridge, meterRegistry);
     }
 }

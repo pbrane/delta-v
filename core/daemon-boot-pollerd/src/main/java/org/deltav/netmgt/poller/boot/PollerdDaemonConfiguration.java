@@ -28,6 +28,7 @@ import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
 import org.deltav.core.daemon.common.XmlConfigPostProcessor;
+import org.deltav.poller.timeseries.ResponseTimePublisher;
 import org.opennms.core.mate.api.EntityScopeProvider;
 import org.opennms.core.tsid.TsidFactory;
 import org.opennms.core.utils.InetAddressUtils;
@@ -146,9 +147,9 @@ public class PollerdDaemonConfiguration {
      * PollContext that skips AsyncPollingEngine creation and instruments
      * every poll with {@code deltav_pollerd_*} Micrometer counters plus
      * (when {@code deltav.timeseries.enabled=true}) per-poll Kafka publish
-     * via {@link PollResultPublisher}.
+     * via {@link ResponseTimePublisher}.
      *
-     * <p>The {@link ObjectProvider} for {@link PollResultPublisher} is used
+     * <p>The {@link ObjectProvider} for {@link ResponseTimePublisher} is used
      * so the bean stays optional — {@code PollerdTimeseriesConfiguration}
      * is gated by {@code @ConditionalOnProperty}, so the publisher is absent
      * unless the flag is on. {@link InstrumentedPollContext} treats a null
@@ -161,7 +162,7 @@ public class PollerdDaemonConfiguration {
                                   LocationAwarePingClient locationAwarePingClient,
                                   TsidFactory tsidFactory,
                                   MeterRegistry meterRegistry,
-                                  ObjectProvider<PollResultPublisher> publisherProvider) {
+                                  ObjectProvider<ResponseTimePublisher> publisherProvider) {
         String localHostName = InetAddressUtils.getLocalHostName();
         return new InstrumentedPollContext(eventIpcManager, pollerConfig, queryManager,
                 locationAwarePingClient, tsidFactory, localHostName,

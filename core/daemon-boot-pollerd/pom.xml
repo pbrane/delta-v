@@ -52,6 +52,11 @@
             <artifactId>org.opennms.core.daemon-registry</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>org.opennms.core.poller-timeseries-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Poller implementation — Poller, QueryManagerDaoImpl, DefaultPollContext -->
         <dependency>
