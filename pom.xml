@@ -74,6 +74,7 @@
     <module>core/minion-gateway</module>
     <module>core/minion-grpc-contracts</module>
     <module>core/opennms-model-jakarta</module>
+    <module>core/poller-timeseries-common</module>
 
     <!-- Daemon boots (Spring Boot fat JARs) -->
     <module>core/daemon-boot-alarmd</module>
