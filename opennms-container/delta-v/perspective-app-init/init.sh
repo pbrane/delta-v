@@ -54,16 +54,27 @@ while [ -z "$ifservice_id" ]; do
 done
 log "Found ifservice id=${ifservice_id} for ${SERVICE_NAME}"
 
-# 2. Verify both perspective monitoring locations exist (Default is always
-#    present from db-init; l8opensim-lab appears once minion-lab registers).
-loc_count=$(psql_q "
-    SELECT count(*) FROM monitoringlocations WHERE id IN ('${LOCATION_A}', '${LOCATION_B}')
-")
-if [ "${loc_count:-0}" -ne 2 ]; then
-    log "FAIL: expected both monitoring locations (${LOCATION_A}, ${LOCATION_B}); found ${loc_count}"
-    log "      ensure minion-lab is running and has registered with the gateway"
-    exit 1
-fi
+# 2. Wait for both perspective monitoring locations to exist. Default is
+#    present from db-init immediately; l8opensim-lab appears only once
+#    minion-lab has registered with the gateway — which lags behind
+#    minion-lab's container healthcheck (the depends_on gate), so poll for
+#    it rather than assuming it is already there.
+log "Waiting for monitoring locations ${LOCATION_A}, ${LOCATION_B} (timeout ${WAIT_TIMEOUT}s)..."
+deadline=$(( $(date +%s) + WAIT_TIMEOUT ))
+loc_count=0
+while [ "${loc_count:-0}" -ne 2 ]; do
+    if [ "$(date +%s)" -gt "$deadline" ]; then
+        log "FAIL: expected both monitoring locations (${LOCATION_A}, ${LOCATION_B}); found ${loc_count} within ${WAIT_TIMEOUT}s"
+        log "      ensure minion-lab is running and has registered with the gateway"
+        exit 1
+    fi
+    loc_count=$(psql_q "
+        SELECT count(*) FROM monitoringlocations WHERE id IN ('${LOCATION_A}', '${LOCATION_B}')
+    " 2>/dev/null || echo 0)
+    if [ "${loc_count:-0}" -ne 2 ]; then
+        sleep "$POLL_INTERVAL"
+    fi
+done
 log "Both monitoring locations present: ${LOCATION_A}, ${LOCATION_B}"
 
 # 3. Idempotently provision application + mappings.
