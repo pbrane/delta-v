@@ -1016,10 +1016,18 @@ networks:
   # static IP-to-node mapping fails to attribute flows correctly in the
   # Grafana flow sources inventory panel. Subnet matches the historical
   # Docker default (172.18.0.0/16) so existing services aren't disturbed.
+  #
+  # ip_range confines DYNAMIC allocation to 172.18.1.0/24, keeping it clear
+  # of the static ipv4_address pins in 172.18.0.x (flow test nodes .20-.22,
+  # l8opensim .30). Without this, in a large-profile bring-up the dynamic
+  # allocator marches up from .2 and can hand a static-pinned IP to another
+  # container before the pinned service starts, failing it with
+  # "failed to set up container networking: Address already in use".
   default:
     name: delta-v_default
     ipam:
       driver: default
       config:
         - subnet: 172.18.0.0/16
+          ip_range: 172.18.1.0/24
           gateway: 172.18.0.1
