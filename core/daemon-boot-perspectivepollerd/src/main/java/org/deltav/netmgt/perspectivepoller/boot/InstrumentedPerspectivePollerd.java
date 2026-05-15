@@ -53,7 +53,7 @@ import org.opennms.netmgt.threshd.api.ThresholdingService;
  *       by {@code perspective}, {@code location}, and {@code result}.</li>
  *   <li>Records {@code deltav_perspective_poll_duration_seconds} from the
  *       poll's measured response time.</li>
- *   <li>If {@link PerspectiveResponseTimePublisher} is wired (Phase 3
+ *   <li>If the shared {@link ResponseTimePublisher} is wired (Phase 3
  *       enabled), forwards the sample to the {@code deltav-timeseries}
  *       Kafka topic.</li>
  * </ol>
