@@ -54,6 +54,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
+import org.deltav.poller.timeseries.ResponseTimePublisher;
 import org.deltav.core.daemon.common.XmlConfigPostProcessor;
 import org.springframework.context.SmartLifecycle;
 
@@ -172,10 +173,10 @@ public class PerspectivePollerdDaemonConfiguration {
             TracerRegistry tracerRegistry,
             PerspectiveServiceTracker perspectiveServiceTracker,
             io.micrometer.core.instrument.MeterRegistry meterRegistry,
-            ObjectProvider<PerspectiveResponseTimePublisher> publisherProvider) {
+            ObjectProvider<ResponseTimePublisher> publisherProvider) {
         EventForwarder countingForwarder =
                 new CountingPerspectiveEventForwarder(eventIpcManager, meterRegistry);
-        PerspectiveResponseTimePublisher publisher = publisherProvider.getIfAvailable();
+        ResponseTimePublisher publisher = publisherProvider.getIfAvailable();
         return new InstrumentedPerspectivePollerd(sessionUtils, monitoringLocationDao, pollerConfig,
                 monitoredServiceDao, locationAwarePollerClient, applicationDao,
                 collectionAgentFactory, persisterFactory, countingForwarder,

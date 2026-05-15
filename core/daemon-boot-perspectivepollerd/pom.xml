@@ -60,6 +60,11 @@
             <artifactId>org.opennms.core.daemon-registry</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>org.opennms.core.poller-timeseries-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- PerspectivePoller implementation — PerspectivePollerd daemon class -->
         <dependency>
