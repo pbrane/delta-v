@@ -68,7 +68,7 @@ cd opennms-container/delta-v
 
 *   **Spring Patterns**: Strictly use **constructor injection**; NEVER use `@Autowired` on fields.
 *   **Persistence**: Use `opennms-model-jakarta` and Hibernate 7 for new services. Legacy `opennms-model` (javax.persistence) is incompatible with the new stack.
-*   **IPC**: All inter-service communication must use Kafka topics (`opennms-fault-events`, `opennms-ipc-events`).
+*   **IPC**: All inter-service communication must use Kafka topics (`deltav-fault-events`, `deltav-ipc-events`).
 *   **Git Rules**: Never create PRs against `OpenNMS/*`. Use `--repo pbrane/delta-v` for all `gh pr create` commands.
 *   **Coding Style**: Adhere to existing patterns in `daemon-boot-*` modules. Exclude ServiceMix Spring 4.2.x bundles in POMs for Boot 4 modules.
 

@@ -183,7 +183,7 @@ FAULT_LOG="$TEST_TMPDIR/fault-events.log"
 
 docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
     --bootstrap-server localhost:9092 \
-    --topic opennms-fault-events \
+    --topic deltav-fault-events \
     > "$FAULT_LOG" 2>/dev/null &
 FAULT_CONSUMER_PID=$!
 sleep 3

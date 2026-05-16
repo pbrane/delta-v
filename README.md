@@ -111,7 +111,7 @@ OpenNMS Horizon is an enterprise-grade open-source network monitoring platform. 
 ```
 Minion → Kafka Sink → Trapd/Syslogd
                           ↓
-            KafkaEventForwarder → opennms-fault-events (Kafka)
+            KafkaEventForwarder → deltav-fault-events (Kafka)
                                         ↓
                         ┌───────────────┼───────────────┐
                         ↓               ↓               ↓
@@ -119,7 +119,7 @@ Minion → Kafka Sink → Trapd/Syslogd
                    (→ PostgreSQL)  (→ translate     (subscribe to
                                     → re-publish)   relevant events)
                                         ↓
-                              opennms-ipc-events (Kafka)
+                              deltav-ipc-events (Kafka)
                                         ↓
                               Provisiond, Discovery, etc.
 ```
@@ -156,8 +156,8 @@ Minion → Kafka Sink → Trapd/Syslogd
 
 | Topic | Purpose |
 |-------|---------|
-| `opennms-fault-events` | Alarm-bearing events (traps, syslog, translated events with alarm-data) |
-| `opennms-ipc-events` | Daemon-to-daemon internal events (newSuspect, nodeScanCompleted, reloadDaemonConfig) |
+| `deltav-fault-events` | Alarm-bearing events (traps, syslog, translated events with alarm-data) |
+| `deltav-ipc-events` | Daemon-to-daemon internal events (newSuspect, nodeScanCompleted, reloadDaemonConfig) |
 | `OpenNMS.Sink.Trap` | Minion → Trapd raw trap forwarding |
 | `OpenNMS.Sink.Syslog` | Minion → Syslogd raw syslog forwarding |
 | `OpenNMS.Sink.Telemetry-*` | Minion → flow-enricher per-protocol flow forwarding (Netflow5/9, IPFIX, sFlow) |

@@ -358,13 +358,13 @@ log "Starting Kafka event consumers..."
 KAFKA_CONTAINER=$(docker compose ps -q kafka)
 docker exec "$KAFKA_CONTAINER" /opt/kafka/bin/kafka-console-consumer.sh \
     --bootstrap-server localhost:9092 \
-    --topic opennms-fault-events \
+    --topic deltav-fault-events \
     > "$FAULT_LOG" 2>/dev/null &
 FAULT_CONSUMER_PID=$!
 
 docker exec "$KAFKA_CONTAINER" /opt/kafka/bin/kafka-console-consumer.sh \
     --bootstrap-server localhost:9092 \
-    --topic opennms-ipc-events \
+    --topic deltav-ipc-events \
     > "$IPC_LOG" 2>/dev/null &
 IPC_CONSUMER_PID=$!
 
