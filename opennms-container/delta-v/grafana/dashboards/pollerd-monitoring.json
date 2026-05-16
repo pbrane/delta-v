@@ -50,7 +50,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "opennms_response_time_response{producer=\"pollerd\"}",
+          "expr": "opennms_response_time_response{producer=\"pollerd\", location=~\"$location\", resource_instance=~\"$service\"}",
           "instant": false,
           "legendFormat": "{{location}} → {{node_label}}/{{resource_instance}}",
           "refId": "A"
@@ -91,8 +91,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "avg by (location) (opennms_response_time_response{producer=\"pollerd\"})",
-          "instant": true,
+          "expr": "avg by (location) (opennms_response_time_response{producer=\"pollerd\", location=~\"$location\", resource_instance=~\"$service\"})",
+          "instant": false,
           "legendFormat": "{{location}}",
           "refId": "A"
         }
@@ -127,7 +127,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "rate(deltav_pollerd_polls_completed_total[1m])",
+          "expr": "rate(deltav_pollerd_polls_completed_total{location=~\"$location\"}[1m])",
           "legendFormat": "{{location}} ({{result}})",
           "refId": "A"
         }
@@ -168,7 +168,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "rate(deltav_timeseries_batches_failed_total{producer=\"pollerd\"}[5m])",
+          "expr": "rate(deltav_timeseries_batches_failed_total{producer=\"pollerd\", location=~\"$location\"}[5m])",
           "legendFormat": "{{location}} ({{reason}})",
           "refId": "A"
         }
@@ -203,7 +203,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "increase(deltav_timeseries_batches_published_total{producer=\"pollerd\"}[5m])",
+          "expr": "increase(deltav_timeseries_batches_published_total{producer=\"pollerd\", location=~\"$location\"}[5m])",
           "legendFormat": "{{location}}",
           "refId": "A"
         }
@@ -217,7 +217,48 @@
   "refresh": "10s",
   "schemaVersion": 39,
   "tags": ["delta-v", "pollerd", "polling"],
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "current": { "text": ["All"], "value": ["$__all"] },
+        "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+        "definition": "label_values(opennms_response_time_response{producer=\"pollerd\"}, location)",
+        "includeAll": true,
+        "label": "Location",
+        "multi": true,
+        "name": "location",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(opennms_response_time_response{producer=\"pollerd\"}, location)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": { "text": ["All"], "value": ["$__all"] },
+        "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+        "definition": "label_values(opennms_response_time_response{producer=\"pollerd\"}, resource_instance)",
+        "includeAll": true,
+        "label": "Service",
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(opennms_response_time_response{producer=\"pollerd\"}, resource_instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
