@@ -26,7 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Publishes RPC responses to {@code OpenNMS.rpc-response} in horizon's
+ * Publishes RPC responses to {@code DeltaV.rpc-response} in horizon's
  * RpcMessageProto wire format. Translates from rc2's RpcResponse (used on
  * the gateway-Minion gRPC stream) so horizon's KafkaRpcClient on the daemon
  * side can correlate by rpc_id and unmarshal rpc_content as before.
@@ -40,7 +40,7 @@ public class RpcResponsePublisher {
     private final String responseTopic;
 
     public RpcResponsePublisher(KafkaProducer<String, byte[]> minionGatewayKafkaProducer,
-                                @Value("${minion-gateway.rpc.response-topic:OpenNMS.rpc-response}") String responseTopic) {
+                                @Value("${minion-gateway.rpc.response-topic:DeltaV.rpc-response}") String responseTopic) {
         this.producer = minionGatewayKafkaProducer;
         this.responseTopic = responseTopic;
     }

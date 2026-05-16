@@ -59,7 +59,7 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
         <!-- Horizon's RpcMessageProto wire format on the daemon-facing Kafka
-             topics (OpenNMS.<location>.rpc-request, OpenNMS.rpc-response). The
+             topics (DeltaV.<location>.rpc-request, DeltaV.rpc-response). The
              gateway translates between this and the rc2 RpcRequest/RpcResponse
              proto used on the gateway-Minion gRPC stream — see
              RpcChannelDispatcher and RpcResponsePublisher. -->
@@ -96,7 +96,7 @@
             </exclusions>
         </dependency>
         <!-- horizon's TwinResponseProto / TwinRequestProto wire format on the
-             daemon-facing Kafka topic OpenNMS.twin.response.<location>. The
+             daemon-facing Kafka topic DeltaV.twin.response.<location>. The
              gateway's TwinChannelDispatcher (Task 8) translates between this
              and the rc2 TwinUpdate proto used on the gateway-Minion gRPC
              stream — same pattern as the rpc.kafka dep added in PR1. -->

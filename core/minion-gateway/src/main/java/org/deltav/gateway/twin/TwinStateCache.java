@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * (Decision 2 sub-decision 2-i).
  *
  * <p>Populated by {@link TwinChannelDispatcher} consuming horizon's
- * {@code OpenNMS.twin.response.<location>} Kafka topic on gateway startup
+ * {@code DeltaV.twin.response.<location>} Kafka topic on gateway startup
  * (read-to-tail) and on every subsequent state change. Per Decision 2
  * sub-decision 2-iii: state is recovered from Kafka, not from
  * inter-gateway coordination, so multi-instance deployments work without
