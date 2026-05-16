@@ -51,7 +51,7 @@ import org.opennms.netmgt.xml.event.Event;
  */
 public class KafkaEventSubscriptionServiceTest {
 
-    private static final String TOPIC = "opennms-fault-events";
+    private static final String TOPIC = "deltav-fault-events";
     private static final Duration POLL_TIMEOUT = Duration.ofMillis(100);
 
     @SuppressWarnings("unchecked")

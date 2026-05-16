@@ -7,7 +7,7 @@ Delta-V decomposes the monolithic OpenNMS into independently scalable services c
 ```
                     ┌──────────────────────────────────────────────────┐
                     │                   Kafka (KRaft)                  │
-                    │    opennms-fault-events / opennms-ipc-events     │
+                    │    deltav-fault-events / deltav-ipc-events     │
                     └──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬─────┘
                        │  │  │  │  │  │  │  │  │  │  │  │  │  │
   ┌─────────┐     ┌────┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴────┐
@@ -201,7 +201,7 @@ Delta-V replaces the monolithic OpenNMS runtime with a composable service mesh:
 - **Minion** handles distributed data collection (SNMP, ICMP) via Kafka IPC
 - All daemons use **Hibernate 7 / Jakarta Persistence** with the `opennms-model-jakarta` entity model
 
-All services communicate via two Kafka topics: `opennms-fault-events` (alarm-bearing events) and `opennms-ipc-events` (daemon-to-daemon coordination). Each service generates globally unique event IDs using TSID (Time-Sorted IDs) with a unique node-id per JVM.
+All services communicate via two Kafka topics: `deltav-fault-events` (alarm-bearing events) and `deltav-ipc-events` (daemon-to-daemon coordination). Each service generates globally unique event IDs using TSID (Time-Sorted IDs) with a unique node-id per JVM.
 
 ### Event Flow
 
