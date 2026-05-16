@@ -31,7 +31,7 @@ import java.time.Instant;
 
 /**
  * Dispatcher for the Twin channel. Consumes horizon's
- * {@code OpenNMS.twin.response.<location>} Kafka topic, translates the
+ * {@code DeltaV.twin.response.<location>} Kafka topic, translates the
  * inbound {@link TwinResponseProto} wire format into rc2's {@link TwinUpdate},
  * updates the {@link TwinStateCache}, and broadcasts to all subscribers in
  * {@link MinionTwinSubscriberRegistry} for the matching (consumer_key, location).
@@ -68,7 +68,7 @@ public class TwinChannelDispatcher {
     }
 
     @KafkaListener(
-        topicPattern = "OpenNMS\\.twin\\.response\\..*",
+        topicPattern = "DeltaV\\.twin\\.response\\..*",
         groupId = "minion-gateway-twin",
         containerFactory = "twinResponseContainerFactory"
     )

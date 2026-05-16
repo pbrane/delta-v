@@ -385,7 +385,7 @@ else
     log ""
     log "Hint: pollerd is either not scheduling polls for this node, or RPC requests"
     log "      to minion-gateway are timing out. Check pollerd logs for"
-    log "      'Topic OpenNMS.Default.rpc-request not present in metadata' (the producer-"
+    log "      'Topic DeltaV.Default.rpc-request not present in metadata' (the producer-"
     log "      side metadata-fetch timeout per project_pollerd_kafka_producer_metadata_timeout)."
     log "      Note: PSM (#125) is fixed; that hint is no longer relevant."
     log ""

@@ -335,7 +335,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-pollerd
       OPENNMS_HOME: /opt/deltav
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "4"
       OPENNMS_RPC_KAFKA_ENABLED: "true"
       OPENNMS_RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -407,7 +407,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OPENNMS_HOME: /opt/deltav
       INTERFACE_NODE_CACHE_REFRESH_MS: "15000"
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "24"
       RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       RPC_KAFKA_FORCE_REMOTE: "true"
@@ -440,7 +440,7 @@ services:
       KAFKA_SINK_CONSUMER_GROUP: opennms-trapd-sink
       OPENNMS_HOME: /opt/deltav
       INTERFACE_NODE_CACHE_REFRESH_MS: "15000"
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "20"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
@@ -470,7 +470,7 @@ services:
       KAFKA_SINK_CONSUMER_GROUP: opennms-syslogd-sink
       OPENNMS_HOME: /opt/deltav
       INTERFACE_NODE_CACHE_REFRESH_MS: "15000"
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "21"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
@@ -498,7 +498,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-eventtranslator
       OPENNMS_HOME: /opt/deltav
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "22"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
@@ -613,7 +613,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: opennms
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OPENNMS_HOME: /opt/deltav
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "25"
       RPC_KAFKA_ENABLED: "true"
       RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -652,7 +652,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-bsmd
       OPENNMS_HOME: /opt/deltav
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "17"
     ports:
       - "8180:8080"
@@ -705,7 +705,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-perspectivepollerd
       OPENNMS_HOME: /opt/deltav
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "7"
       OPENNMS_RPC_KAFKA_ENABLED: "true"
       OPENNMS_RPC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -739,7 +739,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-alarmd
       OPENNMS_HOME: /opt/deltav
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "23"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
@@ -767,7 +767,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-telemetryd
       OPENNMS_HOME: /opt/deltav
-      OPENNMS_INSTANCE_ID: OpenNMS
+      OPENNMS_INSTANCE_ID: DeltaV
       OPENNMS_TSID_NODE_ID: "18"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]

@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
  * {@link RpcResponseHandler} (forward Minion responses to internal Kafka).
  *
  * <p>Inbound RPCs from ServiceDaemons arrive on
- * {@code OpenNMS.<location>.rpc-request} (the topic name is parameterized
+ * {@code DeltaV.<location>.rpc-request} (the topic name is parameterized
  * but matches horizon's KafkaRpcClient producer convention). The dispatcher
  * picks a stream from the location's pool, records the in-flight entry,
  * and forwards.
@@ -66,15 +66,15 @@ public class RpcChannelDispatcher implements RpcStreamCloseHandler, RpcResponseH
     }
 
     /**
-     * Topic name encodes the Minion location: {@code OpenNMS.<location>.rpc-request}.
+     * Topic name encodes the Minion location: {@code DeltaV.<location>.rpc-request}.
      * Horizon's RpcMessageProto does NOT carry a location field — that information
      * lives only in the Kafka topic name on horizon's side. The translator below
      * extracts location from the topic name and populates rc2's RpcRequest accordingly.
      */
-    private static final Pattern RPC_REQUEST_TOPIC = Pattern.compile("OpenNMS\\.(.*)\\.rpc-request");
+    private static final Pattern RPC_REQUEST_TOPIC = Pattern.compile("DeltaV\\.(.*)\\.rpc-request");
 
     @KafkaListener(
-        topicPattern = "OpenNMS\\..*\\.rpc-request",
+        topicPattern = "DeltaV\\..*\\.rpc-request",
         groupId = "minion-gateway-rpc",
         containerFactory = "rpcRequestContainerFactory"
     )

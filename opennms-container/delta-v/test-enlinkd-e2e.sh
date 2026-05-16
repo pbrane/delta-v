@@ -191,7 +191,7 @@ ok "Required services running (postgres, kafka, provisiond, enlinkd, minion-gate
 # v1.2.0-rc2 PR1: RPC channel migrated to gRPC bidi via minion-gateway.
 # Default for opennms.minion.transport.rpc is "grpc" (matchIfMissing=true).
 # Enlinkd's SNMP RPCs to the labbox Minion now flow through the gateway's
-# bidi gRPC stream rather than the OpenNMS.mhuot-labs.rpc-request Kafka
+# bidi gRPC stream rather than the DeltaV.mhuot-labs.rpc-request Kafka
 # topic. Verify the stream is live before running the topology assertions
 # that depend on it.
 log "Checking gRPC RPC transport for location=${FOREIGN_SOURCE} (rc2 PR1)..."
