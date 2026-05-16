@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "Perspective polling latency and throughput. Panels query the Phase 3 publisher series (deltav-timeseries Kafka topic → prometheus-writer → VictoriaMetrics). Service: HTTP-8080 against l8opensim's API root, polled from Default and l8opensim-lab perspectives.",
+  "description": "Perspective polling latency and throughput. Panels query the Phase 3 publisher series (deltav-timeseries Kafka topic → prometheus-writer → VictoriaMetrics). Services HTTP-8080 (l8opensim API root) and Google-Search, polled from the Default and l8opensim-lab perspectives. Use the Perspective and Service dropdowns to scope the view.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -50,7 +50,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "opennms_response_time_response{producer=\"perspective_pollerd\"}",
+          "expr": "opennms_response_time_response{producer=\"perspective_pollerd\", location=~\"$location\", resource_instance=~\"$service\"}",
           "instant": false,
           "legendFormat": "{{location}} → {{node_label}}/{{resource_instance}}",
           "refId": "A"
@@ -91,8 +91,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "avg by (location) (opennms_response_time_response{producer=\"perspective_pollerd\"})",
-          "instant": true,
+          "expr": "avg by (location) (opennms_response_time_response{producer=\"perspective_pollerd\", location=~\"$location\", resource_instance=~\"$service\"})",
+          "instant": false,
           "legendFormat": "{{location}}",
           "refId": "A"
         }
@@ -127,7 +127,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "rate(deltav_perspective_polls_completed_total[1m])",
+          "expr": "rate(deltav_perspective_polls_completed_total{perspective=~\"$location\"}[1m])",
           "legendFormat": "{{perspective}} ({{result}})",
           "refId": "A"
         }
@@ -168,7 +168,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "rate(deltav_timeseries_batches_failed_total{producer=\"perspectivepollerd\"}[5m])",
+          "expr": "rate(deltav_timeseries_batches_failed_total{producer=\"perspectivepollerd\", location=~\"$location\"}[5m])",
           "legendFormat": "{{location}} ({{reason}})",
           "refId": "A"
         }
@@ -203,7 +203,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "increase(deltav_timeseries_batches_published_total{producer=\"perspectivepollerd\"}[5m])",
+          "expr": "increase(deltav_timeseries_batches_published_total{producer=\"perspectivepollerd\", location=~\"$location\"}[5m])",
           "legendFormat": "{{location}}",
           "refId": "A"
         }
@@ -217,7 +217,48 @@
   "refresh": "10s",
   "schemaVersion": 39,
   "tags": ["delta-v", "perspective", "polling"],
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "current": { "text": ["All"], "value": ["$__all"] },
+        "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+        "definition": "label_values(opennms_response_time_response{producer=\"perspective_pollerd\"}, location)",
+        "includeAll": true,
+        "label": "Perspective",
+        "multi": true,
+        "name": "location",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(opennms_response_time_response{producer=\"perspective_pollerd\"}, location)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": { "text": ["All"], "value": ["$__all"] },
+        "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+        "definition": "label_values(opennms_response_time_response{producer=\"perspective_pollerd\"}, resource_instance)",
+        "includeAll": true,
+        "label": "Service",
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(opennms_response_time_response{producer=\"perspective_pollerd\"}, resource_instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
