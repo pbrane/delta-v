@@ -164,8 +164,8 @@ Minion → Kafka Sink → Trapd/Syslogd
 | `deltav-flows` | flow-enricher → ClickHouse enriched flow records (ClickHouse Kafka engine table consumes this topic) |
 | `deltav-timeseries` | Collectd + Provisiond → prometheus-writer (metric samples + node-context stream for label enrichment) |
 | `deltav-prometheus-writer-dlq` | prometheus-writer dead-letter queue for samples that failed VictoriaMetrics remote-write |
-| `OpenNMS.twin.response` | Pollerd → Minion Twin API state sync (passive status, SNMPv3 users) |
-| `OpenNMS.twin.request` | Minion → Pollerd Twin API subscription requests |
+| `DeltaV.twin.response` | Pollerd → Minion Twin API state sync (passive status, SNMPv3 users) |
+| `DeltaV.twin.request` | Minion → Pollerd Twin API subscription requests |
 
 ## Quick Start
 
