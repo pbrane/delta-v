@@ -44,8 +44,8 @@ import org.opennms.netmgt.xml.event.Value;
 
 public class KafkaEventForwarderTest {
 
-    private static final String FAULT_TOPIC = "opennms-fault-events";
-    private static final String IPC_TOPIC = "opennms-ipc-events";
+    private static final String FAULT_TOPIC = "deltav-fault-events";
+    private static final String IPC_TOPIC = "deltav-ipc-events";
 
     private EventProcessor eventExpander;
     private EventProcessor tsidAssigner;

@@ -52,10 +52,10 @@ public class KafkaEventTransportConfiguration {
     @Value("${opennms.kafka.bootstrap-servers:kafka:9092}")
     private String bootstrapServers;
 
-    @Value("${opennms.kafka.event-topic:opennms-fault-events}")
+    @Value("${opennms.kafka.event-topic:deltav-fault-events}")
     private String eventTopic;
 
-    @Value("${opennms.kafka.ipc-topic:opennms-ipc-events}")
+    @Value("${opennms.kafka.ipc-topic:deltav-ipc-events}")
     private String ipcTopic;
 
     @Value("${opennms.kafka.consumer-group:opennms-core}")

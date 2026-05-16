@@ -23,8 +23,8 @@ opennms:
     node-id: ${OPENNMS_TSID_NODE_ID:0}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
-    event-topic: ${KAFKA_EVENT_TOPIC:opennms-fault-events}
-    ipc-topic: ${KAFKA_IPC_TOPIC:opennms-ipc-events}
+    event-topic: ${KAFKA_EVENT_TOPIC:deltav-fault-events}
+    ipc-topic: ${KAFKA_IPC_TOPIC:deltav-ipc-events}
     consumer-group: ${KAFKA_CONSUMER_GROUP:opennms-telemetryd}
     poll-timeout-ms: ${KAFKA_POLL_TIMEOUT_MS:100}
 
