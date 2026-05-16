@@ -13,7 +13,7 @@
 |---|---|
 | RPC/Twin prefix verdict | **(A) Config-overridable** — delta-v-only PR B; no horizon companion needed |
 | Event `.cfg` files | **Vestigial** — no Spring Boot code path reads them; PR A deletes them |
-| Sink topics on the wire | **`n.*` terse scheme** — `n.Heartbeat`, `n.Trap`, `n.Syslog`, `n.Telemetry-*`; `DeltaV.Sink.*` was a smoke-run misread |
+| Sink topics on the wire | **`DeltaV.Sink.*` scheme** — `DeltaV.Sink.Heartbeat`, `DeltaV.Sink.Trap`, `DeltaV.Sink.Syslog`, `DeltaV.Sink.Telemetry-*`; already de-legacied, out of scope for this rename |
 
 ---
 
@@ -51,7 +51,7 @@ No daemon sets `KAFKA_EVENT_TOPIC` or `KAFKA_IPC_TOPIC` in `docker-compose.yml` 
 
 **b) Vestigial Karaf `.cfg` files — DELETE in PR A**
 
-These files live under `opennms-container/delta-v/*-overlay/etc/org.opennms.core.event.forwarder.kafka.cfg` and are present for nine daemon overlays: `bsmd-overlay`, `collectd-overlay`, `discovery-overlay`, `enlinkd-overlay`, `pollerd-daemon-overlay`, `provisiond-overlay`, `syslogd-overlay`, `trapd-overlay`. They contain `topic.name=opennms-fault-events` and `ipc.topic.name=opennms-ipc-events`.
+These files live under `opennms-container/delta-v/*-overlay/etc/org.opennms.core.event.forwarder.kafka.cfg` and are present for eight daemon overlays: `bsmd-overlay`, `collectd-overlay`, `discovery-overlay`, `enlinkd-overlay`, `pollerd-daemon-overlay`, `provisiond-overlay`, `syslogd-overlay`, `trapd-overlay`. They contain `topic.name=opennms-fault-events` and `ipc.topic.name=opennms-ipc-events`.
 
 Their fate is addressed in Step 3 below: **vestigial — delete in PR A**.
 
@@ -102,7 +102,7 @@ exec java $JAVA_OPTS \
 ```
 There is no Karaf OSGi Config Admin, no felix-fileinstall, no PID loader. Spring Boot reads `application.yml` and environment variables only.
 
-The `.cfg` files were overlay artifacts from the Karaf era (removed in PRs #66/#89/#90 and following). **PR A deletes all nine `org.opennms.core.event.forwarder.kafka.cfg` files** from the daemon overlays.
+The `.cfg` files were overlay artifacts from the Karaf era (removed in PRs #66/#89/#90 and following). **PR A deletes all eight `org.opennms.core.event.forwarder.kafka.cfg` files** from the daemon overlays.
 
 ---
 
@@ -221,25 +221,34 @@ public static String responseForLocation(String location) {
 
 **Search executed:**
 ```bash
-rg -rn 'DeltaV\.Sink|"n\.' core/minion-gateway/src/main core/daemon-sink-kafka/src/main
+rg -n 'DeltaV\.Sink' core/minion-gateway/src/main core/daemon-sink-kafka/src/main
 ```
 
-**Result: The `n.*` terse scheme is what runs on the wire.**
+> **Plan-command pitfall — corrected here.** The implementation plan's Step 5
+> command is `rg -rn 'DeltaV\.Sink|"n\.' ...`. Ripgrep parses `-rn` as
+> `--replace=n`, so it **rewrites** every `DeltaV.Sink` match to `n` in the
+> printed output. Running the plan's command verbatim makes the wire scheme
+> look like `n.*` when it is not. Use `-n` alone (line numbers) and read the
+> string literals directly from source.
 
-| Topic | Source | Location |
+**Result: the Sink scheme on the wire is `DeltaV.Sink.*`.**
+
+| Topic | Source constant | Location |
 |---|---|---|
-| `n.Heartbeat` | `HeartbeatTranslator.java` constant `TOPIC = "n.Heartbeat"` | `core/minion-gateway/src/main/java/org/deltav/gateway/kafka/HeartbeatTranslator.java` |
-| `n.Trap` | `TrapGrpcService.java` constant `TOPIC = "n.Trap"` | `core/minion-gateway/src/main/java/org/deltav/gateway/sink/TrapGrpcService.java` |
-| `n.Syslog` | `SyslogGrpcService.java` constant `TOPIC = "n.Syslog"` | `core/minion-gateway/src/main/java/org/deltav/gateway/sink/SyslogGrpcService.java` |
-| `n.Telemetry-IPFIX` | `TelemetryGrpcService.java` constant `IPFIX_TOPIC` | `core/minion-gateway/src/main/java/org/deltav/gateway/sink/TelemetryGrpcService.java` |
-| `n.Telemetry-Netflow-5` | `TelemetryGrpcService.java` constant `NETFLOW5_TOPIC` | same |
-| `n.Telemetry-Netflow-9` | `TelemetryGrpcService.java` constant `NETFLOW9_TOPIC` | same |
-| `n.Telemetry-SFlow` | `TelemetryGrpcService.java` constant `SFLOW_TOPIC` | same |
-| `n.<moduleId>` (generic) | `KafkaSinkBridge.java` line: `final String topic = "n." + module.getId()` | `core/daemon-sink-kafka/src/main/java/org/deltav/core/daemon/sink/kafka/KafkaSinkBridge.java` |
+| `DeltaV.Sink.Heartbeat` | `HeartbeatTranslator.java:36` `TOPIC = "DeltaV.Sink.Heartbeat"` | `core/minion-gateway/src/main/java/org/deltav/gateway/kafka/HeartbeatTranslator.java` |
+| `DeltaV.Sink.Trap` | `TrapGrpcService.java` `TOPIC = "DeltaV.Sink.Trap"` | `core/minion-gateway/src/main/java/org/deltav/gateway/sink/TrapGrpcService.java` |
+| `DeltaV.Sink.Syslog` | `SyslogGrpcService.java` `TOPIC = "DeltaV.Sink.Syslog"` | `core/minion-gateway/src/main/java/org/deltav/gateway/sink/SyslogGrpcService.java` |
+| `DeltaV.Sink.Telemetry-IPFIX` | `TelemetryGrpcService.java` `IPFIX_TOPIC` | `core/minion-gateway/src/main/java/org/deltav/gateway/sink/TelemetryGrpcService.java` |
+| `DeltaV.Sink.Telemetry-Netflow-5` | `TelemetryGrpcService.java` `NETFLOW5_TOPIC` | same |
+| `DeltaV.Sink.Telemetry-Netflow-9` | `TelemetryGrpcService.java` `NETFLOW9_TOPIC` | same |
+| `DeltaV.Sink.Telemetry-SFlow` | `TelemetryGrpcService.java` `SFLOW_TOPIC` | same |
+| `DeltaV.Sink.<moduleId>` (generic) | `KafkaSinkBridge.java` `final String topic = "DeltaV.Sink." + module.getId()` | `core/daemon-sink-kafka/src/main/java/org/deltav/core/daemon/sink/kafka/KafkaSinkBridge.java` |
 
-**No `DeltaV.Sink.*` exists in the codebase.** The rc3.1 smoke observation of `DeltaV.Sink.*` was likely a misread of the Kafka topic listing (perhaps confused with a different topic family) or came from a stale test artifact. The wire format is unambiguously `n.*`.
-
-The gRPC migration (PR3) replaced the old Horizon `OpenNMS.Sink.*` topics with the `n.*` scheme. Per the design document, the `n.*`-vs-`DeltaV.*` naming inconsistency is explicitly deferred to v1.3 as a cosmetic cleanup. **Sink topics are out of scope for the v1.2.0 GA rename.**
+The rc3.1 smoke observation of `DeltaV.Sink.*` topics was **correct**. The gRPC
+migration (PR3) already produces Sink topics under the `DeltaV.Sink.*` prefix —
+there is no legacy `OpenNMS.Sink.*` and no terse `n.*` scheme on the wire.
+**Sink topics are already de-legacied and are out of scope for the v1.2.0 GA
+rename** — listed here only to confirm the rename does not need to touch them.
 
 ---
 
@@ -247,8 +256,8 @@ The gRPC migration (PR3) replaced the old Horizon `OpenNMS.Sink.*` topics with t
 
 **PR A (event-topic rename — pure delta-v config, no build required):**
 1. Rename `@Value` defaults in `KafkaEventTransportConfiguration.java`: `opennms-fault-events` → `deltav-fault-events`, `opennms-ipc-events` → `deltav-ipc-events`.
-2. Rename defaults in all 9 `core/daemon-boot-*/src/main/resources/application.yml` files.
-3. Delete all 9 `opennms-container/delta-v/*-overlay/etc/org.opennms.core.event.forwarder.kafka.cfg` files.
+2. Rename defaults in all 12 `core/daemon-boot-*/src/main/resources/application.yml` files.
+3. Delete all 8 `opennms-container/delta-v/*-overlay/etc/org.opennms.core.event.forwarder.kafka.cfg` files.
 4. Rename test constants in `core/event-forwarder-kafka/src/test/...`.
 5. Update 6 E2E test scripts (`test-passive-e2e.sh`, `test-e2e.sh`, `test-minion-e2e.sh`, `test-minion-rpc-e2e.sh`, `test-perspective-e2e.sh`, `test-syslog-e2e.sh`).
 6. Update `README.md`, `GEMINI.md`, `opennms-container/delta-v/README.md`.
