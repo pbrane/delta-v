@@ -163,14 +163,18 @@ public class AlarmdConfiguration {
 
     /**
      * Counting AlarmEntityNotifier — increments {@code deltav_alarmd_alarms_*}
-     * Micrometer counters on every lifecycle notification. Downstream listener
-     * integration (BSMd, REST callers) is tracked in memory
-     * {@code project_alarmd_alarm_lifecycle_gap}; this bean only surfaces
-     * domain signal, it does not forward events.
+     * Micrometer counters on every lifecycle notification AND fans each callback
+     * out to all registered {@link org.opennms.netmgt.dao.api.AlarmEntityListener}
+     * beans in the application context. This restores the full chain:
+     * {@code AlarmPersisterImpl → AlarmEntityNotifier → AlarmEntityListener(s)
+     * → AlarmLifecycleListenerManager → AlarmLifecycleListener(s)},
+     * enabling real-time delivery to downstream components such as the Kafka
+     * alarm publisher.
      */
     @Bean
-    public AlarmEntityNotifier alarmEntityNotifier(MeterRegistry meterRegistry) {
-        return new CountingAlarmEntityNotifier(meterRegistry);
+    public AlarmEntityNotifier alarmEntityNotifier(MeterRegistry meterRegistry,
+            java.util.List<org.opennms.netmgt.dao.api.AlarmEntityListener> entityListeners) {
+        return new CountingAlarmEntityNotifier(meterRegistry, entityListeners);
     }
 
     @Bean

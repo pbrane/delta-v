@@ -26,53 +26,71 @@ import static org.deltav.netmgt.alarmd.boot.AlarmdDomainMetrics.ALARMS_UNACKNOWL
 import static org.deltav.netmgt.alarmd.boot.AlarmdDomainMetrics.TAG_SEVERITY;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
+import org.opennms.netmgt.dao.api.AlarmEntityListener;
 import org.opennms.netmgt.dao.api.AlarmEntityNotifier;
 import org.opennms.netmgt.model.OnmsAlarm;
 import org.opennms.netmgt.model.OnmsMemo;
 import org.opennms.netmgt.model.OnmsReductionKeyMemo;
 import org.opennms.netmgt.model.OnmsSeverity;
 import org.opennms.netmgt.model.TroubleTicketState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * {@link AlarmEntityNotifier} that counts every lifecycle notification it
- * receives via Micrometer. Replaces the no-op anonymous implementation
- * previously declared inline in {@code AlarmdConfiguration}.
+ * {@link AlarmEntityNotifier} that both increments Micrometer counters on every
+ * lifecycle notification it receives AND fans each callback out to all registered
+ * {@link AlarmEntityListener} beans.
  *
- * <p>Downstream listener integration (BSMd, REST callers) is tracked
- * separately in memory {@code project_alarmd_alarm_lifecycle_gap}. This
- * class exists purely to surface domain signal — it does not forward
- * events anywhere.
+ * <p>This restores the full chain:
+ * {@code AlarmPersisterImpl → AlarmEntityNotifier → AlarmEntityListener(s)
+ * → AlarmLifecycleListenerManager → AlarmLifecycleListener(s)},
+ * enabling real-time delivery to downstream components such as the Kafka
+ * alarm publisher. Without listener fan-out only the 2-minute snapshot timer
+ * in {@code AlarmLifecycleListenerManager} would fire.</p>
+ *
+ * <p>Listener failures are isolated per-listener — a failing listener does not
+ * prevent the remaining listeners from receiving the callback.</p>
  */
 public class CountingAlarmEntityNotifier implements AlarmEntityNotifier {
 
-    private final MeterRegistry registry;
+    private static final Logger LOG = LoggerFactory.getLogger(CountingAlarmEntityNotifier.class);
 
-    public CountingAlarmEntityNotifier(MeterRegistry registry) {
+    private final MeterRegistry registry;
+    private final List<AlarmEntityListener> listeners;
+
+    public CountingAlarmEntityNotifier(MeterRegistry registry, List<AlarmEntityListener> listeners) {
         this.registry = registry;
+        this.listeners = listeners;
     }
 
     @Override
     public void didCreateAlarm(OnmsAlarm alarm) {
         registry.counter(ALARMS_CREATED, TAG_SEVERITY, severity(alarm)).increment();
+        forEach(l -> l.onAlarmCreated(alarm));
     }
 
     @Override
     public void didUpdateAlarmWithReducedEvent(OnmsAlarm alarm) {
         registry.counter(ALARMS_REDUCED, TAG_SEVERITY, severity(alarm)).increment();
+        forEach(l -> l.onAlarmUpdatedWithReducedEvent(alarm));
     }
 
     @Override
     public void didAcknowledgeAlarm(OnmsAlarm alarm, String user, Date when) {
         registry.counter(ALARMS_ACKNOWLEDGED).increment();
+        forEach(l -> l.onAlarmAcknowledged(alarm, user, when));
     }
 
     @Override
     public void didUnacknowledgeAlarm(OnmsAlarm alarm, String user, Date when) {
         registry.counter(ALARMS_UNACKNOWLEDGED).increment();
+        forEach(l -> l.onAlarmUnacknowledged(alarm, user, when));
     }
 
     @Override
@@ -80,25 +98,65 @@ public class CountingAlarmEntityNotifier implements AlarmEntityNotifier {
         // Tag by *new* severity (what the alarm is now, which is the operationally
         // interesting dimension — "alarms that just became CRITICAL").
         registry.counter(ALARMS_SEVERITY_UPDATED, TAG_SEVERITY, severity(alarm)).increment();
+        forEach(l -> l.onAlarmSeverityUpdated(alarm, previous));
     }
 
     @Override
     public void didArchiveAlarm(OnmsAlarm alarm, String previousReductionKey) {
         registry.counter(ALARMS_ARCHIVED).increment();
+        forEach(l -> l.onAlarmArchived(alarm, previousReductionKey));
     }
 
     @Override
     public void didDeleteAlarm(OnmsAlarm alarm) {
         registry.counter(ALARMS_DELETED, TAG_SEVERITY, severity(alarm)).increment();
+        forEach(l -> l.onAlarmDeleted(alarm));
     }
 
-    @Override public void didUpdateStickyMemo(OnmsAlarm a, String b, String au, Date d) {}
-    @Override public void didUpdateReductionKeyMemo(OnmsAlarm a, String b, String au, Date d) {}
-    @Override public void didDeleteStickyMemo(OnmsAlarm a, OnmsMemo m) {}
-    @Override public void didDeleteReductionKeyMemo(OnmsAlarm a, OnmsReductionKeyMemo m) {}
-    @Override public void didUpdateLastAutomationTime(OnmsAlarm a, Date d) {}
-    @Override public void didUpdateRelatedAlarms(OnmsAlarm a, Set<OnmsAlarm> s) {}
-    @Override public void didChangeTicketStateForAlarm(OnmsAlarm a, TroubleTicketState s) {}
+    @Override
+    public void didUpdateStickyMemo(OnmsAlarm alarm, String previousBody, String previousAuthor, Date previousUpdated) {
+        forEach(l -> l.onStickyMemoUpdated(alarm, previousBody, previousAuthor, previousUpdated));
+    }
+
+    @Override
+    public void didUpdateReductionKeyMemo(OnmsAlarm alarm, String previousBody, String previousAuthor, Date previousUpdated) {
+        forEach(l -> l.onReductionKeyMemoUpdated(alarm, previousBody, previousAuthor, previousUpdated));
+    }
+
+    @Override
+    public void didDeleteStickyMemo(OnmsAlarm alarm, OnmsMemo memo) {
+        forEach(l -> l.onStickyMemoDeleted(alarm, memo));
+    }
+
+    @Override
+    public void didDeleteReductionKeyMemo(OnmsAlarm alarm, OnmsReductionKeyMemo memo) {
+        forEach(l -> l.onReductionKeyMemoDeleted(alarm, memo));
+    }
+
+    @Override
+    public void didUpdateLastAutomationTime(OnmsAlarm alarm, Date previousLastAutomationTime) {
+        forEach(l -> l.onLastAutomationTimeUpdated(alarm, previousLastAutomationTime));
+    }
+
+    @Override
+    public void didUpdateRelatedAlarms(OnmsAlarm alarm, Set<OnmsAlarm> previousRelatedAlarms) {
+        forEach(l -> l.onRelatedAlarmsUpdated(alarm, previousRelatedAlarms));
+    }
+
+    @Override
+    public void didChangeTicketStateForAlarm(OnmsAlarm alarm, TroubleTicketState previousState) {
+        forEach(l -> l.onTicketStateChanged(alarm, previousState));
+    }
+
+    private void forEach(Consumer<AlarmEntityListener> callback) {
+        for (AlarmEntityListener listener : listeners) {
+            try {
+                callback.accept(listener);
+            } catch (Exception e) {
+                LOG.error("Error invoking alarm entity listener {}; skipping.", listener, e);
+            }
+        }
+    }
 
     private static String severity(OnmsAlarm alarm) {
         OnmsSeverity s = alarm != null ? alarm.getSeverity() : null;
