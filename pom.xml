@@ -69,6 +69,7 @@
     <module>core/daemon-sink-kafka</module>
     <module>core/dao-jpa-support</module>
     <module>core/deltav-kafka-contracts</module>
+    <module>core/alarms-kafka-publisher</module>
     <module>core/event-forwarder-kafka</module>
     <module>core/horizon-metric-bridge</module>
     <module>core/minion-gateway</module>
