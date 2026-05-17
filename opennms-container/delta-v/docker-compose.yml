@@ -114,6 +114,14 @@ services:
     image: ${IMAGE_PREFIX:-deltav}/mock-snmp-agent:${VERSION}
     container_name: delta-v-snmp-agent
     hostname: snmp-agent
+    # Pinned IP so the rpc-canary requisition can target a stable address.
+    # The requisition (provisiond-overlay/etc/imports-seed/rpc-canary.xml)
+    # hard-codes 172.18.0.2; before the ip_range was added this service
+    # happened to receive .0.2 from the dynamic allocator, but ip_range now
+    # confines dynamic allocation to 172.18.1.0/24, so it must be pinned.
+    networks:
+      default:
+        ipv4_address: 172.18.0.2
     healthcheck:
       test: ["CMD-SHELL", "true"]
       interval: 10s
@@ -1018,10 +1026,10 @@ networks:
   # Docker default (172.18.0.0/16) so existing services aren't disturbed.
   #
   # ip_range confines DYNAMIC allocation to 172.18.1.0/24, keeping it clear
-  # of the static ipv4_address pins in 172.18.0.x (flow test nodes .20-.22,
-  # l8opensim .30). Without this, in a large-profile bring-up the dynamic
-  # allocator marches up from .2 and can hand a static-pinned IP to another
-  # container before the pinned service starts, failing it with
+  # of the static ipv4_address pins in 172.18.0.x (snmp-agent .2, flow test
+  # nodes .20-.22, l8opensim .30). Without this, in a large-profile bring-up
+  # the dynamic allocator marches up from .2 and can hand a static-pinned IP
+  # to another container before the pinned service starts, failing it with
   # "failed to set up container networking: Address already in use".
   default:
     name: delta-v_default
