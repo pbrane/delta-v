@@ -638,7 +638,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 20s
+      # provisiond is the slowest daemon to first-healthy — it runs the
+      # requisition import (Hibernate + node scans) on top of Spring Boot init.
+      # On a cold start, especially while the host is pulling images, it has
+      # been observed taking ~210s. With the default 20s start_period the
+      # container flips to `unhealthy` at start_period + retries*interval
+      # (20 + 12*10 = 140s), and `docker compose up` then aborts the services
+      # that depend_on provisiond (perspective-app-init, perspectivepollerd).
+      # 240s keeps failing checks in `starting` through a slow cold start so
+      # compose keeps waiting instead of bailing.
+      start_period: 240s
     stop_grace_period: 60s
 
   bsmd:
