@@ -35,6 +35,13 @@
             <artifactId>org.opennms.core.model-api</artifactId>
         </dependency>
 
+        <!-- Alarm Kafka publisher -->
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>org.opennms.core.alarms-kafka-publisher</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Shared daemon infrastructure -->
         <dependency>
             <groupId>org.deltav.core</groupId>

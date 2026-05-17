@@ -22,6 +22,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication(scanBasePackages = {
     "org.deltav.core.daemon.common",
     "org.deltav.netmgt.alarmd.boot",
+    "org.deltav.alarms.publisher",
     "org.opennms.netmgt.model.jakarta.dao"
 })
 public class AlarmdApplication {
