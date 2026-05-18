@@ -6,6 +6,7 @@
 #   ./build.sh              Build everything (compile + assemble + images + deltav)
 #   ./build.sh images       Build base Docker images only (skip Maven)
 #   ./build.sh deltav       Build Delta-V layered images only (requires base images)
+#   ./build.sh daemon NAME  Rebuild a single daemon image (reuses cached base)
 #   ./build.sh compile      Compile only (skip assembly and images)
 #   ./build.sh push         Build and push images to registry
 #
@@ -22,6 +23,9 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SKIP_TESTS="${SKIP_TESTS:-true}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-docker.io}"
 DOCKER_ORG="${DOCKER_ORG:-deltav}"
+
+# The 12 horizon-derived Spring Boot daemons that share deltav/daemon-base.
+DAEMON_NAMES="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd"
 
 # Detect version from POM (skip parent version, get project version)
 VERSION="$(cd "$REPO_ROOT" && ./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout 2>/dev/null || grep '<version>0\.' "$REPO_ROOT/pom.xml" | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
@@ -261,8 +265,7 @@ do_deltav_images() {
     apply_env_version_alias "deltav/daemon-base"
 
     # Phase 3: Build per-daemon images
-    local daemon_names="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd"
-    for name in $daemon_names; do
+    for name in $DAEMON_NAMES; do
         local main_class
         main_class=$(cat "staging/$name/.main_class")
         log "Building deltav/$name:$VERSION (main: $main_class)..."
@@ -344,6 +347,67 @@ do_deltav_images() {
     docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init" | sort | head -30
 }
 
+# Build a single daemon's layered image, reusing the existing cached
+# deltav/daemon-base. Dev-loop shortcut: when only one daemon's code changed,
+# `./build.sh daemon <name>` rebuilds just that daemon's boot JAR and image
+# instead of `./build.sh deltav` (which rebuilds the --no-cache shared base,
+# all 12 per-daemon images, and the minion/auxiliary images). The shared base
+# is intentionally NOT rebuilt — run `./build.sh deltav` if a dependency that
+# lands in the shared base changed.
+do_single_daemon_image() {
+    local name="${1:-}"
+    [ -n "$name" ] || err "the 'daemon' command needs a daemon name, e.g. './build.sh daemon alarmd'"
+
+    # Validate against the known daemon set (word-boundary match).
+    case " $DAEMON_NAMES " in
+        *" $name "*) ;;
+        *) err "unknown daemon '$name'. Valid daemons: $DAEMON_NAMES" ;;
+    esac
+
+    # The shared base and JRE images must already exist — single-daemon mode
+    # reuses them rather than rebuilding. A prior `./build.sh deltav` produces
+    # both (and the other 11 daemon-boot JARs that compute-shared-libs needs).
+    docker image inspect "deltav/daemon-base:$VERSION" >/dev/null 2>&1 \
+        || err "deltav/daemon-base:$VERSION not found — run './build.sh deltav' once first (single-daemon mode reuses the shared base)"
+    docker image inspect deltav/jre-deltav:21 >/dev/null 2>&1 \
+        || err "deltav/jre-deltav:21 not found — run './build.sh jre' first"
+
+    log "Single-daemon build: $name (reusing deltav/daemon-base:$VERSION)"
+    log "NOTE: the shared base layer is not rebuilt — run './build.sh deltav' if a shared dependency changed."
+
+    # Rebuild this daemon's boot JAR. `-am` also rebuilds its delta-v reactor
+    # dependencies (e.g. newly added feature modules) so the staged fat JAR is
+    # current.
+    local test_flag=""
+    [ "$SKIP_TESTS" = "true" ] && test_flag="-DskipTests"
+    log "Rebuilding core/daemon-boot-$name..."
+    ( cd "$REPO_ROOT" && ./mvnw -B $test_flag -pl "core/daemon-boot-$name" -am install ) \
+        || err "Failed to build core/daemon-boot-$name"
+
+    cd "$SCRIPT_DIR"
+
+    # compute-shared-libs.sh re-derives the shared/unique library split — it
+    # needs every daemon's fat JAR present — and repopulates staging/. This is
+    # unzip/copy work, not a compile.
+    "$SCRIPT_DIR/compute-shared-libs.sh" "$REPO_ROOT" "$VERSION"
+
+    local main_class
+    main_class=$(cat "staging/$name/.main_class")
+    log "Building deltav/$name:$VERSION (main: $main_class)..."
+    docker build \
+        -f Dockerfile.daemon-per \
+        --build-arg "VERSION=$VERSION" \
+        --build-arg "DAEMON_NAME=$name" \
+        --build-arg "MAIN_CLASS=$main_class" \
+        -t "deltav/$name:$VERSION" \
+        -t "deltav/$name:latest" \
+        .
+    apply_env_version_alias "deltav/$name"
+
+    rm -rf "$SCRIPT_DIR/staging"
+    log "Built deltav/$name:$VERSION (+ :latest). Recreate just that service with: docker compose up -d $name"
+}
+
 
 usage() {
     cat <<'USAGE'
@@ -356,6 +420,8 @@ Commands:
   images    Build base Docker images only (requires prior assembly)
   jre       Build JRE base image (deltav/jre-deltav:21, rarely needed)
   deltav    Build Delta-V layered images (stages JARs into derived images)
+  daemon    Rebuild a single daemon image, reusing the cached shared base
+            (requires a daemon name argument; needs a prior './build.sh deltav')
   push      Build and push images to registry
   clean     Remove named Docker volumes (fresh start)
   help      Show this help
@@ -369,6 +435,7 @@ Environment variables:
 Examples:
   ./build.sh                                    # Full build
   ./build.sh images                             # Rebuild images only
+  ./build.sh daemon alarmd                      # Rebuild just the alarmd image
   DOCKER_ORG=pbranestrategy ./build.sh push     # Push to custom registry
   ./build.sh clean && docker compose up -d      # Fresh deployment
 USAGE
@@ -407,6 +474,9 @@ main() {
             ;;
         deltav)
             do_deltav_images
+            ;;
+        daemon)
+            do_single_daemon_image "${2:-}"
             ;;
         push)
             do_compile
