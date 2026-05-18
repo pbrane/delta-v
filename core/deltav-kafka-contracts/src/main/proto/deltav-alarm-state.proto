@@ -1,0 +1,94 @@
+// Copyright (C) 2026 BeaconStrategists, Inc.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License,
+// or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+// API version: 1 (FROZEN at v1.3.0 GA — delta-v "Alarms on Kafka" Track 1)
+//
+// Public contract for the deltav-alarms-state-change Kafka topic.
+//
+// Versioning: this wire format is frozen as of v1.3.0 GA. Only
+// forward-compatible changes are permitted: new fields with new tag
+// numbers, new enum values appended at the end. Renaming or renumbering
+// existing fields, deleting fields, or changing field types are breaking
+// changes that require bumping to // API version: 2 with a one-release
+// deprecation cycle maintaining v1 as read-only.
+//
+// Producer: alarmd (KafkaAlarmPublisher, AlarmLifecycleListener). One record
+// per alarm lifecycle change; tombstone (null value) on alarm deletion.
+
+syntax = "proto3";
+
+package org.deltav.alarms;
+
+option java_package = "org.deltav.alarms.proto";
+option java_multiple_files = true;
+
+// Thin alarm-state record published to the deltav-alarms-state-change topic
+// on every alarm create/update; a null-valued tombstone is published on
+// delete. The topic is compacted, keyed by reduction_key.
+//
+// High-cardinality node metadata (node_label, categories, asset record) is
+// intentionally excluded — consumers join the deltav-node-context topic for
+// enrichment. node_id is int32 to match NodeContext.node_id so consumers can
+// join directly without a key/type transformer.
+message AlarmState {
+  // Numeric alarm ID (OnmsAlarm.id).
+  int32 alarm_id = 1;
+
+  // Reduction key — globally unique per alarm; the Kafka record key.
+  string reduction_key = 2;
+
+  // Current alarm severity.
+  Severity severity = 3;
+
+  // Alarm UEI.
+  string uei = 4;
+
+  // Numeric node ID; 0 when the alarm has no node. Matches NodeContext.node_id.
+  int32 node_id = 5;
+
+  // Monitoring location; "Default" when unknown.
+  string location = 6;
+
+  // First event time, epoch milliseconds.
+  int64 first_event_time_ms = 7;
+
+  // Last event time, epoch milliseconds.
+  int64 last_event_time_ms = 8;
+
+  // Acknowledgement time, epoch milliseconds; 0 when unacknowledged.
+  int64 ack_time_ms = 9;
+
+  // Acknowledging user; empty when unacknowledged.
+  string ack_user = 10;
+
+  // Event count rolled into this alarm.
+  int32 count = 11;
+
+  // Alarm description.
+  string description = 12;
+
+  // Alarm log message.
+  string log_message = 13;
+
+  enum Severity {
+    INDETERMINATE = 0;
+    CLEARED       = 1;
+    NORMAL        = 2;
+    WARNING       = 3;
+    MINOR         = 4;
+    MAJOR         = 5;
+    CRITICAL      = 6;
+  }
+}
