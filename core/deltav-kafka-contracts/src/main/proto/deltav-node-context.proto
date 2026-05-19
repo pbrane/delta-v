@@ -98,6 +98,13 @@ message NodeContext {
   // compaction to eventually garbage-collect the key. Consumers should
   // treat a tombstoned node as "not present."
   bool deleted = 11;
+
+  // SNMP (physical) interface table, keyed by ifIndex. Sourced from
+  // OnmsNode.getSnmpInterfaces(). Distinct from interface_metadata (field 8),
+  // which is keyed by IP address — SNMP interfaces are physical ports keyed by
+  // the integer ifIndex, IP interfaces are L3 addresses. Empty map is valid
+  // and means "no SNMP interfaces discovered for this node."
+  map<int32, SnmpInterfaceContext> snmp_interface_metadata = 12;
 }
 
 // Interface-scoped metadata. Carried as a nested message so the map value
@@ -113,4 +120,31 @@ message InterfaceContext {
 message ServiceContext {
   map<string, string> metadata = 1;
   // Future: service-level display name, criticality hint, etc.
+}
+
+// SNMP (physical) interface — keyed by ifIndex in
+// NodeContext.snmp_interface_metadata. Carries the physical-interface
+// attributes consumers need to label SNMP-interface metrics and alarms
+// (ifName/ifDescr/ifAlias/ifSpeed/ifType). Sourced from OnmsSnmpInterface.
+message SnmpInterfaceContext {
+  // SNMP ifIndex. Matches the map key and OnmsSnmpInterface.getIfIndex().
+  int32 if_index = 1;
+
+  // ifName (e.g. "Gi0/3"). From OnmsSnmpInterface.getIfName().
+  string if_name = 2;
+
+  // ifDescr (e.g. "GigabitEthernet0/3"). From OnmsSnmpInterface.getIfDescr().
+  string if_descr = 3;
+
+  // ifAlias — operator-assigned interface description. From getIfAlias().
+  string if_alias = 4;
+
+  // ifSpeed in bits/sec. From OnmsSnmpInterface.getIfSpeed(); 0 when unknown.
+  int64 if_speed = 5;
+
+  // IANA ifType. From OnmsSnmpInterface.getIfType(); 0 when unknown.
+  int32 if_type = 6;
+
+  // Physical (MAC) address. From OnmsSnmpInterface.getPhysAddr().
+  string physical_address = 7;
 }
