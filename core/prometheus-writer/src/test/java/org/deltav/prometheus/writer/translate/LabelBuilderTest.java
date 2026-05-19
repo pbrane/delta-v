@@ -73,9 +73,9 @@ class LabelBuilderTest {
         Map<String, String> labels = labelBuilder.build(b, r, Optional.of(n), List.of());
 
         assertThat(labels.keySet()).containsExactlyInAnyOrder(
-                "node_id", "instance", "location", "node_label", "foreign_source", "foreign_id",
+                "node_id", "node", "instance", "location", "node_label", "foreign_source", "foreign_id",
                 "categories", "resource_type", "resource_instance", "collection_package", "producer");
-        assertThat(labels).hasSize(11);
+        assertThat(labels).hasSize(12);
         assertThat(labels.get("node_id")).isEqualTo("42");
         assertThat(labels.get("instance")).isEqualTo("router-1");
         assertThat(labels.get("location")).isEqualTo("Default");
@@ -205,5 +205,27 @@ class LabelBuilderTest {
         Map<String, String> labels = labelBuilder.build(b, r, Optional.empty(), List.of());
 
         assertThat(labels).containsEntry("foreign_id", "");
+    }
+
+    @Test
+    void node_label_is_durable_composite_identity() {
+        TimeseriesBatch b = batch(1042, "Default", "pkg", ProducerType.PRODUCER_COLLECTD);
+        Resource r = resource("node", "");
+        NodeContext n = nc("web01.corp", "Servers", "web-01", List.of(), Map.of());
+
+        Map<String, String> labels = labelBuilder.build(b, r, Optional.of(n), List.of());
+
+        assertThat(labels).containsEntry("node", "Servers:web-01");
+    }
+
+    @Test
+    void node_label_falls_back_to_delta_v_prefix_for_discovery_node() {
+        TimeseriesBatch b = batch(1042, "Default", "pkg", ProducerType.PRODUCER_COLLECTD);
+        Resource r = resource("node", "");
+        NodeContext n = nc("scanned-host", "", "", List.of(), Map.of());
+
+        Map<String, String> labels = labelBuilder.build(b, r, Optional.of(n), List.of());
+
+        assertThat(labels).containsEntry("node", "delta-v:1042");
     }
 }

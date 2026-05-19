@@ -34,6 +34,7 @@ public class LabelBuilder {
                                      Optional<NodeContext> nc, List<String> metadataAllowlist) {
         Map<String, String> labels = new LinkedHashMap<>();
         labels.put("node_id", Integer.toString(batch.getNodeId()));
+        labels.put("node", InstanceLabelResolver.nodeIdentity(batch.getNodeId(), nc));
         labels.put("instance", instanceResolver.resolve(batch, nc));
         labels.put("location", nullToEmpty(batch.getLocation()));
         labels.put("node_label", nc.map(NodeContext::getNodeLabel).orElse(""));

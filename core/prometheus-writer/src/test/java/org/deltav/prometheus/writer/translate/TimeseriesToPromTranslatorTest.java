@@ -175,8 +175,8 @@ class TimeseriesToPromTranslatorTest {
         assertThat(samples).hasSize(1);
         Map<String, String> labels = samples.get(0).labels();
         assertThat(labels.keySet()).containsExactlyInAnyOrder(
-                "node_id", "instance", "location", "node_label", "foreign_source", "foreign_id",
+                "node_id", "node", "instance", "location", "node_label", "foreign_source", "foreign_id",
                 "categories", "resource_type", "resource_instance", "collection_package", "producer");
-        assertThat(labels).hasSize(11);
+        assertThat(labels).hasSize(12);
     }
 }
