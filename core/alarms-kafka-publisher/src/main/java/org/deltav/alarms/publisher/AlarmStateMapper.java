@@ -53,6 +53,13 @@ public class AlarmStateMapper {
         setIfNotNull(alarm.getLogMsg(), b::setLogMessage);
         b.setNodeId(alarm.getNodeId() != null ? alarm.getNodeId() : 0);
         b.setLocation(resolveLocation(alarm));
+        if (alarm.getIpAddr() != null) {
+            b.setIpAddress(alarm.getIpAddr().getHostAddress());
+        }
+        if (alarm.getServiceType() != null && alarm.getServiceType().getName() != null) {
+            b.setServiceName(alarm.getServiceType().getName());
+        }
+        b.setIfIndex(alarm.getIfIndex() != null ? alarm.getIfIndex() : 0);
         return b.build();
     }
 
