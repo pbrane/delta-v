@@ -27,6 +27,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.opennms.netmgt.alarmd.AlarmLifecycleListenerManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -52,6 +53,17 @@ public class AlarmPublisherConfiguration {
         p.setProperty(ProducerConfig.ACKS_CONFIG, "all");
         p.setProperty(ProducerConfig.CLIENT_ID_CONFIG, "alarmd-publisher");
         return new KafkaProducer<>(p, new StringSerializer(), new ByteArraySerializer());
+    }
+
+    /**
+     * Runs once at startup: ensures deltav-alarms-state-change is compacted.
+     * An ApplicationRunner (not @PostConstruct) so it runs after the context
+     * is fully refreshed and Kafka connectivity is the only dependency.
+     */
+    @Bean
+    public ApplicationRunner alarmsTopicInitializerRunner(AlarmPublisherProperties properties) {
+        return args -> AlarmsTopicInitializer.ensureCompacted(
+                properties.getBootstrapServers(), properties.getTopic());
     }
 
     @Bean
