@@ -82,6 +82,20 @@ message AlarmState {
   // Alarm log message.
   string log_message = 13;
 
+  // IP address the alarm is scoped to (OnmsAlarm.getIpAddr()); empty when the
+  // alarm has no interface scope. Lets a consumer join the alarm to
+  // NodeContext.interface_metadata / service_metadata without a DB lookup.
+  string ip_address = 14;
+
+  // Monitored-service name (e.g. "ICMP", "HTTP"); from
+  // OnmsAlarm.getServiceType().getName(). Empty when the alarm is not
+  // service-scoped.
+  string service_name = 15;
+
+  // SNMP ifIndex (OnmsAlarm.getIfIndex()); 0 when the alarm is not
+  // interface-scoped. Joins to NodeContext.snmp_interface_metadata.
+  int32 if_index = 16;
+
   enum Severity {
     INDETERMINATE = 0;
     CLEARED       = 1;
