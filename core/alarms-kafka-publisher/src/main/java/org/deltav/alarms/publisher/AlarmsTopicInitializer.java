@@ -68,12 +68,13 @@ public final class AlarmsTopicInitializer {
      * Creates the topic compacted, or — if it already exists — alters its
      * config to compaction. Best-effort: any failure is logged and swallowed.
      */
-    public static void ensureCompacted(String bootstrapServers, String topic) {
+    public static void ensureCompacted(String bootstrapServers, String topic,
+                                       int partitions, short replicationFactor) {
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         try (Admin admin = Admin.create(props)) {
             try {
-                admin.createTopics(List.of(compactedTopic(topic, 8, (short) 1)))
+                admin.createTopics(List.of(compactedTopic(topic, partitions, replicationFactor)))
                         .all().get();
                 LOG.info("Created compacted topic {}", topic);
             } catch (ExecutionException e) {

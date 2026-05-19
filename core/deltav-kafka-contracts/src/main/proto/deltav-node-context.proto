@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// API version: 1 (FROZEN at Phase 2 GA — delta-v#174)
+// API version: 1 (FROZEN at v1.3.0 GA — Track 2a added snmp_interface_metadata field 12)
 //
 // Public contract for the deltav-node-context Kafka topic.
 //

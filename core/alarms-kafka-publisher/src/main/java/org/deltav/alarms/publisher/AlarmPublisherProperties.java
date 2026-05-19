@@ -34,6 +34,12 @@ public class AlarmPublisherProperties {
     /** Target topic. */
     private String topic = "deltav-alarms-state-change";
 
+    /** Number of partitions for the alarms topic. Default 8. */
+    private int partitions = 8;
+
+    /** Replication factor for the alarms topic. Default 1. */
+    private short replicationFactor = 1;
+
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 
@@ -42,4 +48,10 @@ public class AlarmPublisherProperties {
 
     public String getTopic() { return topic; }
     public void setTopic(String topic) { this.topic = topic; }
+
+    public int getPartitions() { return partitions; }
+    public void setPartitions(int v) { this.partitions = v; }
+
+    public short getReplicationFactor() { return replicationFactor; }
+    public void setReplicationFactor(short v) { this.replicationFactor = v; }
 }

@@ -68,6 +68,7 @@ class AlarmdApplicationIT {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("opennms.kafka.bootstrap-servers", () -> "localhost:9092");
+        registry.add("deltav.alarmd.kafka-publisher.enabled", () -> "false");
     }
 
     /**

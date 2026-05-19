@@ -65,6 +65,19 @@ class NodeInfoMetricEmitterTest {
     }
 
     @Test
+    void emitsNothingWhenCacheNotReady() {
+        NodeContextCache cache = new NodeContextCache();
+        // populated but markReady() NOT called — the production "bootstrap replay
+        // still draining" window — the guard must short-circuit.
+        cache.put("Default@1", NodeContext.newBuilder().setNodeId(1).setLocation("Default").build());
+
+        List<PromSample> emitted = new ArrayList<>();
+        new NodeInfoMetricEmitter(cache, emitted::add).sweep();
+
+        assertThat(emitted).isEmpty();
+    }
+
+    @Test
     void emitsOneSnmpInterfaceInfoPerInterface() {
         NodeContextCache cache = new NodeContextCache();
         NodeContext nc = NodeContext.newBuilder()

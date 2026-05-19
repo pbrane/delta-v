@@ -63,7 +63,8 @@ public class AlarmPublisherConfiguration {
     @Bean
     public ApplicationRunner alarmsTopicInitializerRunner(AlarmPublisherProperties properties) {
         return args -> AlarmsTopicInitializer.ensureCompacted(
-                properties.getBootstrapServers(), properties.getTopic());
+                properties.getBootstrapServers(), properties.getTopic(),
+                properties.getPartitions(), properties.getReplicationFactor());
     }
 
     @Bean

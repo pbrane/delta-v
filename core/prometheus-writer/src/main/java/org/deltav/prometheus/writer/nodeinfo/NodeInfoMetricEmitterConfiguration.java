@@ -21,7 +21,7 @@ public class NodeInfoMetricEmitterConfiguration {
         return new NodeInfoMetricEmitter(cache, writer::add);
     }
 
-    /** Drives the emitter sweep. Default 60s; override with deltav.node-info.emit-interval-ms. */
+    /** Drives the emitter sweep. Default 60s; override with prometheus-writer.node-info.emit-interval-ms. */
     @Component
     static class NodeInfoEmitterSchedule {
         private final NodeInfoMetricEmitter emitter;
@@ -30,7 +30,7 @@ public class NodeInfoMetricEmitterConfiguration {
             this.emitter = emitter;
         }
 
-        @Scheduled(fixedDelayString = "${deltav.node-info.emit-interval-ms:60000}")
+        @Scheduled(fixedDelayString = "${prometheus-writer.node-info.emit-interval-ms:60000}")
         void tick() {
             emitter.sweep();
         }
