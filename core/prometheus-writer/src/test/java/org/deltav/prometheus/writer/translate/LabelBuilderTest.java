@@ -205,10 +205,11 @@ class LabelBuilderTest {
         Map<String, String> labels = labelBuilder.build(b, r, Optional.empty(), List.of());
 
         assertThat(labels).containsEntry("foreign_id", "");
+        assertThat(labels).containsEntry("node", "delta-v:7");
     }
 
     @Test
-    void node_label_is_durable_composite_identity() {
+    void node_identity_is_durable_composite() {
         TimeseriesBatch b = batch(1042, "Default", "pkg", ProducerType.PRODUCER_COLLECTD);
         Resource r = resource("node", "");
         NodeContext n = nc("web01.corp", "Servers", "web-01", List.of(), Map.of());
@@ -219,7 +220,7 @@ class LabelBuilderTest {
     }
 
     @Test
-    void node_label_falls_back_to_delta_v_prefix_for_discovery_node() {
+    void node_identity_falls_back_to_delta_v_prefix_for_discovery_node() {
         TimeseriesBatch b = batch(1042, "Default", "pkg", ProducerType.PRODUCER_COLLECTD);
         Resource r = resource("node", "");
         NodeContext n = nc("scanned-host", "", "", List.of(), Map.of());

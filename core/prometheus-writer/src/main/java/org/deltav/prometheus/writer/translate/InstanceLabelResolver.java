@@ -13,7 +13,9 @@ import java.util.Optional;
  * {@link InstanceSource} policy. Always returns a non-empty string — falls back
  * to {@code "node:{node_id}"} whenever the chosen source produces an empty
  * value, so {@code {instance=""}} never appears on the wire (Grafana templating
- * unhappiness).
+ * unhappiness). Also exposes the static {@link #nodeIdentity(int, java.util.Optional)}
+ * helper — the durable {@code foreignSource:foreignId} node identity used by
+ * {@link LabelBuilder} when populating the {@code node} label.
  */
 @Component
 public class InstanceLabelResolver {
