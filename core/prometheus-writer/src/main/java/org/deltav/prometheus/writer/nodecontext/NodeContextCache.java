@@ -4,6 +4,8 @@ package org.deltav.prometheus.writer.nodecontext;
 import org.deltav.timeseries.proto.NodeContext;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -61,8 +63,8 @@ public class NodeContextCache {
      * emitter to sweep all nodes. O(n) copy — called once per emit interval,
      * not on the hot path.
      */
-    public java.util.Collection<NodeContext> snapshot() {
-        return java.util.List.copyOf(map.values());
+    public Collection<NodeContext> snapshot() {
+        return List.copyOf(map.values());
     }
 
     /**

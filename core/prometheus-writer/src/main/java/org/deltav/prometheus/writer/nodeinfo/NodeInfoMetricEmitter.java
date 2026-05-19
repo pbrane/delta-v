@@ -45,6 +45,10 @@ public class NodeInfoMetricEmitter {
 
     /** Emits an info-metric for every node and SNMP interface in the cache. */
     public void sweep() {
+        if (!cache.isReady()) {
+            LOG.debug("NodeContextCache not yet ready; skipping info-metric sweep");
+            return;
+        }
         long now = System.currentTimeMillis();
         int nodes = 0;
         int interfaces = 0;

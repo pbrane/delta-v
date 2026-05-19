@@ -27,6 +27,7 @@ class NodeInfoMetricEmitterTest {
                         .setPhysicalAddress("00:11:22:33:44:55").build())
                 .build();
         cache.put("Default@1042", nc);
+        cache.markReady();
 
         List<PromSample> emitted = new ArrayList<>();
         NodeInfoMetricEmitter emitter = new NodeInfoMetricEmitter(cache, emitted::add);
@@ -52,6 +53,7 @@ class NodeInfoMetricEmitterTest {
         assertThat(ifInfo.labels()).containsEntry("if_alias", "uplink");
         assertThat(ifInfo.labels()).containsEntry("if_speed", "1000000000");
         assertThat(ifInfo.labels()).containsEntry("if_type", "6");
+        assertThat(ifInfo.labels()).containsEntry("physical_address", "00:11:22:33:44:55");
     }
 
     @Test
@@ -60,5 +62,42 @@ class NodeInfoMetricEmitterTest {
         List<PromSample> emitted = new ArrayList<>();
         new NodeInfoMetricEmitter(cache, emitted::add).sweep();
         assertThat(emitted).isEmpty();
+    }
+
+    @Test
+    void emitsOneSnmpInterfaceInfoPerInterface() {
+        NodeContextCache cache = new NodeContextCache();
+        NodeContext nc = NodeContext.newBuilder()
+                .setNodeId(2001).setLocation("Core")
+                .setNodeLabel("sw01.corp").setForeignSource("Switches").setForeignId("sw-01")
+                .putSnmpInterfaceMetadata(3, SnmpInterfaceContext.newBuilder()
+                        .setIfIndex(3).setIfName("Gi0/3").setIfDescr("GigabitEthernet0/3")
+                        .setIfAlias("uplink-a").setIfSpeed(1_000_000_000L).setIfType(6)
+                        .setPhysicalAddress("AA:BB:CC:DD:EE:03").build())
+                .putSnmpInterfaceMetadata(4, SnmpInterfaceContext.newBuilder()
+                        .setIfIndex(4).setIfName("Gi0/4").setIfDescr("GigabitEthernet0/4")
+                        .setIfAlias("uplink-b").setIfSpeed(1_000_000_000L).setIfType(6)
+                        .setPhysicalAddress("AA:BB:CC:DD:EE:04").build())
+                .build();
+        cache.put("Core@2001", nc);
+        cache.markReady();
+
+        List<PromSample> emitted = new ArrayList<>();
+        new NodeInfoMetricEmitter(cache, emitted::add).sweep();
+
+        long nodeInfoCount = emitted.stream()
+                .filter(s -> s.name().equals("deltav_node_info")).count();
+        long ifInfoCount = emitted.stream()
+                .filter(s -> s.name().equals("deltav_snmp_interface_info")).count();
+
+        assertThat(nodeInfoCount).isEqualTo(1);
+        assertThat(ifInfoCount).isEqualTo(2);
+
+        List<String> ifNames = emitted.stream()
+                .filter(s -> s.name().equals("deltav_snmp_interface_info"))
+                .map(s -> s.labels().get("if_name"))
+                .sorted()
+                .toList();
+        assertThat(ifNames).containsExactly("Gi0/3", "Gi0/4");
     }
 }
