@@ -69,6 +69,7 @@ class NodeToProtobufTranslatorTest {
         assertThat(ctx.getMetadataCount()).isZero();
         assertThat(ctx.getInterfaceMetadataCount()).isZero();
         assertThat(ctx.getServiceMetadataCount()).isZero();
+        assertThat(ctx.getSnmpInterfaceMetadataCount()).isZero();
     }
 
     @Test
@@ -284,6 +285,7 @@ class NodeToProtobufTranslatorTest {
 
         NodeContext ctx = translator.translate(node, 0L);
 
+        assertThat(ctx.getSnmpInterfaceMetadataCount()).isEqualTo(1);
         assertThat(ctx.getSnmpInterfaceMetadataMap()).containsKey(3);
         SnmpInterfaceContext sic = ctx.getSnmpInterfaceMetadataMap().get(3);
         assertThat(sic.getIfIndex()).isEqualTo(3);
