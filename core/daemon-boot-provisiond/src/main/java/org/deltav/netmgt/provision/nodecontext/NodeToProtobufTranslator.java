@@ -19,11 +19,13 @@ package org.deltav.netmgt.provision.nodecontext;
 import org.deltav.timeseries.proto.InterfaceContext;
 import org.deltav.timeseries.proto.NodeContext;
 import org.deltav.timeseries.proto.ServiceContext;
+import org.deltav.timeseries.proto.SnmpInterfaceContext;
 import org.opennms.netmgt.model.OnmsCategory;
 import org.opennms.netmgt.model.OnmsIpInterface;
 import org.opennms.netmgt.model.OnmsMetaData;
 import org.opennms.netmgt.model.OnmsMonitoredService;
 import org.opennms.netmgt.model.OnmsNode;
+import org.opennms.netmgt.model.OnmsSnmpInterface;
 
 /**
  * Pure function. Translates a fully-loaded {@link OnmsNode} (with its
@@ -92,6 +94,26 @@ public class NodeToProtobufTranslator {
                         b.putServiceMetadata(svcKey, sc.build());
                     }
                 }
+            }
+        }
+
+        if (node.getSnmpInterfaces() != null) {
+            for (OnmsSnmpInterface snmp : node.getSnmpInterfaces()) {
+                if (snmp.getIfIndex() == null) {
+                    // ifIndex is the map key — an interface without one cannot
+                    // be addressed; skip it.
+                    continue;
+                }
+                int ifIndex = snmp.getIfIndex();
+                SnmpInterfaceContext.Builder sic = SnmpInterfaceContext.newBuilder()
+                        .setIfIndex(ifIndex)
+                        .setIfName(nullSafe(snmp.getIfName()))
+                        .setIfDescr(nullSafe(snmp.getIfDescr()))
+                        .setIfAlias(nullSafe(snmp.getIfAlias()))
+                        .setIfSpeed(snmp.getIfSpeed() != null ? snmp.getIfSpeed() : 0L)
+                        .setIfType(snmp.getIfType() != null ? snmp.getIfType() : 0)
+                        .setPhysicalAddress(nullSafe(snmp.getPhysAddr()));
+                b.putSnmpInterfaceMetadata(ifIndex, sic.build());
             }
         }
 

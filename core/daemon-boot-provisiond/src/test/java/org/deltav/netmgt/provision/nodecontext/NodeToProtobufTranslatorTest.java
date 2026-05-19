@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.util.List;
 
 import org.deltav.timeseries.proto.NodeContext;
+import org.deltav.timeseries.proto.SnmpInterfaceContext;
 import org.junit.jupiter.api.Test;
 import org.opennms.netmgt.model.OnmsCategory;
 import org.opennms.netmgt.model.OnmsIpInterface;
@@ -29,6 +30,7 @@ import org.opennms.netmgt.model.OnmsMetaData;
 import org.opennms.netmgt.model.OnmsMonitoredService;
 import org.opennms.netmgt.model.OnmsNode;
 import org.opennms.netmgt.model.OnmsServiceType;
+import org.opennms.netmgt.model.OnmsSnmpInterface;
 import org.opennms.netmgt.model.monitoringLocations.OnmsMonitoringLocation;
 
 class NodeToProtobufTranslatorTest {
@@ -263,6 +265,49 @@ class NodeToProtobufTranslatorTest {
         assertThat(ctx.toByteArray()).isNotEmpty();
         assertThat(ctx.getInterfaceMetadataCount()).isEqualTo(100);
         assertThat(ctx.getMetadataCount()).isEqualTo(50);
+    }
+
+    @Test
+    void translate_snmpInterface_keyedByIfIndex() {
+        OnmsNode node = new OnmsNode();
+        node.setId(1);
+        node.setLocation(location("Default"));
+
+        // The 2-arg OnmsSnmpInterface constructor adds itself to node.getSnmpInterfaces().
+        OnmsSnmpInterface snmp = new OnmsSnmpInterface(node, 3);
+        snmp.setIfName("Gi0/3");
+        snmp.setIfDescr("GigabitEthernet0/3");
+        snmp.setIfAlias("uplink-to-core");
+        snmp.setIfSpeed(1_000_000_000L);
+        snmp.setIfType(6);
+        snmp.setPhysAddr("00:11:22:33:44:55");
+
+        NodeContext ctx = translator.translate(node, 0L);
+
+        assertThat(ctx.getSnmpInterfaceMetadataMap()).containsKey(3);
+        SnmpInterfaceContext sic = ctx.getSnmpInterfaceMetadataMap().get(3);
+        assertThat(sic.getIfIndex()).isEqualTo(3);
+        assertThat(sic.getIfName()).isEqualTo("Gi0/3");
+        assertThat(sic.getIfDescr()).isEqualTo("GigabitEthernet0/3");
+        assertThat(sic.getIfAlias()).isEqualTo("uplink-to-core");
+        assertThat(sic.getIfSpeed()).isEqualTo(1_000_000_000L);
+        assertThat(sic.getIfType()).isEqualTo(6);
+        assertThat(sic.getPhysicalAddress()).isEqualTo("00:11:22:33:44:55");
+    }
+
+    @Test
+    void translate_snmpInterface_withNullIfIndex_isSkipped() {
+        OnmsNode node = new OnmsNode();
+        node.setId(1);
+        node.setLocation(location("Default"));
+        OnmsSnmpInterface snmp = new OnmsSnmpInterface();
+        snmp.setNode(node);
+        snmp.setIfName("no-index");          // ifIndex left null
+        node.getSnmpInterfaces().add(snmp);
+
+        NodeContext ctx = translator.translate(node, 0L);
+
+        assertThat(ctx.getSnmpInterfaceMetadataMap()).isEmpty();
     }
 
     // --- helpers ---
