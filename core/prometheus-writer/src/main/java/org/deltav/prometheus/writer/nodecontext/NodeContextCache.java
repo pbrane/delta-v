@@ -57,6 +57,15 @@ public class NodeContextCache {
     }
 
     /**
+     * An immutable snapshot of every cached entry. Used by the info-metric
+     * emitter to sweep all nodes. O(n) copy — called once per emit interval,
+     * not on the hot path.
+     */
+    public java.util.Collection<NodeContext> snapshot() {
+        return java.util.List.copyOf(map.values());
+    }
+
+    /**
      * Finds a NodeContext by node_id alone, ignoring location. Used as a
      * fallback when the primary {location}@{node_id} key lookup misses —
      * specifically for the Phase 0 limitation where Delta-V Collectd
