@@ -415,6 +415,23 @@ else
     fail "No serviceDown alarm in PostgreSQL"
 fi
 
+# Track 1 regression check: alarmd must have published the alarm to Kafka.
+# Cheap key-only check (binary protobuf value is not decoded). 15s window — alarmd publishes
+# the lifecycle event within a couple of seconds of the PG insert.
+REDUCTION_KEY=$(psql_query "SELECT reductionkey FROM alarms WHERE eventuei = 'uei.opennms.org/syslogd/cloud/serviceDown' AND alarmtype = 1 LIMIT 1")
+if [ -n "$REDUCTION_KEY" ]; then
+    KAFKA_KEYS=$(docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
+        --bootstrap-server localhost:9092 \
+        --topic deltav-alarms-state-change \
+        --from-beginning --max-messages 200 --timeout-ms 15000 \
+        --property print.key=true --property print.value=false 2>/dev/null || true)
+    if echo "$KAFKA_KEYS" | grep -Fq "$REDUCTION_KEY"; then
+        ok "Alarm published to deltav-alarms-state-change (reduction_key=$REDUCTION_KEY)"
+    else
+        fail "Alarm reduction_key '$REDUCTION_KEY' NOT found on deltav-alarms-state-change topic"
+    fi
+fi
+
 if wait_for_db "SELECT count(*) FROM outages o JOIN ifservices s ON o.ifserviceid = s.id JOIN service svc ON s.serviceid = svc.serviceid WHERE svc.servicename = 'AWS' AND o.ifregainedservice IS NULL" "$OUTAGE_TIMEOUT" "AWS outage"; then
     ok "Outage created for AWS service"
 else

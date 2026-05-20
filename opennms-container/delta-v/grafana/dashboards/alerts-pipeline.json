@@ -1,0 +1,445 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "v1.3.0 alerts-forwarder pipeline visibility. Panels query the forwarder's /actuator/prometheus counters (deltav_alerts_forwarder_*) via VictoriaMetrics, and the live firing-alerts table comes from the Alertmanager datasource. Use this dashboard during smoke runs to confirm AlarmState → Alertmanager forwarding is healthy.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "sum(deltav_alerts_forwarder_active_alerts)",
+          "instant": false,
+          "legendFormat": "active",
+          "refId": "A"
+        }
+      ],
+      "title": "Active forwarded alerts",
+      "type": "stat",
+      "description": "Current value of deltav_alerts_forwarder_active_alerts — the number of alerts the forwarder is presently tracking as firing in Alertmanager. Green at zero, yellow when one or more alerts are active."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "bootstrapping", "color": "red" }, "1": { "text": "ready", "color": "green" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "deltav_alerts_forwarder_node_context_cache_ready",
+          "instant": false,
+          "legendFormat": "ready",
+          "refId": "A"
+        }
+      ],
+      "title": "NodeContextCache ready",
+      "type": "stat",
+      "description": "1 = NodeContextCache bootstrap complete (nodes have been loaded and the forwarder is enriching alerts). 0 = still bootstrapping; alerts that arrive during this window will be tagged as partial enrichment."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "deltav_alerts_forwarder_node_context_cache_size",
+          "instant": false,
+          "legendFormat": "size",
+          "refId": "A"
+        }
+      ],
+      "title": "NodeContextCache size",
+      "type": "stat",
+      "description": "Number of node-context entries currently cached. Should match the size of the provisioned node inventory once bootstrap completes."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0.0001 }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "sum(rate(deltav_alerts_forwarder_dlq_total[5m]))",
+          "instant": false,
+          "legendFormat": "dlq",
+          "refId": "A"
+        }
+      ],
+      "title": "DLQ rate (alarm-state-dlq)",
+      "type": "stat",
+      "description": "Rate of records routed to the alarm-state DLQ. Non-zero means unparseable AlarmState protobufs are landing on the topic — investigate the producer (alarmd) before clearing."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 6 },
+      "id": 5,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "rate(deltav_alerts_forwarder_forwarded_total{outcome=\"firing\"}[5m])",
+          "instant": false,
+          "legendFormat": "firing",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "rate(deltav_alerts_forwarder_forwarded_total{outcome=\"resolved\"}[5m])",
+          "instant": false,
+          "legendFormat": "resolved",
+          "refId": "B"
+        }
+      ],
+      "title": "Forwarded rate by outcome",
+      "type": "timeseries",
+      "description": "Per-second rate of POSTs to Alertmanager (deltav_alerts_forwarder_forwarded_total) broken out by outcome. firing = create/update, resolved = lifecycle close."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 6 },
+      "id": 6,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": ["mean"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "sum(rate(deltav_alerts_forwarder_filtered_total[5m]))",
+          "instant": false,
+          "legendFormat": "filtered",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "rate(deltav_alerts_forwarder_enrichment_total{result=\"partial\"}[5m])",
+          "instant": false,
+          "legendFormat": "partial enrichment",
+          "refId": "B"
+        }
+      ],
+      "title": "Filtered + partial enrichment",
+      "type": "timeseries",
+      "description": "filtered = alarms dropped by the forwarder (e.g. below the severity threshold), summed across reasons. partial enrichment = alarms forwarded but with missing node-context fields (cache miss or pre-bootstrap arrival)."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.0001 }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 15 },
+      "id": 7,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": ["sum"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "rate(deltav_alerts_forwarder_sink_errors_total[5m])",
+          "instant": false,
+          "legendFormat": "{{sink}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Sink errors by sink",
+      "type": "timeseries",
+      "description": "Per-second error rate from each downstream sink (alertmanager, victoriametrics). Should stay flat at zero; non-zero indicates the sink is unreachable, rejecting payloads, or timing out."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0.0001 }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 15 },
+      "id": 8,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": ["sum"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "rate(deltav_alerts_forwarder_dlq_total[5m])",
+          "instant": false,
+          "legendFormat": "dlq",
+          "refId": "A"
+        }
+      ],
+      "title": "DLQ rate (timeseries)",
+      "type": "timeseries",
+      "description": "Rate of records routed to the alarm-state DLQ. Any non-zero sustained value is RED — DLQ records mean unparseable AlarmState protobufs hit the topic."
+    },
+    {
+      "datasource": { "type": "alertmanager", "uid": "alertmanager" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "severity" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "critical": { "color": "red", "index": 0 }, "major": { "color": "orange", "index": 1 }, "minor": { "color": "yellow", "index": 2 }, "warning": { "color": "yellow", "index": 3 }, "normal": { "color": "green", "index": 4 } } }
+                ]
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 24 },
+      "id": 9,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": { "show": false, "reducer": ["sum"], "countRows": false, "fields": "" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "alertmanager", "uid": "alertmanager" },
+          "queryType": "alerts",
+          "filters": "",
+          "active": true,
+          "silenced": false,
+          "inhibited": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Active alerts (Alertmanager)",
+      "type": "table",
+      "description": "Live view of currently-firing alerts as reported by the Alertmanager datasource. Columns severity / node / uei / startsAt come from the labels the alerts-forwarder attaches when posting to Alertmanager.",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "Labels.severity": 0,
+              "Labels.node": 1,
+              "Labels.uei": 2,
+              "StartsAt": 3
+            },
+            "renameByName": {
+              "Labels.severity": "severity",
+              "Labels.node": "node",
+              "Labels.uei": "uei",
+              "StartsAt": "startsAt"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "preload": false,
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["deltav", "alerts", "v1.3.0"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Alerts Pipeline",
+  "uid": "alerts-pipeline",
+  "version": 1,
+  "weekStart": ""
+}
