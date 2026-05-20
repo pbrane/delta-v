@@ -179,6 +179,92 @@ if [[ "$vm_landed" != "true" ]]; then
     exit 1
 fi
 
+# ── Step 6b: Assert Track 2a info-metrics + composite node label ──────────────
+echo "==> Step 6b: Assert Track 2a outputs (deltav_node_info, deltav_snmp_interface_info, composite node)"
+
+# C1: deltav_node_info exists with composite node label
+echo "==> Assertion C1: deltav_node_info with composite node label"
+deadline=$((SECONDS + VM_QUERY_TIMEOUT))
+c1_passed=false
+while (( SECONDS < deadline )); do
+    c1_resp=$(curl -sf "http://localhost:18428/api/v1/query?query=deltav_node_info" \
+            || echo '{"data":{"result":[]}}')
+    c1_count=$(echo "$c1_resp" | python3 -c \
+        'import json,sys; d=json.load(sys.stdin); print(len(d.get("data",{}).get("result",[])))' \
+        2>/dev/null || echo "0")
+    if (( c1_count > 0 )); then
+        # Check for composite node label matching foreignSource:foreignId pattern
+        c1_node=$({ echo "$c1_resp" | grep -oE '"node":"[^"]*:[^"]*"' || true; } | head -1)
+        if [[ -n "$c1_node" ]]; then
+            echo "==> C1 PASS: deltav_node_info returned ${c1_count} series, found composite node label: $c1_node"
+            c1_passed=true
+            break
+        fi
+    fi
+    sleep 2
+done
+if [[ "$c1_passed" != "true" ]]; then
+    echo "FAIL: C1 deltav_node_info not found or missing composite node label within ${VM_QUERY_TIMEOUT}s"
+    exit 1
+fi
+
+# C2: deltav_snmp_interface_info exists with composite node label
+echo "==> Assertion C2: deltav_snmp_interface_info with composite node label"
+deadline=$((SECONDS + VM_QUERY_TIMEOUT))
+c2_passed=false
+c2_warned=false
+while (( SECONDS < deadline )); do
+    c2_resp=$(curl -sf "http://localhost:18428/api/v1/query?query=deltav_snmp_interface_info" \
+            || echo '{"data":{"result":[]}}')
+    c2_count=$(echo "$c2_resp" | python3 -c \
+        'import json,sys; d=json.load(sys.stdin); print(len(d.get("data",{}).get("result",[])))' \
+        2>/dev/null || echo "0")
+    if (( c2_count > 0 )); then
+        # Check for composite node label
+        c2_node=$({ echo "$c2_resp" | grep -oE '"node":"[^"]*:[^"]*"' || true; } | head -1)
+        if [[ -n "$c2_node" ]]; then
+            echo "==> C2 PASS: deltav_snmp_interface_info returned ${c2_count} series, found composite node label: $c2_node"
+            c2_passed=true
+            break
+        fi
+    fi
+    sleep 2
+done
+if [[ "$c2_passed" != "true" ]]; then
+    # C2 may legitimately be empty on a fresh stack with no SNMP-discovered interfaces
+    # Emit warn instead of fail
+    echo "WARN: C2 deltav_snmp_interface_info not populated (expected on fresh stack with no SNMP interfaces)"
+    c2_warned=true
+fi
+
+# C3: Durable composite node label on a regular time series (use deltav_response_time)
+echo "==> Assertion C3: deltav_response_time with composite node label"
+deadline=$((SECONDS + VM_QUERY_TIMEOUT))
+c3_passed=false
+while (( SECONDS < deadline )); do
+    c3_resp=$(curl -sf "http://localhost:18428/api/v1/query?query=deltav_response_time" \
+            || echo '{"data":{"result":[]}}')
+    c3_count=$(echo "$c3_resp" | python3 -c \
+        'import json,sys; d=json.load(sys.stdin); print(len(d.get("data",{}).get("result",[])))' \
+        2>/dev/null || echo "0")
+    if (( c3_count > 0 )); then
+        # Check for composite node label on the response_time metric
+        c3_node=$({ echo "$c3_resp" | grep -oE '"node":"[^"]*:[^"]*"' || true; } | head -1)
+        if [[ -n "$c3_node" ]]; then
+            echo "==> C3 PASS: deltav_response_time returned ${c3_count} series with composite node label: $c3_node"
+            c3_passed=true
+            break
+        fi
+    fi
+    sleep 2
+done
+if [[ "$c3_passed" != "true" ]]; then
+    echo "FAIL: C3 deltav_response_time not found or missing composite node label within ${VM_QUERY_TIMEOUT}s"
+    exit 1
+fi
+
+echo "==> Track 2a assertions complete (C1 PASS, C2 $([ "$c2_warned" = "true" ] && echo "WARN" || echo "PASS"), C3 PASS)"
+
 # ── Step 7: Wait for Grafana readiness ────────────────────────────────────────
 echo "==> Step 7: Wait for Grafana /api/health"
 deadline=$((SECONDS + STACK_READY_TIMEOUT))
