@@ -1,6 +1,6 @@
 # Delta-V Build & Push Images
 #
-# Builds all Delta-V Docker images (26 total) and pushes them to GitHub
+# Builds all Delta-V Docker images (27 total) and pushes them to GitHub
 # Container Registry (GHCR) as multi-arch images (linux/amd64 + linux/arm64).
 #
 # Trigger: Push a tag matching 'v*' (e.g., v1.1.0)
@@ -11,7 +11,7 @@
 #     - ghcr.io/<owner>/jre-deltav:21          Custom JRE (jlink, Alpine)
 #     - ghcr.io/<owner>/daemon-base:<version>  Shared libs for all daemons
 #
-#   Daemons (12 Spring Boot fat JARs):
+#   Daemons (12 Spring Boot fat JARs sharing daemon-base):
 #     - ghcr.io/<owner>/alarmd:<version>
 #     - ghcr.io/<owner>/bsmd:<version>
 #     - ghcr.io/<owner>/collectd:<version>
@@ -26,6 +26,7 @@
 #     - ghcr.io/<owner>/trapd:<version>
 #
 #   Infrastructure:
+#     - ghcr.io/<owner>/alerts-forwarder:<version>         Alarm → Alertmanager forwarder
 #     - ghcr.io/<owner>/minion-boot:<version>              Spring Boot Minion
 #     - ghcr.io/<owner>/minion-gateway:<version>           gRPC ingress translator (Minion → Kafka)
 #     - ghcr.io/<owner>/envoy:<version>                    gRPC ingress in front of minion-gateway
@@ -243,6 +244,18 @@ jobs:
             --push \
             .
 
+      - name: Build and push alerts-forwarder image
+        working-directory: core/alerts-forwarder
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform "${{ env.PLATFORMS }}" \
+            -t "${{ env.IMAGE_PREFIX }}/alerts-forwarder:${VERSION}" \
+            -t "${{ env.IMAGE_PREFIX }}/alerts-forwarder:latest" \
+            --push \
+            .
+
       - name: Build and push minion-gateway image
         # minion-gateway's Dockerfile lives at opennms-container/delta-v/minion-gateway/Dockerfile
         # (not core/minion-gateway/, unlike db-init / flow-enricher / prometheus-writer).
@@ -412,7 +425,7 @@ jobs:
           echo "     ./deploy.sh up lite"
           echo ""
           echo "### Images"
-          DAEMONS="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd minion-boot db-init flow-enricher prometheus-writer clickhouse clickhouse-init grafana provisiond-imports-init perspective-app-init l8opensim-provisioner mock-snmp-agent flow-exporter sflow-exporter jre-deltav daemon-base"
+          DAEMONS="alarmd alerts-forwarder bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd minion-boot db-init flow-enricher prometheus-writer clickhouse clickhouse-init grafana provisiond-imports-init perspective-app-init l8opensim-provisioner mock-snmp-agent flow-exporter sflow-exporter jre-deltav daemon-base"
           for name in $DAEMONS; do
             echo "  ${{ env.IMAGE_PREFIX }}/$name:${VERSION}"
           done
