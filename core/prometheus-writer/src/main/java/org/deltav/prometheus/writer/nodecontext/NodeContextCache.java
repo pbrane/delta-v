@@ -4,6 +4,8 @@ package org.deltav.prometheus.writer.nodecontext;
 import org.deltav.timeseries.proto.NodeContext;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -54,6 +56,15 @@ public class NodeContextCache {
 
     public void markReady() {
         ready.set(true);
+    }
+
+    /**
+     * An immutable snapshot of every cached entry. Used by the info-metric
+     * emitter to sweep all nodes. O(n) copy — called once per emit interval,
+     * not on the hot path.
+     */
+    public Collection<NodeContext> snapshot() {
+        return List.copyOf(map.values());
     }
 
     /**

@@ -53,7 +53,7 @@ prometheus-writer:
     # NODE_LABEL  — use the human-readable node label (default; matches Grafana
     #               convention but is mutable — series rename when a node is renamed).
     # FOREIGN_ID  — use "{foreign_source}:{foreign_id}" — stable across renames
-    #               but less recognizable in dashboards. Falls back to "node:{node_id}"
+    #               but less recognizable in dashboards. Falls back to "delta-v:{node_id}"
     #               when foreign_source or foreign_id is empty.
     # NODE_ID     — use "node:{node_id}" — pure stable integer key; ugliest but never
     #               mutates.

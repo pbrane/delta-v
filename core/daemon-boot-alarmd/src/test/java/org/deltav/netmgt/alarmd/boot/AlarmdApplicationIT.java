@@ -22,7 +22,6 @@ import static org.mockito.Mockito.mock;
 import java.util.Date;
 
 import org.junit.jupiter.api.Test;
-import org.opennms.netmgt.dao.api.AlarmEntityNotifier;
 import org.opennms.netmgt.dao.api.AlarmDao;
 import org.opennms.netmgt.dao.api.DistPollerDao;
 import org.opennms.netmgt.dao.api.NodeDao;
@@ -39,9 +38,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionOperations;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -72,6 +68,7 @@ class AlarmdApplicationIT {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("opennms.kafka.bootstrap-servers", () -> "localhost:9092");
+        registry.add("deltav.alarmd.kafka-publisher.enabled", () -> "false");
     }
 
     /**
@@ -84,31 +81,6 @@ class AlarmdApplicationIT {
         @Primary
         public EventSubscriptionService eventSubscriptionService() {
             return mock(EventSubscriptionService.class);
-        }
-
-        @Bean
-        public AlarmEntityNotifier alarmEntityNotifier() {
-            return mock(AlarmEntityNotifier.class);
-        }
-
-        @Bean
-        public org.opennms.netmgt.eventd.EventUtil eventUtil() {
-            return mock(org.opennms.netmgt.eventd.EventUtil.class);
-        }
-
-        @Bean
-        public TransactionOperations transactionOperations(PlatformTransactionManager txManager) {
-            return new TransactionTemplate(txManager);
-        }
-
-        @Bean
-        public org.opennms.netmgt.dao.api.SessionUtils sessionUtils() {
-            return mock(org.opennms.netmgt.dao.api.SessionUtils.class);
-        }
-
-        @Bean(name = "eventProxy")
-        public org.opennms.netmgt.events.api.EventProxy eventProxy() {
-            return mock(org.opennms.netmgt.events.api.EventProxy.class);
         }
 
     }

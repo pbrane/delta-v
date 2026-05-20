@@ -24,6 +24,7 @@ import org.deltav.alarms.proto.AlarmState;
 import org.junit.jupiter.api.Test;
 import org.opennms.netmgt.model.OnmsAlarm;
 import org.opennms.netmgt.model.OnmsNode;
+import org.opennms.netmgt.model.OnmsServiceType;
 import org.opennms.netmgt.model.OnmsSeverity;
 import org.opennms.netmgt.model.monitoringLocations.OnmsMonitoringLocation;
 
@@ -103,5 +104,34 @@ public class AlarmStateMapperTest {
 
         assertThat(proto.getAckUser()).isEqualTo("admin");
         assertThat(proto.getAckTimeMs()).isEqualTo(5000L);
+    }
+
+    @Test
+    void interfaceAndServiceIdentityMapped() throws Exception {
+        OnmsAlarm alarm = new OnmsAlarm();
+        alarm.setId(1);
+        alarm.setReductionKey("rk");
+        alarm.setIpAddr(java.net.InetAddress.getByName("192.0.2.10"));
+        alarm.setServiceType(new OnmsServiceType("ICMP"));
+        alarm.setIfIndex(7);
+
+        AlarmState proto = new AlarmStateMapper().toProto(alarm);
+
+        assertThat(proto.getIpAddress()).isEqualTo("192.0.2.10");
+        assertThat(proto.getServiceName()).isEqualTo("ICMP");
+        assertThat(proto.getIfIndex()).isEqualTo(7);
+    }
+
+    @Test
+    void interfaceAndServiceIdentityDefaultWhenAbsent() {
+        OnmsAlarm alarm = new OnmsAlarm();
+        alarm.setId(1);
+        alarm.setReductionKey("rk");
+
+        AlarmState proto = new AlarmStateMapper().toProto(alarm);
+
+        assertThat(proto.getIpAddress()).isEmpty();
+        assertThat(proto.getServiceName()).isEmpty();
+        assertThat(proto.getIfIndex()).isZero();
     }
 }

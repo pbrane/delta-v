@@ -8,6 +8,7 @@ import org.deltav.prometheus.writer.dlq.DlqPublisher;
 import org.deltav.prometheus.writer.nodecontext.NodeContextCache;
 import org.deltav.prometheus.writer.nodecontext.NodeContextCacheHealthIndicator;
 import org.deltav.prometheus.writer.nodecontext.NodeContextKafkaBootstrap;
+import org.deltav.prometheus.writer.nodeinfo.NodeInfoMetricEmitter;
 import org.deltav.prometheus.writer.rw.BatchingRwWriter;
 import org.deltav.prometheus.writer.rw.ConsumerPauseListener;
 import org.deltav.prometheus.writer.rw.RemoteWriteHttpClient;
@@ -72,6 +73,7 @@ class PrometheusWriterApplicationScanIT {
         assertThat(ctx.getBean(NodeContextCache.class)).isNotNull();
         assertThat(ctx.getBean(NodeContextKafkaBootstrap.class)).isNotNull();
         assertThat(ctx.getBean(NodeContextCacheHealthIndicator.class)).isNotNull();
+        assertThat(ctx.getBean(NodeInfoMetricEmitter.class)).isNotNull();
         // Translation
         assertThat(ctx.getBean(NameSanitizer.class)).isNotNull();
         assertThat(ctx.getBean(LabelBuilder.class)).isNotNull();

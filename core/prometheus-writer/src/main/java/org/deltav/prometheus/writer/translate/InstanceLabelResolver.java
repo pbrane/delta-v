@@ -13,7 +13,9 @@ import java.util.Optional;
  * {@link InstanceSource} policy. Always returns a non-empty string — falls back
  * to {@code "node:{node_id}"} whenever the chosen source produces an empty
  * value, so {@code {instance=""}} never appears on the wire (Grafana templating
- * unhappiness).
+ * unhappiness). Also exposes the static {@link #nodeIdentity(int, java.util.Optional)}
+ * helper — the durable {@code foreignSource:foreignId} node identity used by
+ * {@link LabelBuilder} when populating the {@code node} label.
  */
 @Component
 public class InstanceLabelResolver {
@@ -30,13 +32,25 @@ public class InstanceLabelResolver {
                 String label = nc.map(NodeContext::getNodeLabel).orElse("");
                 yield label.isEmpty() ? fallback(batch) : label;
             }
-            case FOREIGN_ID -> {
-                String fs = nc.map(NodeContext::getForeignSource).orElse("");
-                String fi = nc.map(NodeContext::getForeignId).orElse("");
-                yield (fs.isEmpty() || fi.isEmpty()) ? fallback(batch) : fs + ":" + fi;
-            }
+            case FOREIGN_ID -> nodeIdentity(batch.getNodeId(), nc);
             case NODE_ID -> fallback(batch);
         };
+    }
+
+    /**
+     * The durable node identity (spec §4): {@code foreignSource:foreignId} when
+     * the node was provisioned, otherwise {@code delta-v:{node_id}} for
+     * discovery/newSuspect nodes that have no requisition. The {@code delta-v:}
+     * prefix keeps the identity uniformly {@code <source>:<id>}-shaped and
+     * honestly namespaces it as a delta-v-internal id rather than a CMDB key.
+     */
+    public static String nodeIdentity(int nodeId, Optional<NodeContext> nc) {
+        String fs = nc.map(NodeContext::getForeignSource).orElse("");
+        String fi = nc.map(NodeContext::getForeignId).orElse("");
+        if (!fs.isEmpty() && !fi.isEmpty()) {
+            return fs + ":" + fi;
+        }
+        return "delta-v:" + nodeId;
     }
 
     private static String fallback(TimeseriesBatch batch) {
