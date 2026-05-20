@@ -955,8 +955,10 @@ services:
     profiles: [metrics, metrics-e2e]
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
-    volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    configs:
+      - source: alertmanager_config
+        target: /etc/alertmanager/alertmanager.yml
+        mode: 0444
     ports:
       - "9093:9093"
     restart: unless-stopped
@@ -1013,6 +1015,27 @@ services:
     ports:
       - "18428:8428"
 
+  # Scrape sidecar: pulls deltav_* metrics from all daemon /actuator/prometheus
+  # endpoints and remote-writes them into VictoriaMetrics so the Grafana
+  # alerts-pipeline dashboard has data. Without this, VM runs in receiver-only
+  # mode and daemon Micrometer metrics never appear.
+  vmagent:
+    <<: *no-search-domain
+    image: victoriametrics/vmagent:v1.106.1
+    container_name: delta-v-vmagent-1
+    profiles: [metrics, metrics-e2e]
+    restart: unless-stopped
+    depends_on:
+      victoriametrics:
+        condition: service_started
+    command:
+      - -promscrape.config=/etc/vmagent/scrape.yml
+      - -remoteWrite.url=http://victoriametrics:8428/api/v1/write
+    configs:
+      - source: vmagent_scrape
+        target: /etc/vmagent/scrape.yml
+        mode: 0444
+
   grafana:
     <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/grafana:${VERSION}
@@ -1053,6 +1076,47 @@ services:
       start_period: 10s
     ports:
       - "13000:3000"
+
+configs:
+  # Alertmanager routing config — embedded here so no host file is required on
+  # no-git-clone smoke deployments (fixes Bug #39: Docker was creating a
+  # directory at ./alertmanager/alertmanager.yml when the path was missing,
+  # causing "not a directory" failures in the alertmanager container).
+  alertmanager_config:
+    content: |
+      route:
+        receiver: deltav-null
+        group_by: ['node']
+      receivers:
+        - name: deltav-null
+  # vmagent scrape config — enumerates all daemon actuator endpoints so
+  # deltav_* Micrometer metrics reach VictoriaMetrics and the Grafana
+  # alerts-pipeline dashboard shows data instead of "No data".
+  vmagent_scrape:
+    content: |
+      global:
+        scrape_interval: 15s
+      scrape_configs:
+        - job_name: deltav-daemons
+          metrics_path: /actuator/prometheus
+          static_configs:
+            - targets:
+                - alarmd:8080
+                - alerts-forwarder:8080
+                - bsmd:8080
+                - collectd:8080
+                - discovery:8080
+                - enlinkd:8080
+                - eventtranslator:8080
+                - perspectivepollerd:8080
+                - pollerd:8080
+                - provisiond:8080
+                - syslogd:8080
+                - telemetryd:8080
+                - trapd:8080
+                - prometheus-writer:8080
+                - flow-enricher:8080
+                - minion-gateway:8080
 
 volumes:
   pgdata:
