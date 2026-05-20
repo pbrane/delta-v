@@ -630,6 +630,28 @@ else
     show_diagnostics
 fi
 
+# Track 1 regression check: alarmd must have published the alarm to Kafka.
+# Cheap key-only check (binary protobuf value is not decoded). 15s window — alarmd publishes
+# the lifecycle event within a couple of seconds of the PG insert.
+REDUCTION_KEY=$(psql_query "SELECT a.reductionkey FROM alarms a
+    JOIN node n ON a.nodeid = n.nodeid
+    WHERE n.foreignsource = '${FOREIGN_SOURCE}'
+      AND a.eventuei = 'uei.opennms.org/perspective/nodes/nodeLostService'
+      AND a.alarmtype = 1
+    LIMIT 1")
+if [ -n "$REDUCTION_KEY" ]; then
+    KAFKA_KEYS=$(docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
+        --bootstrap-server localhost:9092 \
+        --topic deltav-alarms-state-change \
+        --from-beginning --max-messages 200 --timeout-ms 15000 \
+        --property print.key=true --property print.value=false 2>/dev/null || true)
+    if echo "$KAFKA_KEYS" | grep -Fq "$REDUCTION_KEY"; then
+        ok "Alarm published to deltav-alarms-state-change (reduction_key=$REDUCTION_KEY)"
+    else
+        fail "Alarm reduction_key '$REDUCTION_KEY' NOT found on deltav-alarms-state-change topic"
+    fi
+fi
+
 # Verify mhuot-labs did NOT get a false outage from RPC timeout
 MHUOT_OPEN=$(psql_query "SELECT count(*) FROM outages o
     WHERE o.perspective = '${LOCATION_B}'

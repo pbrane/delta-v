@@ -347,6 +347,24 @@ else
     fail "Alarm description is empty — event template expansion not working"
 fi
 
+# Track 1 regression check: alarmd must have published the alarm to Kafka.
+# Cheap key-only check (binary protobuf value is not decoded). 15s window — alarmd publishes
+# the lifecycle event within a couple of seconds of the PG insert.
+ALARM_ID=$(psql_query "SELECT alarmid FROM alarms WHERE eventuei = 'uei.opennms.org/translator/traps/SNMP_Link_Down' AND alarmtype = 1 LIMIT 1")
+REDUCTION_KEY=$(psql_query "SELECT reductionkey FROM alarms WHERE alarmid = $ALARM_ID")
+if [ -n "$REDUCTION_KEY" ]; then
+    KAFKA_KEYS=$(docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
+        --bootstrap-server localhost:9092 \
+        --topic deltav-alarms-state-change \
+        --from-beginning --max-messages 200 --timeout-ms 15000 \
+        --property print.key=true --property print.value=false 2>/dev/null || true)
+    if echo "$KAFKA_KEYS" | grep -Fq "$REDUCTION_KEY"; then
+        ok "Alarm published to deltav-alarms-state-change (reduction_key=$REDUCTION_KEY)"
+    else
+        fail "Alarm reduction_key '$REDUCTION_KEY' NOT found on deltav-alarms-state-change topic"
+    fi
+fi
+
 # ══════════════════════════════════════════════════════════════════
 # Phase 3: Alarm Clearing via linkUp Trap (through Minion)
 # ══════════════════════════════════════════════════════════════════
