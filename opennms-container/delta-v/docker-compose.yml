@@ -948,6 +948,48 @@ services:
     ports:
       - "18080:8080"
 
+  alertmanager:
+    <<: *no-search-domain
+    image: prom/alertmanager:v0.27.0
+    container_name: delta-v-alertmanager-1
+    profiles: [metrics, metrics-e2e]
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:9093/-/healthy | grep -q OK"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+  alerts-forwarder:
+    <<: *no-search-domain
+    image: ${IMAGE_PREFIX:-deltav}/alerts-forwarder:${VERSION}
+    container_name: delta-v-alerts-forwarder-1
+    profiles: [metrics, metrics-e2e]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      alertmanager:
+        condition: service_healthy
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DELTAV_ALERTS_ALERTMANAGER_URL: http://alertmanager:9093/api/v2/alerts
+      DELTAV_ALERTS_ALERTMANAGER_ENABLED: "true"
+      DELTAV_ALERTS_VM_ENABLED: "false"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   victoriametrics:
     <<: *no-search-domain
     image: victoriametrics/victoria-metrics:v1.106.1

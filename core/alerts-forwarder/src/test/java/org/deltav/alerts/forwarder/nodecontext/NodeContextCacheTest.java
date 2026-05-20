@@ -1,0 +1,103 @@
+/* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
+package org.deltav.alerts.forwarder.nodecontext;
+
+import org.deltav.timeseries.proto.NodeContext;
+import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class NodeContextCacheTest {
+
+    @Test
+    void get_returns_empty_when_key_absent() {
+        NodeContextCache cache = new NodeContextCache();
+        assertThat(cache.get("Default@1")).isEmpty();
+    }
+
+    @Test
+    void put_stores_value_and_get_retrieves() {
+        NodeContextCache cache = new NodeContextCache();
+        NodeContext nc = NodeContext.newBuilder().setNodeId(1).setLocation("Default").setNodeLabel("lab-1").build();
+        cache.put("Default@1", nc);
+        assertThat(cache.get("Default@1")).contains(nc);
+    }
+
+    @Test
+    void remove_evicts_key() {
+        NodeContextCache cache = new NodeContextCache();
+        NodeContext nc = NodeContext.newBuilder().setNodeId(1).build();
+        cache.put("Default@1", nc);
+        cache.remove("Default@1");
+        assertThat(cache.get("Default@1")).isEmpty();
+    }
+
+    @Test
+    void tombstone_on_put_delegates_to_remove() {
+        NodeContextCache cache = new NodeContextCache();
+        cache.put("Default@1", NodeContext.newBuilder().setNodeId(1).build());
+        NodeContext tombstone = NodeContext.newBuilder().setNodeId(1).setDeleted(true).build();
+        cache.applyUpdate("Default@1", tombstone);
+        assertThat(cache.get("Default@1")).isEmpty();
+    }
+
+    @Test
+    void applyUpdate_live_record_puts() {
+        NodeContextCache cache = new NodeContextCache();
+        NodeContext nc = NodeContext.newBuilder().setNodeId(1).setDeleted(false).build();
+        cache.applyUpdate("Default@1", nc);
+        assertThat(cache.get("Default@1")).contains(nc);
+    }
+
+    @Test
+    void size_reports_current_entries() {
+        NodeContextCache cache = new NodeContextCache();
+        assertThat(cache.size()).isZero();
+        cache.put("Default@1", NodeContext.newBuilder().setNodeId(1).build());
+        cache.put("Default@2", NodeContext.newBuilder().setNodeId(2).build());
+        assertThat(cache.size()).isEqualTo(2);
+        cache.remove("Default@1");
+        assertThat(cache.size()).isEqualTo(1);
+    }
+
+    @Test
+    void ready_defaults_false_and_markReady_flips() {
+        NodeContextCache cache = new NodeContextCache();
+        assertThat(cache.isReady()).isFalse();
+        cache.markReady();
+        assertThat(cache.isReady()).isTrue();
+    }
+
+    @Test
+    void findByNodeId_returns_empty_when_no_entry() {
+        NodeContextCache cache = new NodeContextCache();
+        assertThat(cache.findByNodeId(99)).isEmpty();
+    }
+
+    @Test
+    void findByNodeId_returns_entry_when_node_id_matches_regardless_of_location() {
+        NodeContextCache cache = new NodeContextCache();
+        NodeContext nc = NodeContext.newBuilder().setNodeId(5).setLocation("Default").setNodeLabel("server-01").build();
+        cache.put("Default@5", nc);
+        assertThat(cache.findByNodeId(5)).contains(nc);
+    }
+
+    @Test
+    void findByNodeId_returns_first_match_when_multiple_locations_share_node_id() {
+        // node_id is normally unique per OnmsNode but the cache is keyed by
+        // {location}@{node_id} which CAN collide if a node migrates location
+        // (relocation). Returning the first match is acceptable — the
+        // stream order is unspecified across HashMap implementations but the
+        // method exists primarily for the location-empty fallback case where
+        // there is exactly one matching entry in practice.
+        NodeContextCache cache = new NodeContextCache();
+        NodeContext nc1 = NodeContext.newBuilder().setNodeId(7).setLocation("a").build();
+        NodeContext nc2 = NodeContext.newBuilder().setNodeId(7).setLocation("b").build();
+        cache.put("a@7", nc1);
+        cache.put("b@7", nc2);
+        assertThat(cache.findByNodeId(7)).isPresent();
+        // either nc1 or nc2 is acceptable; just assert presence and node_id matches
+        assertThat(cache.findByNodeId(7).get().getNodeId()).isEqualTo(7);
+    }
+}

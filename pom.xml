@@ -99,6 +99,7 @@
     <!-- Flow processing services (Spring Cloud Stream) -->
     <module>core/flow-enricher</module>
     <module>core/prometheus-writer</module>
+    <module>core/alerts-forwarder</module>
   </modules>
 
   <!-- ============================================================ -->
