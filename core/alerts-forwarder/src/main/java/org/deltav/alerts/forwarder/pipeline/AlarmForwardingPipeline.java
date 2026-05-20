@@ -97,17 +97,52 @@ public class AlarmForwardingPipeline {
             try {
                 sink.forward(alarm);
             } catch (Exception e) {
-                metrics.counter(AlertsForwarderMetrics.SINK_ERRORS, "sink", sink.name()).increment();
-                // Propagate so the consumer retries and back-pressures.
+                // SINK_ERRORS counter is incremented in the consumer after classification
+                // so we get the {sink, classification} dimension without double-counting.
                 throw new SinkForwardException(sink.name(), e);
             }
         }
     }
 
-    /** Thrown when a sink fails; the consumer retries the record. */
+    /**
+     * Thrown when a sink fails. Carries the sink name and a {@link Classification}
+     * derived from the underlying HTTP or I/O exception so the consumer can decide
+     * whether to DLQ (POISON) or retry (TRANSIENT).
+     */
     public static class SinkForwardException extends RuntimeException {
-        public SinkForwardException(String sink, Throwable cause) {
-            super("sink '" + sink + "' failed to forward alarm", cause);
+
+        public enum Classification { POISON, TRANSIENT }
+
+        private final String sinkName;
+
+        public SinkForwardException(String sinkName, Throwable cause) {
+            super("sink '" + sinkName + "' failed to forward alarm", cause);
+            this.sinkName = sinkName;
+        }
+
+        public String sinkName() { return sinkName; }
+
+        /**
+         * Classifies the underlying failure as POISON (the record will never
+         * succeed — DLQ it) or TRANSIENT (retry with back-pressure). Walks the
+         * cause chain. Defaults to TRANSIENT for unknown causes — conservative;
+         * a misclassified TRANSIENT just retries, but a misclassified POISON
+         * loses data.
+         */
+        public Classification classify() {
+            Throwable t = getCause();
+            while (t != null) {
+                if (t instanceof org.springframework.web.client.HttpClientErrorException) {
+                    return Classification.POISON;
+                }
+                // 5xx and connection errors are explicitly TRANSIENT — fall through.
+                if (t instanceof org.springframework.web.client.HttpServerErrorException
+                        || t instanceof org.springframework.web.client.ResourceAccessException) {
+                    return Classification.TRANSIENT;
+                }
+                t = t.getCause();
+            }
+            return Classification.TRANSIENT;
         }
     }
 }

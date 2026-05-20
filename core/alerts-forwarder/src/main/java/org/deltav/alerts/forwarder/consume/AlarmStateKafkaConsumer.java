@@ -52,6 +52,7 @@ public class AlarmStateKafkaConsumer implements Runnable {
     private final AlertsForwarderProperties props;
     private final AlarmForwardingPipeline pipeline;
     private final DlqPublisher dlq;
+    private final MeterRegistry meterRegistry;
     private final String bootstrapServers;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Thread thread;
@@ -63,6 +64,7 @@ public class AlarmStateKafkaConsumer implements Runnable {
                                    @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
         this.props = props;
         this.pipeline = pipeline;
+        this.meterRegistry = meterRegistry;
         this.dlq = new DlqPublisher(buildProducer(bootstrapServers), props.getDlq().getTopic(), meterRegistry);
         this.bootstrapServers = bootstrapServers;
         Gauge.builder(AlertsForwarderMetrics.ACTIVE_ALERTS, registry, ActiveAlertRegistry::size)
@@ -122,7 +124,23 @@ public class AlarmStateKafkaConsumer implements Runnable {
                 handle(record);
                 return;
             } catch (AlarmForwardingPipeline.SinkForwardException e) {
-                LOG.warn("Sink failure — retrying record in {}s", RETRY_BACKOFF.toSeconds(), e);
+                if (e.classify() == AlarmForwardingPipeline.SinkForwardException.Classification.POISON) {
+                    LOG.warn("Sink {} rejected record as poison (4xx) — DLQ key={} offset={}",
+                            e.sinkName(),
+                            record.key() == null ? "" : new String(record.key()),
+                            record.offset(), e);
+                    meterRegistry.counter(AlertsForwarderMetrics.SINK_ERRORS,
+                            "sink", e.sinkName(),
+                            "classification", "poison").increment();
+                    dlq.publish(record.key(), record.value(),
+                            "sink-" + e.sinkName() + "-poison");
+                    return;   // advance past the poison record
+                }
+                LOG.warn("Sink {} transient failure — retrying record in {}s",
+                        e.sinkName(), RETRY_BACKOFF.toSeconds(), e);
+                meterRegistry.counter(AlertsForwarderMetrics.SINK_ERRORS,
+                        "sink", e.sinkName(),
+                        "classification", "transient").increment();
                 sleep(RETRY_BACKOFF);
             }
         }

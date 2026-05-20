@@ -153,13 +153,14 @@ send_syslog() {
     local syslog_host="$2"
     local msg="$3"
     local timestamp
-    # IMPORTANT: use UTC timestamp. Syslog RFC3164 timestamps have no TZ
-    # info; OpenNMS interprets them as the container's local timezone
-    # (UTC in delta-v). If we send a local-time string from a non-UTC
-    # host, the parsed firstEventTime drifts hours into the future,
-    # which trips AlertmanagerAlarmSink's 400 "start time must be before
-    # end time" (alarm.startsAtMs > Instant.now() + resolveTimeoutMs).
-    timestamp=$(date -u '+%b %d %H:%M:%S')
+    # Regression check: the forwarder must handle non-UTC timestamps gracefully
+    # via clamp (AlertmanagerAlarmSink.forward — Bug 1 fix). Syslog RFC3164
+    # timestamps have no TZ info; OpenNMS interprets them as container-local UTC.
+    # A non-UTC host sending local time would historically drift startsAt hours
+    # into the future and trigger a 400 from Alertmanager. The clamp in Bug 1
+    # eliminates that failure mode. This test intentionally uses the host's local
+    # time (no -u flag) so that a non-UTC dev machine exercises the clamp path.
+    timestamp=$(date '+%b %d %H:%M:%S')
     echo "<${pri}>${timestamp} ${syslog_host} ${msg}" | nc -u -w1 "$SYSLOG_HOST" "$SYSLOG_PORT"
 }
 
