@@ -121,6 +121,8 @@ cleanup() {
 
     rm -rf "$TEST_TMPDIR"
 }
+# Note (B2): the forwarder's bootstrap-replay design (AlarmStateKafkaConsumer seeks to beginning on
+# every restart) means any poison record in the compacted topic can wedge the consumer across restarts. Tracked separately.
 trap cleanup EXIT
 
 psql_query() {
@@ -231,8 +233,9 @@ command -v nc >/dev/null 2>&1 || err "nc (netcat) not found."
 command -v jq >/dev/null 2>&1 || err "jq not found (required for Alertmanager assertions)."
 command -v curl >/dev/null 2>&1 || err "curl not found."
 
+RUNNING=$(docker compose ps --status running --format '{{.Name}}' 2>/dev/null || true)
 for svc in alertmanager alerts-forwarder kafka postgres alarmd syslogd eventtranslator minion-gateway; do
-    if ! docker compose ps --status running --format '{{.Name}}' 2>/dev/null | grep -qw "$svc"; then
+    if ! echo "$RUNNING" | grep -qw "$svc"; then
         err "Service '$svc' is not running. Bring up the stack with: docker compose --profile lite --profile metrics up -d"
     fi
 done
@@ -301,8 +304,8 @@ log "Step 1: container health checks"
 deadline=$((SECONDS + 30))
 forwarder_up=false
 while (( SECONDS < deadline )); do
-    if docker exec delta-v-alerts-forwarder-1 wget -qO- http://localhost:8080/actuator/health 2>/dev/null \
-            | grep -q '"status":"UP"'; then
+    HEALTH=$(docker exec delta-v-alerts-forwarder-1 wget -qO- http://localhost:8080/actuator/health 2>/dev/null || true)
+    if echo "$HEALTH" | grep -q '"status":"UP"'; then
         forwarder_up=true; break
     fi
     sleep 2
@@ -396,7 +399,7 @@ fi
 if [ "$NODE_LABEL_VAL" = "${FOREIGN_SOURCE}:${FOREIGN_ID}" ]; then
     ok "labels.node == '${FOREIGN_SOURCE}:${FOREIGN_ID}' (matches provisioning)"
 else
-    warn "labels.node='${NODE_LABEL_VAL}' did not match expected '${FOREIGN_SOURCE}:${FOREIGN_ID}' — node-context enrichment may be stale"
+    fail "labels.node = '${NODE_LABEL_VAL}' does not match expected '${FOREIGN_SOURCE}:${FOREIGN_ID}'"
 fi
 
 # labels.severity must equal the OpenNMS severity name. serviceDown in
