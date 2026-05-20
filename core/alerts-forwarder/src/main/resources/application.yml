@@ -35,8 +35,6 @@ management:
       probes:
         enabled: true
       show-details: always
-      # Suppress "no such contributor" until NodeContextCacheHealthIndicator is wired (Task 2).
-      validate-group-membership: false
       group:
         readiness:
           include: readinessState, nodeContextCache
