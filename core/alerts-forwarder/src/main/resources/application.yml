@@ -1,0 +1,42 @@
+# Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later
+spring:
+  application:
+    name: alerts-forwarder
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+deltav:
+  alerts-forwarder:
+    alarms-topic: ${DELTAV_ALARMS_STATE_TOPIC:deltav-alarms-state-change}
+    node-context-topic: deltav-node-context
+    filter:
+      # Minimum severity to forward. One of: WARNING, MINOR, MAJOR, CRITICAL.
+      min-severity: ${DELTAV_ALERTS_MIN_SEVERITY:WARNING}
+      # UEIs never forwarded, even above min-severity.
+      uei-denylist: []
+    alertmanager:
+      enabled: ${DELTAV_ALERTS_ALERTMANAGER_ENABLED:true}
+      url: ${DELTAV_ALERTS_ALERTMANAGER_URL:http://alertmanager:9093/api/v2/alerts}
+      # Firing alerts get endsAt = now + this; Alertmanager auto-resolves if no refresh.
+      resolve-timeout-ms: 300000
+    victoriametrics:
+      enabled: ${DELTAV_ALERTS_VM_ENABLED:false}
+      url: ${DELTAV_ALERTS_VM_URL:http://victoriametrics:8428/api/v1/write}
+    dlq:
+      topic: deltav-alerts-forwarder-dlq
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      # Suppress "no such contributor" until NodeContextCacheHealthIndicator is wired (Task 2).
+      validate-group-membership: false
+      group:
+        readiness:
+          include: readinessState, nodeContextCache
