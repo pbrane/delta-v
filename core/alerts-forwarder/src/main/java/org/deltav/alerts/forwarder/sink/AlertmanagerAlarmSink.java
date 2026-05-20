@@ -3,10 +3,13 @@ package org.deltav.alerts.forwarder.sink;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.deltav.alerts.forwarder.config.AlertsForwarderProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -26,6 +29,8 @@ import org.springframework.web.client.RestClient;
 @ConditionalOnProperty(prefix = "deltav.alerts-forwarder.alertmanager",
         name = "enabled", havingValue = "true", matchIfMissing = true)
 public class AlertmanagerAlarmSink implements AlarmSink {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AlertmanagerAlarmSink.class);
 
     private final RestClient client;
     private final String url;
@@ -47,10 +52,25 @@ public class AlertmanagerAlarmSink implements AlarmSink {
                 ? now
                 : now.plus(Duration.ofMillis(resolveTimeoutMs));
 
+        Instant requestedStartsAt = Instant.ofEpochMilli(alarm.startsAtMs());
+        Instant clampedStartsAt = requestedStartsAt.isAfter(endsAt.minusSeconds(1))
+                ? endsAt.minusSeconds(1)
+                : requestedStartsAt;
+        boolean clamped = !requestedStartsAt.equals(clampedStartsAt);
+        if (clamped) {
+            LOG.warn("Clamped startsAt for alarm reductionKey={} sink={}: requested {} -> {} (would exceed endsAt {})",
+                    alarm.reductionKey(), name(), requestedStartsAt, clampedStartsAt, endsAt);
+        }
+
+        Map<String, String> annotations = new LinkedHashMap<>(alarm.annotations());
+        if (clamped) {
+            annotations.put("x-deltav-startsAt-original", requestedStartsAt.toString());
+        }
+
         Map<String, Object> alert = Map.of(
                 "labels", alarm.labels(),
-                "annotations", alarm.annotations(),
-                "startsAt", Instant.ofEpochMilli(alarm.startsAtMs()).toString(),
+                "annotations", annotations,
+                "startsAt", clampedStartsAt.toString(),
                 "endsAt", endsAt.toString());
 
         client.post()

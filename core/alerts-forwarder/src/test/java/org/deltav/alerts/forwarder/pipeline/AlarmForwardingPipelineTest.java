@@ -10,9 +10,15 @@ import org.deltav.alerts.forwarder.enrich.AlarmEnricher;
 import org.deltav.alerts.forwarder.filter.AlarmFilter;
 import org.deltav.alerts.forwarder.lifecycle.ActiveAlertRegistry;
 import org.deltav.alerts.forwarder.nodecontext.NodeContextCache;
+import org.deltav.alerts.forwarder.pipeline.AlarmForwardingPipeline.SinkForwardException;
+import org.deltav.alerts.forwarder.pipeline.AlarmForwardingPipeline.SinkForwardException.Classification;
 import org.deltav.alerts.forwarder.sink.AlarmSink;
 import org.deltav.alerts.forwarder.sink.ForwardedAlarm;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -83,6 +89,37 @@ class AlarmForwardingPipelineTest {
     void tombstoneForUnknownKeyForwardsNothing() {
         pipeline("WARNING").onRecord("never-seen", null);
         assertThat(sent).isEmpty();
+    }
+
+    // ── SinkForwardException classification tests ────────────────────────────
+
+    @Test
+    void classifiesHttpClientErrorExceptionAsPoison() {
+        SinkForwardException ex = new SinkForwardException("alertmanager",
+                new HttpClientErrorException(HttpStatus.BAD_REQUEST, "Bad Request"));
+        assertThat(ex.sinkName()).isEqualTo("alertmanager");
+        assertThat(ex.classify()).isEqualTo(Classification.POISON);
+    }
+
+    @Test
+    void classifiesHttpServerErrorExceptionAsTransient() {
+        SinkForwardException ex = new SinkForwardException("alertmanager",
+                new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable"));
+        assertThat(ex.classify()).isEqualTo(Classification.TRANSIENT);
+    }
+
+    @Test
+    void classifiesResourceAccessExceptionAsTransient() {
+        SinkForwardException ex = new SinkForwardException("alertmanager",
+                new ResourceAccessException("Connection refused"));
+        assertThat(ex.classify()).isEqualTo(Classification.TRANSIENT);
+    }
+
+    @Test
+    void classifiesUnknownRuntimeExceptionAsTransient() {
+        SinkForwardException ex = new SinkForwardException("alertmanager",
+                new RuntimeException("unexpected error"));
+        assertThat(ex.classify()).isEqualTo(Classification.TRANSIENT);
     }
 
     @Test

@@ -63,4 +63,26 @@ class AlertmanagerAlarmSinkTest {
         org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
                 () -> sink().forward(alarm));
     }
+
+    @Test
+    void clampsStartsAtWhenInFuture() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200));
+        long farFuture = System.currentTimeMillis() + java.time.Duration.ofHours(1).toMillis();
+        ForwardedAlarm alarm = new ForwardedAlarm("rk", ForwardedAlarm.State.FIRING,
+                Map.of("node", "Servers:web-01"), Map.of(), farFuture);
+
+        sink().forward(alarm);
+
+        RecordedRequest req = server.takeRequest();
+        assertThat(req.getMethod()).isEqualTo("POST");
+        String body = req.getBody().readUtf8();
+        // The annotation must carry the original (unclamped) startsAt.
+        assertThat(body).contains("x-deltav-startsAt-original");
+        // The startsAt sent to Alertmanager must NOT be the far-future value.
+        // The clamped value is endsAt - 1s (now + resolveTimeout - 1s); verify
+        // it does not contain the far-future epoch in ISO-8601 form — a rough
+        // but sufficient check given the 1-hour gap.
+        java.time.Instant farFutureInstant = java.time.Instant.ofEpochMilli(farFuture);
+        assertThat(body).doesNotContain("\"startsAt\":\"" + farFutureInstant);
+    }
 }
