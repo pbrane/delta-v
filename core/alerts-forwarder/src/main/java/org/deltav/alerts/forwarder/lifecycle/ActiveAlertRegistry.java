@@ -27,6 +27,11 @@ public class ActiveAlertRegistry {
         return active.containsKey(reductionKey);
     }
 
+    /** Non-destructive lookup of the stored firing identity. */
+    public Optional<ForwardedAlarm> getFiring(String reductionKey) {
+        return Optional.ofNullable(active.get(reductionKey));
+    }
+
     /** Removes and returns the stored firing identity, or empty if not active. */
     public Optional<ForwardedAlarm> remove(String reductionKey) {
         return Optional.ofNullable(active.remove(reductionKey));

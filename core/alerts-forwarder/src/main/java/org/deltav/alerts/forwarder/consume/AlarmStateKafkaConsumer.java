@@ -90,6 +90,7 @@ public class AlarmStateKafkaConsumer implements Runnable {
                 Thread.currentThread().interrupt();
             }
         }
+        dlq.close();
     }
 
     @Override

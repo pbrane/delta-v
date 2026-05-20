@@ -8,7 +8,6 @@ spring:
 deltav:
   alerts-forwarder:
     alarms-topic: ${DELTAV_ALARMS_STATE_TOPIC:deltav-alarms-state-change}
-    node-context-topic: deltav-node-context
     filter:
       # Minimum severity to forward. One of: WARNING, MINOR, MAJOR, CRITICAL.
       min-severity: ${DELTAV_ALERTS_MIN_SEVERITY:WARNING}

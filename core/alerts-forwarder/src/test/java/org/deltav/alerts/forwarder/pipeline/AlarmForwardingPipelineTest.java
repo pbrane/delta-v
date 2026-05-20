@@ -15,6 +15,7 @@ import org.deltav.alerts.forwarder.sink.ForwardedAlarm;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class AlarmForwardingPipelineTest {
 
@@ -82,5 +83,37 @@ class AlarmForwardingPipelineTest {
     void tombstoneForUnknownKeyForwardsNothing() {
         pipeline("WARNING").onRecord("never-seen", null);
         assertThat(sent).isEmpty();
+    }
+
+    @Test
+    void resolveRetainsRegistryEntryWhenSinkFails() {
+        // Sink that throws on the resolve forward (second call) only.
+        AlarmSink flakySink = new AlarmSink() {
+            int calls = 0;
+            public void forward(ForwardedAlarm a) throws Exception {
+                calls++;
+                if (a.state() == ForwardedAlarm.State.RESOLVED) {
+                    throw new RuntimeException("simulated sink failure");
+                }
+            }
+            public String name() { return "flaky"; }
+        };
+        ActiveAlertRegistry registry = new ActiveAlertRegistry();
+        AlarmForwardingPipeline p = new AlarmForwardingPipeline(
+                new AlarmFilter("WARNING", List.of()),
+                new AlarmEnricher(new NodeContextCache()),
+                registry,
+                List.of(flakySink),
+                new SimpleMeterRegistry());
+
+        p.onRecord("rk", AlarmState.newBuilder()
+                .setReductionKey("rk").setSeverity(AlarmState.Severity.MAJOR)
+                .setUei("uei/x").setNodeId(1).build());
+        assertThat(registry.isActive("rk")).isTrue();
+
+        // tombstone → resolve forward throws — registry must still have the entry so the consumer can retry.
+        assertThrows(AlarmForwardingPipeline.SinkForwardException.class,
+                () -> p.onRecord("rk", null));
+        assertThat(registry.isActive("rk")).isTrue();
     }
 }

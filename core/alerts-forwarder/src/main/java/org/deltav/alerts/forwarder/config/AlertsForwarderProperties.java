@@ -11,7 +11,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AlertsForwarderProperties {
 
     private String alarmsTopic = "deltav-alarms-state-change";
-    private String nodeContextTopic = "deltav-node-context";
     private final Filter filter = new Filter();
     private final Alertmanager alertmanager = new Alertmanager();
     private final VictoriaMetrics victoriametrics = new VictoriaMetrics();
@@ -19,8 +18,6 @@ public class AlertsForwarderProperties {
 
     public String getAlarmsTopic() { return alarmsTopic; }
     public void setAlarmsTopic(String v) { this.alarmsTopic = v; }
-    public String getNodeContextTopic() { return nodeContextTopic; }
-    public void setNodeContextTopic(String v) { this.nodeContextTopic = v; }
     public Filter getFilter() { return filter; }
     public Alertmanager getAlertmanager() { return alertmanager; }
     public VictoriaMetrics getVictoriametrics() { return victoriametrics; }

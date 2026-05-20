@@ -9,6 +9,7 @@ import java.util.Map;
 import org.deltav.alerts.forwarder.config.AlertsForwarderProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -33,7 +34,10 @@ public class AlertmanagerAlarmSink implements AlarmSink {
     public AlertmanagerAlarmSink(AlertsForwarderProperties props) {
         this.url = props.getAlertmanager().getUrl();
         this.resolveTimeoutMs = props.getAlertmanager().getResolveTimeoutMs();
-        this.client = RestClient.builder().build();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout((int) Duration.ofSeconds(5).toMillis());
+        factory.setReadTimeout((int) Duration.ofSeconds(10).toMillis());
+        this.client = RestClient.builder().requestFactory(factory).build();
     }
 
     @Override

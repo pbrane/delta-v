@@ -1,12 +1,14 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
 package org.deltav.alerts.forwarder.sink;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.TreeMap;
 
 import org.deltav.alerts.forwarder.config.AlertsForwarderProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.xerial.snappy.Snappy;
@@ -36,7 +38,10 @@ public class VictoriaMetricsAlarmSink implements AlarmSink {
 
     public VictoriaMetricsAlarmSink(AlertsForwarderProperties props) {
         this.url = props.getVictoriametrics().getUrl();
-        this.client = RestClient.builder().build();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout((int) Duration.ofSeconds(5).toMillis());
+        factory.setReadTimeout((int) Duration.ofSeconds(10).toMillis());
+        this.client = RestClient.builder().requestFactory(factory).build();
     }
 
     @Override

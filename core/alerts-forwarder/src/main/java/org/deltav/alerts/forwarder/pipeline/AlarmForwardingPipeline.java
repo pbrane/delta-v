@@ -80,14 +80,15 @@ public class AlarmForwardingPipeline {
     }
 
     private void resolve(String reductionKey) {
-        Optional<ForwardedAlarm> firing = registry.remove(reductionKey);
+        Optional<ForwardedAlarm> firing = registry.getFiring(reductionKey);
         if (firing.isEmpty()) {
             return;   // not active — nothing to resolve
         }
         ForwardedAlarm prev = firing.get();
         ForwardedAlarm resolved = new ForwardedAlarm(reductionKey, ForwardedAlarm.State.RESOLVED,
                 prev.labels(), prev.annotations(), prev.startsAtMs());
-        forward(resolved);
+        forward(resolved);   // throws → consumer retries; registry still populated
+        registry.remove(reductionKey);
         metrics.counter(AlertsForwarderMetrics.FORWARDED, "outcome", "resolved").increment();
     }
 

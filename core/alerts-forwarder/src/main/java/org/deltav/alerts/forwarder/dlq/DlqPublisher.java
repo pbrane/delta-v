@@ -2,6 +2,7 @@
 package org.deltav.alerts.forwarder.dlq;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.producer.Producer;
@@ -27,6 +28,10 @@ public class DlqPublisher {
         this.producer = producer;
         this.topic = topic;
         this.metrics = metrics;
+    }
+
+    public void close() {
+        producer.close(Duration.ofSeconds(5));
     }
 
     public void publish(byte[] key, byte[] sourcePayload, String reason) {
