@@ -1,5 +1,0 @@
-route:
-  receiver: deltav-null
-  group_by: ['node']
-receivers:
-  - name: deltav-null
