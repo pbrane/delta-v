@@ -42,6 +42,13 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Kafka client — explicit (also transitive via alarms-kafka-publisher)
+             so the ReductionCache bootstrap-replay loader has a stable handle. -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
+
         <!-- Shared daemon infrastructure -->
         <dependency>
             <groupId>org.deltav.core</groupId>

@@ -1,0 +1,4 @@
+deltav:
+  alarmd:
+    persistence:
+      cache-enabled: false
