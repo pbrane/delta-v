@@ -70,7 +70,7 @@ public class RetentionEngine {
         }
     }
 
-    @Scheduled(fixedDelayString = "#{@materializerProperties.retention.cadence.toMillis()}",
+    @Scheduled(fixedDelayString = "${deltav.alarms-materializer.retention.cadence:PT1M}",
                initialDelayString = "${deltav.alarms-materializer.retention.initial-delay:PT30S}")
     public void scheduledRun() {
         try {
