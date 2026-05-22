@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Delta-V alarms-materializer retention rules",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "when", "action"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9-]+$" },
+      "action": { "type": "string", "enum": ["delete"] },
+      "when": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "severity_at_most":  { "type": "string", "enum": ["INDETERMINATE", "CLEARED", "NORMAL", "WARNING", "MINOR", "MAJOR", "CRITICAL"] },
+          "severity_at_least": { "type": "string", "enum": ["INDETERMINATE", "CLEARED", "NORMAL", "WARNING", "MINOR", "MAJOR", "CRITICAL"] },
+          "idle_for":          { "type": "string", "pattern": "^P(T.+|.*[DWY].*)$" },
+          "acked":             { "type": "boolean" },
+          "ticketed":          { "type": "boolean" },
+          "uei_pattern":       { "type": "string" },
+          "category_pattern":  { "type": "string" },
+          "location":          { "type": "string" }
+        }
+      }
+    }
+  }
+}
