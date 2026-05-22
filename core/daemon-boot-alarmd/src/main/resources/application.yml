@@ -48,6 +48,8 @@ deltav:
       enabled: ${DELTAV_ALARMD_KAFKA_PUBLISHER_ENABLED:true}
       bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
       topic: ${DELTAV_ALARMS_STATE_TOPIC:deltav-alarms-state-change}
+    persistence:
+      mode: ${DELTAV_ALARMD_PERSISTENCE_MODE:kafka-only}
 
 logging:
   level:

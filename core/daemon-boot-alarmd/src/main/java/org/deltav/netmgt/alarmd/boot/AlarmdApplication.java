@@ -18,6 +18,7 @@ package org.deltav.netmgt.alarmd.boot;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @SpringBootApplication(scanBasePackages = {
     "org.deltav.core.daemon.common",
@@ -25,6 +26,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
     "org.deltav.alarms.publisher",
     "org.opennms.netmgt.model.jakarta.dao"
 })
+@EnableConfigurationProperties(org.deltav.netmgt.alarmd.boot.persister.AlarmdPersistenceProperties.class)
 public class AlarmdApplication {
 
     public static void main(String[] args) {
