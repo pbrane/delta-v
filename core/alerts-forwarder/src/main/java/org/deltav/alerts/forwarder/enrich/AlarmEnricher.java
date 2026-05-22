@@ -37,7 +37,6 @@ public class AlarmEnricher {
         labels.put("severity", alarm.getSeverity().name());
         labels.put("uei", alarm.getUei());
         labels.put("location", alarm.getLocation());
-        labels.put("alarm_id", Integer.toString(alarm.getAlarmId()));
         labels.put("node_label", nc.map(NodeContext::getNodeLabel).orElse(""));
         labels.put("foreign_source", nc.map(NodeContext::getForeignSource).orElse(""));
         labels.put("foreign_id", nc.map(NodeContext::getForeignId).orElse(""));
