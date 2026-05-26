@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "Perspective polling latency and throughput. Panels query the Phase 3 publisher series (deltav-timeseries Kafka topic → prometheus-writer → VictoriaMetrics). Services HTTP-8080 (l8opensim API root) and Google-Search, polled from the Default and l8opensim-lab perspectives. Use the Perspective and Service dropdowns to scope the view.",
+  "description": "Perspective polling latency and throughput. Panels query the Phase 3 publisher series (deltav-timeseries Kafka topic → prometheus-writer → VictoriaMetrics). Services HTTP-8080 (nl6 API root) and Google-Search, polled from the Default and nl6-lab perspectives. Use the Perspective and Service dropdowns to scope the view.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,

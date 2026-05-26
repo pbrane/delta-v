@@ -116,7 +116,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT $__timeInterval(timestamp) AS time, sumIf(num_bytes, location='Default') * 8 / ($__interval_ms / 1000) AS \"Default\", sumIf(num_bytes, location='l8opensim-lab') * 8 / ($__interval_ms / 1000) AS \"l8opensim-lab\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY time ORDER BY time",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS time, sumIf(num_bytes, location='Default') * 8 / ($__interval_ms / 1000) AS \"Default\", sumIf(num_bytes, location='nl6-lab') * 8 / ($__interval_ms / 1000) AS \"nl6-lab\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY time ORDER BY time",
           "format": 1
         }
       ]

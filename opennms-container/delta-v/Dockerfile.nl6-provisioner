@@ -1,0 +1,10 @@
+# Delta-V nl6 provisioner sidecar — one-shot container that POSTs
+# the 20-device seed definition to an already-healthy nl6 instance.
+# Wraps curlimages/curl with the seed (devices.json + post-each.sh) baked
+# in, so the compose file doesn't need a host bind mount.
+FROM curlimages/curl:8.10.1
+
+LABEL org.opencontainers.image.title="Delta-V nl6 Provisioner" \
+      org.opencontainers.image.description="POSTs the delta-v 20-device seed to nl6 on first boot"
+
+COPY nl6/ /seed/

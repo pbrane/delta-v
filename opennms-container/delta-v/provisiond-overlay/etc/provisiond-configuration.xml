@@ -39,8 +39,8 @@
     <cron-schedule>0/30 * * * * ?</cron-schedule>
   </requisition-def>
   -->
-  <requisition-def import-name="l8opensim-lab"
-                   import-url-resource="file:///opt/deltav/etc/imports/l8opensim-lab.xml">
+  <requisition-def import-name="nl6-lab"
+                   import-url-resource="file:///opt/deltav/etc/imports/nl6-lab.xml">
     <cron-schedule>0/30 * * * * ?</cron-schedule>
   </requisition-def>
   <requisition-def import-name="perspective-test" import-url-resource="file:///opt/deltav/etc/imports/perspective-test.xml">

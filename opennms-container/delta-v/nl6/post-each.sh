@@ -1,9 +1,9 @@
 #!/bin/sh
-# Provisioner script: read devices.json, POST each entry to l8opensim's
+# Provisioner script: read devices.json, POST each entry to nl6's
 # REST API. Idempotent: re-POSTing existing IPs returns the existing device.
 #
 # Args:
-#   $1 = base URL of l8opensim REST API (e.g. http://127.0.0.1:8080)
+#   $1 = base URL of nl6 REST API (e.g. http://127.0.0.1:8080)
 #
 # Reads JSON from stdin (each line is one JSON object -- caller pre-splits).
 set -eu
