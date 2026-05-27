@@ -195,15 +195,13 @@ services:
     command:
       - |
         set -eu
-        echo "provisioner: posting 20-device spec to nl6 REST API"
-        # devices.json is a JSON array; pipe each entry as one line through
-        # post-each.sh which iterates and POSTs.
-        cat /seed/devices.json \
-            | sed -e 's/^\[//' -e 's/\]$//' -e 's/},/}\n/g' \
-            | sh /seed/post-each.sh http://127.0.0.1:8080
+        echo "provisioner: importing 20-device seed via upstream fleet.sh"
+        # devices.json is a batch-manifest array; fleet.sh import
+        # auto-detects the shape and POSTs each entry to /api/v1/devices.
+        sh /seed/fleet.sh import http://127.0.0.1:8080 /seed/devices.json
         # Verify total count.
-        count=$$(wget -q -O- http://127.0.0.1:8080/api/v1/devices \
-                 | grep -o '"id"' | wc -l)
+        count=$$(curl -sf http://127.0.0.1:8080/api/v1/devices \
+                 | jq '.data | length')
         echo "provisioner: nl6 now reports $$count devices"
         [ "$$count" -ge 20 ] || { echo "FAIL expected >= 20 devices got $$count"; exit 1; }
 
