@@ -25,12 +25,15 @@
 #   MAVEN_OPTS       JVM options for Maven
 # ==============================================================================
 
-MODULE      ?=
-DAEMON      ?=
-TEST        ?=
-PROFILE     ?=
-SVC         ?=
-MAVEN_FLAGS ?= -DskipTests -B
+MODULE       ?=
+DAEMON       ?=
+TEST         ?=
+PROFILE      ?=
+SVC          ?=
+MAVEN_FLAGS  ?= -DskipTests -B
+PUSH         ?= false
+PLATFORMS    ?=
+IMAGE_PREFIX ?=
 MAVEN_OPTS  ?= -Xmx3g \
                -XX:ReservedCodeCacheSize=512m \
                -XX:+TieredCompilation \
@@ -88,7 +91,7 @@ clean: ## Remove all build artifacts
 	$(MVN) -B clean
 
 images: ## Build ALL Docker images (daemons + auxiliaries)
-	cd $(DELTAV) && ./build.sh deltav
+	cd $(DELTAV) && PUSH=$(PUSH) PLATFORMS=$(PLATFORMS) IMAGE_PREFIX=$(IMAGE_PREFIX) ./build.sh deltav
 
 daemon-image: ## Build one daemon image (DAEMON=); reuses cached base
 	@test -n "$(DAEMON)" || (echo "ERROR: DAEMON is required, e.g.: make daemon-image DAEMON=alarmd" && exit 1)
@@ -113,7 +116,7 @@ verify: ## Run deploy health checks
 	cd $(DELTAV) && ./deploy.sh test
 
 dev: ## Build all images, then bring the stack up (sequential; safe under make -j)
-	cd $(DELTAV) && ./build.sh deltav
+	cd $(DELTAV) && PUSH=$(PUSH) PLATFORMS=$(PLATFORMS) IMAGE_PREFIX=$(IMAGE_PREFIX) ./build.sh deltav
 	cd $(DELTAV) && ./deploy.sh up $(PROFILE)
 
 doctor: ## Preflight: verify the environment can build & run

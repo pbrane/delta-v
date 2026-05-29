@@ -313,9 +313,11 @@ do_images() {
 do_deltav_images() {
     log "Building Delta-V layered images..."
 
-    # Check that JRE base image exists
+    # Ensure the JRE base image exists. On a fresh runner/clone it won't be in
+    # the local daemon (and multi-arch --push never loads locally), so build it.
+    # Keeps `make images` self-contained both locally (--load) and in CI (--push).
     if ! docker image inspect "${IMAGE_PREFIX}/jre-deltav:21" >/dev/null 2>&1; then
-        err "${IMAGE_PREFIX}/jre-deltav:21 not found — run './build.sh jre' first"
+        do_jre_image
     fi
 
     # Phase 0: Self-heal stale daemon-boot JARs before staging. If any
@@ -552,9 +554,6 @@ main() {
     case "${1:-all}" in
         all)
             do_compile
-            if ! docker image inspect "${IMAGE_PREFIX}/jre-deltav:21" >/dev/null 2>&1; then
-                do_jre_image
-            fi
             do_deltav_images
             log "Build complete! Run: cd $SCRIPT_DIR && docker compose up -d"
             ;;
@@ -580,9 +579,6 @@ main() {
             do_compile
             do_assemble
             do_images push
-            if ! docker image inspect "${IMAGE_PREFIX}/jre-deltav:21" >/dev/null 2>&1; then
-                do_jre_image
-            fi
             do_deltav_images
             ;;
         clean)
