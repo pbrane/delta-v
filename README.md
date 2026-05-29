@@ -150,7 +150,7 @@ Minion → Kafka Sink → Trapd/Syslogd
 | prometheus-writer | Spring Boot 4 + Spring Cloud Stream | Consumes `deltav-timeseries` Kafka topic; enriches samples with node context and remote-writes to VictoriaMetrics |
 | victoriametrics | victoriametrics/victoria-metrics | Prometheus-compatible time-series store (remote-write sink for Collectd metrics) |
 | grafana | grafana/grafana | Dashboards: Flows Overview, Flows Forensic, plus provisioned VictoriaMetrics + ClickHouse datasources |
-| l8opensim / minion-lab | Mock lab | 20-device simulated monitoring location with its own Minion; exercises IPFIX + metric pipelines end-to-end |
+| nl6 / minion-lab | Mock lab | 20-device simulated monitoring location (upstream [labmonkeys-space/nl6](https://github.com/labmonkeys-space/nl6) v0.9.1, formerly l8opensim) with its own Minion; exercises IPFIX + metric pipelines end-to-end |
 
 ### Kafka Topics
 

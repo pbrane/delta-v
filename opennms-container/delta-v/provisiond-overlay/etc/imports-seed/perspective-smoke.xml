@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Smoke baseline requisition for perspective monitoring. One node pointing
-  at l8opensim's HTTP API at its static Docker network IP (172.18.0.30,
+  at nl6's HTTP API at its static Docker network IP (172.18.0.30,
   pinned in docker-compose.yml). Both Minions can reach this target:
     - Default: routes via Docker bridge to 172.18.0.30
-    - l8opensim-lab: shares netns with l8opensim, so the IP is local
+    - nl6-lab: shares netns with nl6, so the IP is local
   Uses the HTTP-8080 service (predefined in poller-configuration.xml) which
-  sends GET / against port 8080 — l8opensim returns 200 on /.
+  sends GET / against port 8080 — nl6 returns 200 on /.
 -->
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import"
               foreign-source="perspective-smoke">
-  <node location="Default" foreign-id="l8opensim-api" node-label="l8opensim-perspective-target">
+  <node location="Default" foreign-id="nl6-api" node-label="nl6-perspective-target">
     <interface ip-addr="172.18.0.30" status="1" snmp-primary="N">
       <monitored-service service-name="HTTP-8080"/>
     </interface>

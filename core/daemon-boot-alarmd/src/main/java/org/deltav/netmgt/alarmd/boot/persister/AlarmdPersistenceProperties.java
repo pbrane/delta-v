@@ -37,8 +37,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "deltav.alarmd.persistence")
 public class AlarmdPersistenceProperties {
 
-    /** "kafka-only" (default at GA) or "dual-write" (one-release escape hatch). */
-    private String mode = "kafka-only";
+    /**
+     * Persistence mode. Default is {@code dual-write} until the v1.3.0
+     * failure-mode tabletop passes; {@code kafka-only} is the GA target and is
+     * opt-in via {@code DELTAV_ALARMD_PERSISTENCE_MODE} until that gate clears.
+     */
+    private String mode = "dual-write";
 
     public String getMode() {
         return mode;

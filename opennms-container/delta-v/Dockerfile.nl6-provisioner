@@ -1,0 +1,14 @@
+# Delta-V nl6 provisioner sidecar — one-shot container that POSTs
+# the 20-device seed definition to an already-healthy nl6 instance.
+# Bakes the seed (devices.json) and the upstream fleet.sh tool from
+# labmonkeys-space/nl6 into the image so the compose file needs no
+# host bind mount. fleet.sh requires curl + jq.
+FROM alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+
+LABEL org.opencontainers.image.title="Delta-V nl6 Provisioner" \
+      org.opencontainers.image.description="POSTs the delta-v 20-device seed to nl6 on first boot"
+
+RUN apk add --no-cache curl jq
+
+COPY nl6/ /seed/
+RUN chmod +x /seed/fleet.sh
