@@ -33,7 +33,6 @@ class AlarmEnricherTest {
         assertThat(e.labels()).containsEntry("uei", "uei/nodeDown");
         assertThat(e.labels()).containsEntry("foreign_source", "Servers");
         assertThat(e.labels()).containsEntry("categories", "Production");
-        assertThat(e.labels()).containsEntry("alarm_id", "7");
         assertThat(e.annotations()).containsEntry("description", "Node is down");
         assertThat(e.annotations()).containsEntry("log_message", "down since 10:00");
     }

@@ -14,22 +14,21 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package org.deltav.netmgt.alarmd.boot;
+package org.deltav.netmgt.alarmd.boot.cache;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.ApplicationEvent;
 
-@SpringBootApplication(scanBasePackages = {
-    "org.deltav.core.daemon.common",
-    "org.deltav.netmgt.alarmd.boot",
-    "org.deltav.alarms.publisher",
-    "org.opennms.netmgt.model.jakarta.dao"
-})
-@EnableConfigurationProperties(org.deltav.netmgt.alarmd.boot.persister.AlarmdPersistenceProperties.class)
-public class AlarmdApplication {
+/** Fired when the bootstrap-replay catches up to the topic high-water-mark. */
+public class ReductionCacheReadyEvent extends ApplicationEvent {
 
-    public static void main(String[] args) {
-        SpringApplication.run(AlarmdApplication.class, args);
+    private final int cacheSize;
+
+    public ReductionCacheReadyEvent(Object source, int cacheSize) {
+        super(source);
+        this.cacheSize = cacheSize;
+    }
+
+    public int getCacheSize() {
+        return cacheSize;
     }
 }

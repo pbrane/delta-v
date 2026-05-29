@@ -100,6 +100,7 @@
     <module>core/flow-enricher</module>
     <module>core/prometheus-writer</module>
     <module>core/alerts-forwarder</module>
+    <module>core/alarms-materializer</module>
   </modules>
 
   <!-- ============================================================ -->

@@ -1009,6 +1009,36 @@ services:
       retries: 10
       start_period: 30s
 
+  # alarms-materializer: consumes the deltav-alarms-state-change Kafka topic
+  # (published by alarmd) and materializes the current-alarm view into
+  # PostgreSQL `alarms` rows, applying retention rules (cleared/idle GC) that
+  # used to live in horizon Drools. UI queries Postgres directly for the
+  # current-alarm grid; no horizon Vaadin/REST path involved.
+  alarms-materializer:
+    <<: *no-search-domain
+    profiles: [active, passive, full, metrics, demo]
+    image: ${IMAGE_PREFIX:-deltav}/alarms-materializer:${VERSION}
+    container_name: delta-v-alarms-materializer
+    hostname: alarms-materializer
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
+      SPRING_DATASOURCE_USERNAME: opennms
+      SPRING_DATASOURCE_PASSWORD: opennms
+      DELTAV_ALARMS_STATE_TOPIC: deltav-alarms-state-change
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
   victoriametrics:
     <<: *no-search-domain
     image: victoriametrics/victoria-metrics:v1.106.1

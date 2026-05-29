@@ -293,6 +293,13 @@ do_sflow_exporter_image() {
     build_image sflow-exporter -f "$SCRIPT_DIR/sflow-exporter/Dockerfile" "$SCRIPT_DIR/sflow-exporter"
 }
 
+do_alarms_materializer_image() {
+    log "Building alarms-materializer image..."
+    cd "$REPO_ROOT"
+    ./mvnw -B -f core/alarms-materializer/pom.xml -DskipTests package
+    build_image alarms-materializer -f "$REPO_ROOT/core/alarms-materializer/Dockerfile" "$REPO_ROOT/core/alarms-materializer"
+}
+
 do_jre_image() {
     log "Building ${IMAGE_PREFIX}/jre-deltav:21..."
     cd "$SCRIPT_DIR"
@@ -407,6 +414,13 @@ do_deltav_images() {
     # core/alerts-forwarder/ and does not share the daemon-base layer.
     do_alerts_forwarder_image
 
+    # --- Build alarms-materializer (standalone Spring Boot service) ---
+    # alarms-materializer consumes deltav-alarms-state-change and materializes
+    # the current-alarm view into PostgreSQL, applying retention rules. Like
+    # alerts-forwarder, it has its own Dockerfile in core/alarms-materializer/
+    # and does not share the daemon-base layer.
+    do_alarms_materializer_image
+
     # --- Build minion-gateway (gRPC ingress translator for Minion-facing surface) ---
     # minion-gateway sits between Envoy and the internal Kafka topics, translating
     # gRPC bidi calls from Minions into Kafka publishes. Built standalone (like
@@ -446,7 +460,7 @@ do_deltav_images() {
         log "Delta-V images pushed to ${IMAGE_PREFIX} (multi-arch; not loaded locally)."
     else
         log "Delta-V images built:"
-        docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|nl6-provisioner|mock-snmp-agent|flow-exporter|sflow-exporter" | sort | head -60 || true
+        docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|alarms-materializer|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|nl6-provisioner|mock-snmp-agent|flow-exporter|sflow-exporter" | sort | head -60 || true
     fi
 }
 
@@ -469,12 +483,16 @@ do_single_daemon_image() {
             do_alerts_forwarder_image
             return
             ;;
+        alarms-materializer)
+            do_alarms_materializer_image
+            return
+            ;;
     esac
 
     # Validate against the known daemon set (word-boundary match).
     case " $DAEMON_NAMES " in
         *" $name "*) ;;
-        *) err "unknown daemon '$name'. Valid daemons: $DAEMON_NAMES (plus standalone: alerts-forwarder)" ;;
+        *) err "unknown daemon '$name'. Valid daemons: $DAEMON_NAMES (plus standalone: alerts-forwarder, alarms-materializer)" ;;
     esac
 
     # The shared base and JRE images must already exist — single-daemon mode

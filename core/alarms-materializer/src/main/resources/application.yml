@@ -1,0 +1,47 @@
+# Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later
+spring:
+  application:
+    name: alarms-materializer
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/opennms}
+    username: ${SPRING_DATASOURCE_USERNAME:opennms}
+    password: ${SPRING_DATASOURCE_PASSWORD:opennms}
+    driver-class-name: org.postgresql.Driver
+
+deltav:
+  alarms-materializer:
+    alarms-topic: ${DELTAV_ALARMS_STATE_TOPIC:deltav-alarms-state-change}
+    retention:
+      cadence: PT1M
+      # Default rule set matches horizon's Drools windows:
+      # cleanUp (5min), fullCleanUp (1d), GC (3d).
+      rules:
+        - id: cleared-idle-short
+          when:
+            severity_at_most: NORMAL
+            idle_for: PT5M
+            acked: false
+            ticketed: false
+          action: delete
+        - id: long-cleared
+          when:
+            severity_at_most: NORMAL
+            idle_for: P1D
+          action: delete
+        - id: gc-everything
+          when:
+            idle_for: P3D
+          action: delete
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always

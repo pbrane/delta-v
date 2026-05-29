@@ -37,6 +37,12 @@
             <artifactId>spring-context</artifactId>
         </dependency>
 
+        <!-- Spring transaction (for TransactionSynchronization / AFTER_COMMIT defer) -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+
         <!-- Spring Boot (for @SpringBootApplication context) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

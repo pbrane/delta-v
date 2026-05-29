@@ -29,6 +29,8 @@ import org.deltav.alarms.proto.AlarmState;
 import org.junit.jupiter.api.Test;
 import org.opennms.netmgt.model.OnmsAlarm;
 import org.opennms.netmgt.model.OnmsSeverity;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class KafkaAlarmPublisherTest {
 
@@ -91,5 +93,53 @@ class KafkaAlarmPublisherTest {
         publisher.postHandleAlarmSnapshot();
 
         assertThat(producer.history()).isEmpty();
+    }
+
+    @Test
+    void deferredPublishHappensOnlyAfterCommit() {
+        MockProducer<String, byte[]> producer = newMockProducer();
+        KafkaAlarmPublisher publisher = new KafkaAlarmPublisher(producer, TOPIC, new AlarmStateMapper());
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            publisher.handleNewOrUpdatedAlarm(sampleAlarm());
+            assertThat(producer.history()).as("must not send before commit").isEmpty();
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+            assertThat(producer.history()).as("send fires on afterCommit").hasSize(1);
+            ProducerRecord<String, byte[]> rec = producer.history().get(0);
+            assertThat(rec.topic()).isEqualTo(TOPIC);
+            assertThat(rec.key()).isEqualTo("uei.opennms.org/nodes/nodeDown::7");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void withNoActiveTransactionSendsImmediately() {
+        MockProducer<String, byte[]> producer = newMockProducer();
+        KafkaAlarmPublisher publisher = new KafkaAlarmPublisher(producer, TOPIC, new AlarmStateMapper());
+
+        publisher.handleNewOrUpdatedAlarm(sampleAlarm());
+
+        assertThat(producer.history()).hasSize(1);
+    }
+
+    @Test
+    void deletedAlarmTombstoneAlsoDefers() {
+        MockProducer<String, byte[]> producer = newMockProducer();
+        KafkaAlarmPublisher publisher = new KafkaAlarmPublisher(producer, TOPIC, new AlarmStateMapper());
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            publisher.handleDeletedAlarm(7, "uei.opennms.org/nodes/nodeDown::7");
+            assertThat(producer.history()).isEmpty();
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+            assertThat(producer.history()).hasSize(1);
+            assertThat(producer.history().get(0).value()).isNull(); // tombstone
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }

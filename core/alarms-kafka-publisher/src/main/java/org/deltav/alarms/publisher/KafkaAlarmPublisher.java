@@ -26,6 +26,8 @@ import org.opennms.netmgt.alarmd.api.AlarmLifecycleListener;
 import org.opennms.netmgt.model.OnmsAlarm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Publishes alarm lifecycle changes to the {@code deltav-alarms-state-change}
@@ -59,13 +61,15 @@ public class KafkaAlarmPublisher implements AlarmLifecycleListener {
             LOG.warn("Skipping alarm with null reduction key: {}", alarm);
             return;
         }
+        final String reductionKey = alarm.getReductionKey();
+        final byte[] payload;
         try {
-            AlarmState proto = mapper.toProto(alarm);
-            producer.send(new ProducerRecord<>(topic, alarm.getReductionKey(), proto.toByteArray()));
-            LOG.debug("Published alarm {} (rk={}) to {}", proto.getAlarmId(), alarm.getReductionKey(), topic);
+            payload = mapper.toProto(alarm).toByteArray();
         } catch (Exception e) {
-            LOG.error("Failed to publish alarm rk={} to {}", alarm.getReductionKey(), topic, e);
+            LOG.error("Failed to serialise alarm rk={} for topic {}", reductionKey, topic, e);
+            return;
         }
+        deferOrSendNow(() -> doSend(reductionKey, payload));
     }
 
     @Override
@@ -74,11 +78,38 @@ public class KafkaAlarmPublisher implements AlarmLifecycleListener {
             LOG.warn("Skipping deleted alarm {} with null reduction key", alarmId);
             return;
         }
+        deferOrSendNow(() -> doSend(reductionKey, null));
+    }
+
+    /**
+     * Defer the actual {@code producer.send} to {@code afterCommit()} if a
+     * transaction is active (Track 3 dual-write correctness — the materializer
+     * must not see the record before alarmd's PG transaction commits). With no
+     * active transaction (kafka-only mode, test paths), send immediately.
+     */
+    private void deferOrSendNow(Runnable sendOp) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sendOp.run();
+                }
+            });
+        } else {
+            sendOp.run();
+        }
+    }
+
+    private void doSend(String reductionKey, byte[] payload) {
         try {
-            producer.send(new ProducerRecord<>(topic, reductionKey, null)); // tombstone
-            LOG.debug("Published tombstone for alarm {} (rk={}) to {}", alarmId, reductionKey, topic);
+            producer.send(new ProducerRecord<>(topic, reductionKey, payload));
+            if (payload == null) {
+                LOG.debug("Published tombstone (rk={}) to {}", reductionKey, topic);
+            } else {
+                LOG.debug("Published alarm (rk={}) to {}", reductionKey, topic);
+            }
         } catch (Exception e) {
-            LOG.error("Failed to publish tombstone rk={} to {}", reductionKey, topic, e);
+            LOG.error("Failed to publish to {} rk={}", topic, reductionKey, e);
         }
     }
 

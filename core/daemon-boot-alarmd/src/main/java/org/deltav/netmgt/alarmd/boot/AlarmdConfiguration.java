@@ -177,9 +177,31 @@ public class AlarmdConfiguration {
         return new CountingAlarmEntityNotifier(meterRegistry, entityListeners);
     }
 
+    /**
+     * Horizon's AlarmPersisterImpl is retained but is no longer the
+     * {@code alarmPersister} bean. It is wired as a passthrough delegate for
+     * dual-write mode only.
+     */
     @Bean
-    public AlarmPersisterImpl alarmPersister() {
+    public AlarmPersisterImpl alarmPersisterDualWriteDelegate() {
         return new AlarmPersisterImpl();
+    }
+
+    /**
+     * The {@code alarmPersister} bean. Delta-V's implementation; in
+     * {@code kafka-only} mode (default at GA) uses the {@link org.deltav.netmgt.alarmd.boot.cache.ReductionCache}
+     * for reduction lookups and does not write PG. In {@code dual-write} mode
+     * (config escape hatch), delegates to {@link AlarmPersisterImpl}.
+     */
+    @Bean
+    public AlarmPersister alarmPersister(
+            AlarmPersisterImpl alarmPersisterDualWriteDelegate,
+            org.deltav.netmgt.alarmd.boot.cache.ReductionCache reductionCache,
+            AlarmEntityNotifier alarmEntityNotifier,
+            org.deltav.netmgt.alarmd.boot.persister.AlarmdPersistenceProperties persistenceProps) {
+        return new org.deltav.netmgt.alarmd.boot.persister.DeltavAlarmPersister(
+                alarmPersisterDualWriteDelegate, reductionCache,
+                alarmEntityNotifier, persistenceProps);
     }
 
     @Bean
