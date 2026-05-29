@@ -196,8 +196,16 @@ services:
       - |
         set -eu
         # Derive expected count from devices.json so adding a 21st entry
-        # doesn't silently break the verifier.
-        expected=$$(jq '[.[].device_count] | add' /seed/devices.json)
+        # doesn't silently break the verifier. Symmetric error handling
+        # with the count= block below: friendly FAIL if devices.json is
+        # unreadable/malformed, and reject null/empty/zero before the
+        # integer compare so busybox `[` doesn't error out raw.
+        expected=$$(jq '[.[].device_count] | add' /seed/devices.json 2>/dev/null) || {
+            echo "FAIL could not parse /seed/devices.json"; exit 1;
+        }
+        case "$$expected" in
+            ''|null|0) echo "FAIL /seed/devices.json yields no devices (expected=$$expected)"; exit 1 ;;
+        esac
         echo "provisioner: importing $$expected-device seed via upstream fleet.sh"
         # devices.json is a batch-manifest array; fleet.sh import
         # auto-detects the shape and POSTs each entry to /api/v1/devices.
