@@ -4,18 +4,19 @@
 # Produces a staging/ directory with:
 #   shared-external/   — 3rd-party JARs present in ALL 12 daemons
 #   shared-internal/   — org.opennms project JARs present in ALL 12 daemons
+#   priority/          — model-jakarta + dao-jpa-support (classpath-first)
 #   <daemon>/libs/     — JARs unique to this daemon
 #   <daemon>/app/      — thin application JAR (classes + resources only)
 #   <daemon>/.main_class — fully-qualified Start-Class from MANIFEST.MF
+#
+# Portability: written for bash 3.2 (the frozen macOS /bin/bash). No
+# associative arrays (`declare -A`), no `${var^^}`, no `mapfile`.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# ---------------------------------------------------------------------------
-# Arguments
-# ---------------------------------------------------------------------------
-if [[ $# -ne 2 ]]; then
+if [ $# -ne 2 ]; then
     echo "Usage: $0 <repo-root> <version>"
     echo "  e.g. $0 /path/to/delta-v 36.0.0-SNAPSHOT"
     exit 1
@@ -24,28 +25,26 @@ fi
 REPO_ROOT="$1"
 VERSION="$2"
 
-# ---------------------------------------------------------------------------
-# Daemon definitions: name → relative path from REPO_ROOT (without .jar)
-# ---------------------------------------------------------------------------
-declare -A DAEMON_JAR_BASE
-DAEMON_JAR_BASE=(
-    [alarmd]="core/daemon-boot-alarmd/target/org.opennms.core.daemon-boot-alarmd-${VERSION}"
-    [bsmd]="core/daemon-boot-bsmd/target/org.opennms.core.daemon-boot-bsmd-${VERSION}"
-    [collectd]="core/daemon-boot-collectd/target/org.opennms.core.daemon-boot-collectd-${VERSION}"
-    [discovery]="core/daemon-boot-discovery/target/org.opennms.core.daemon-boot-discovery-${VERSION}"
-    [enlinkd]="core/daemon-boot-enlinkd/target/org.opennms.core.daemon-boot-enlinkd-${VERSION}"
-    [eventtranslator]="core/daemon-boot-eventtranslator/target/org.opennms.core.daemon-boot-eventtranslator-${VERSION}"
-    [perspectivepollerd]="core/daemon-boot-perspectivepollerd/target/org.opennms.core.daemon-boot-perspectivepollerd-${VERSION}"
-    [pollerd]="core/daemon-boot-pollerd/target/org.opennms.core.daemon-boot-pollerd-${VERSION}"
-    [provisiond]="core/daemon-boot-provisiond/target/org.opennms.core.daemon-boot-provisiond-${VERSION}"
-    [syslogd]="core/daemon-boot-syslogd/target/org.opennms.core.daemon-boot-syslogd-${VERSION}"
-    [telemetryd]="core/daemon-boot-telemetryd/target/org.opennms.core.daemon-boot-telemetryd-${VERSION}"
-    [trapd]="core/daemon-boot-trapd/target/org.opennms.core.daemon-boot-trapd-${VERSION}"
-)
+# The 12 horizon-derived daemons, sorted, space-separated (indexed iteration only).
+DAEMONS="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd"
+DAEMON_COUNT=$(printf '%s\n' $DAEMONS | wc -l | tr -d ' ')
 
-# Sorted daemon list for deterministic iteration
-DAEMONS=($(printf '%s\n' "${!DAEMON_JAR_BASE[@]}" | sort))
-DAEMON_COUNT=${#DAEMONS[@]}
+# Derive the fat-JAR path base for a daemon (uniform module layout).
+jar_base() {
+    echo "${REPO_ROOT}/core/daemon-boot-$1/target/org.opennms.core.daemon-boot-$1-${VERSION}"
+}
+
+# Echo the resolved fat JAR (prefer plain .jar, fall back to -boot.jar). Empty if none.
+resolve_fat_jar() {
+    local base; base="$(jar_base "$1")"
+    if [ -f "${base}.jar" ]; then
+        echo "${base}.jar"
+    elif [ -f "${base}-boot.jar" ]; then
+        echo "${base}-boot.jar"
+    else
+        echo ""
+    fi
+}
 
 echo "=== compute-shared-libs.sh ==="
 echo "Repo root : ${REPO_ROOT}"
@@ -53,76 +52,56 @@ echo "Version   : ${VERSION}"
 echo "Daemons   : ${DAEMON_COUNT}"
 echo ""
 
-# ---------------------------------------------------------------------------
-# Resolve fat JAR paths (prefer -boot.jar, fall back to plain .jar)
-# ---------------------------------------------------------------------------
-declare -A FAT_JAR
+# Verify all fat JARs exist up front.
 missing=0
-for daemon in "${DAEMONS[@]}"; do
-    base="${REPO_ROOT}/${DAEMON_JAR_BASE[$daemon]}"
-    if [[ -f "${base}.jar" ]]; then
-        FAT_JAR[$daemon]="${base}.jar"
-    elif [[ -f "${base}-boot.jar" ]]; then
-        FAT_JAR[$daemon]="${base}-boot.jar"
-    else
+for daemon in $DAEMONS; do
+    if [ -z "$(resolve_fat_jar "$daemon")" ]; then
         echo "ERROR: No fat JAR found for ${daemon}"
-        echo "  Tried: ${base}-boot.jar"
-        echo "  Tried: ${base}.jar"
+        echo "  Tried: $(jar_base "$daemon").jar"
+        echo "  Tried: $(jar_base "$daemon")-boot.jar"
         missing=1
     fi
 done
-if [[ $missing -ne 0 ]]; then
+if [ "$missing" -ne 0 ]; then
     echo "Aborting — missing fat JARs."
     exit 1
 fi
 
-# ---------------------------------------------------------------------------
-# Prepare directories
-# ---------------------------------------------------------------------------
 STAGING="${SCRIPT_DIR}/staging"
 EXTRACT_DIR="${SCRIPT_DIR}/.extract-tmp"
-
 rm -rf "${STAGING}" "${EXTRACT_DIR}"
 mkdir -p "${STAGING}/shared-external" "${STAGING}/shared-internal" "${STAGING}/priority"
 mkdir -p "${EXTRACT_DIR}"
 
-# ---------------------------------------------------------------------------
-# Step 1: Extract all fat JARs
-# ---------------------------------------------------------------------------
+# --- Step 1: Extract all fat JARs ---
 echo "--- Extracting fat JARs ---"
-for daemon in "${DAEMONS[@]}"; do
-    jar="${FAT_JAR[$daemon]}"
+for daemon in $DAEMONS; do
+    jar="$(resolve_fat_jar "$daemon")"
     dest="${EXTRACT_DIR}/${daemon}"
     echo "  ${daemon}: $(basename "${jar}")"
     if ! java -Djarmode=tools -jar "${jar}" extract --destination "${dest}" 2>/dev/null; then
         echo "    jarmode extraction failed, falling back to manual extract..."
         mkdir -p "${dest}/lib"
         tmpdir=$(mktemp -d)
-        (cd "$tmpdir" && jar xf "${jar}")
-        # Move BOOT-INF/lib/* to lib/
+        ( cd "$tmpdir" && jar xf "${jar}" )
         mv "$tmpdir"/BOOT-INF/lib/* "${dest}/lib/" 2>/dev/null || true
-        # Create thin app JAR from BOOT-INF/classes
-        (cd "$tmpdir/BOOT-INF/classes" && jar cf "${dest}/$(basename "${jar}")" .)
-        # Copy manifest
+        ( cd "$tmpdir/BOOT-INF/classes" && jar cf "${dest}/$(basename "${jar}")" . )
         cp -r "$tmpdir/META-INF" "${dest}/META-INF" 2>/dev/null || true
         rm -rf "$tmpdir"
     fi
 done
 echo ""
 
-# ---------------------------------------------------------------------------
-# Step 2: Extract Start-Class from each fat JAR's MANIFEST.MF
-# ---------------------------------------------------------------------------
+# --- Step 2: Extract Start-Class from each MANIFEST.MF ---
 echo "--- Extracting Start-Class ---"
-for daemon in "${DAEMONS[@]}"; do
-    jar="${FAT_JAR[$daemon]}"
-    # MANIFEST.MF uses 72-byte lines with "\r\n " continuation; merge them before extracting
+for daemon in $DAEMONS; do
+    jar="$(resolve_fat_jar "$daemon")"
     main_class=$(unzip -p "${jar}" META-INF/MANIFEST.MF \
         | tr -d '\r' \
         | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n //g' \
         | grep "^Start-Class:" \
         | sed 's/^Start-Class: *//')
-    if [[ -z "${main_class}" ]]; then
+    if [ -z "${main_class}" ]; then
         echo "ERROR: No Start-Class found in ${jar}"
         exit 1
     fi
@@ -132,94 +111,62 @@ for daemon in "${DAEMONS[@]}"; do
 done
 echo ""
 
-# ---------------------------------------------------------------------------
-# Step 3: Compute strict intersection of lib/ directories
-# ---------------------------------------------------------------------------
+# --- Step 3: Compute strict intersection of lib/ dirs via sort|uniq -c ---
 echo "--- Computing shared libraries (strict intersection of all ${DAEMON_COUNT} daemons) ---"
-
-# Build a count of how many daemons contain each JAR filename
-declare -A JAR_COUNT
-for daemon in "${DAEMONS[@]}"; do
+ALL_NAMES="${EXTRACT_DIR}/.all-names.txt"   # one jar basename per daemon-occurrence
+SHARED_FILE="${EXTRACT_DIR}/.shared.txt"    # names present in all DAEMON_COUNT daemons
+: > "${ALL_NAMES}"
+for daemon in $DAEMONS; do
     lib_dir="${EXTRACT_DIR}/${daemon}/lib"
-    if [[ ! -d "${lib_dir}" ]]; then
+    if [ ! -d "${lib_dir}" ]; then
         echo "ERROR: No lib/ directory found for ${daemon} at ${lib_dir}"
         exit 1
     fi
+    # De-dupe within a single daemon (a name counts once per daemon), then append.
     for jar_file in "${lib_dir}"/*.jar; do
-        name="$(basename "${jar_file}")"
-        JAR_COUNT[$name]=$(( ${JAR_COUNT[$name]:-0} + 1 ))
-    done
+        basename "${jar_file}"
+    done | sort -u >> "${ALL_NAMES}"
 done
-
-# Partition: shared (count == DAEMON_COUNT) vs. per-daemon
-shared_jars=()
-for name in "${!JAR_COUNT[@]}"; do
-    if [[ ${JAR_COUNT[$name]} -eq ${DAEMON_COUNT} ]]; then
-        shared_jars+=("${name}")
-    fi
-done
-
-# Sort shared_jars for deterministic output
-IFS=$'\n' shared_jars=($(printf '%s\n' "${shared_jars[@]}" | sort)); unset IFS
-
-echo "  Total unique JAR filenames across all daemons: ${#JAR_COUNT[@]}"
-echo "  Shared across all ${DAEMON_COUNT} daemons: ${#shared_jars[@]}"
+total_unique=$(sort -u "${ALL_NAMES}" | wc -l | tr -d ' ')
+# A name shared by all daemons appears exactly DAEMON_COUNT times in ALL_NAMES.
+sort "${ALL_NAMES}" | uniq -c \
+    | awk -v n="${DAEMON_COUNT}" '$1 == n { $1=""; sub(/^ /,""); print }' \
+    | sort > "${SHARED_FILE}"
+shared_total=$(wc -l < "${SHARED_FILE}" | tr -d ' ')
+echo "  Total unique JAR filenames across all daemons: ${total_unique}"
+echo "  Shared across all ${DAEMON_COUNT} daemons: ${shared_total}"
 echo ""
 
-# ---------------------------------------------------------------------------
-# Step 4: Partition shared libs into external vs. internal
-# ---------------------------------------------------------------------------
+# Membership helper: is this jar name shared?
+is_shared() { grep -Fxq "$1" "${SHARED_FILE}"; }
+
+# --- Step 4: Partition shared libs into external vs internal ---
 echo "--- Partitioning shared libs into external / internal ---"
-
-# Use the first daemon as source for copying shared JARs (they're identical)
-first_daemon="${DAEMONS[0]}"
+first_daemon=$(printf '%s\n' $DAEMONS | head -1)
 first_lib="${EXTRACT_DIR}/${first_daemon}/lib"
-
 shared_external_count=0
 shared_internal_count=0
-
-# Build a set of shared JAR names for fast lookup
-declare -A SHARED_SET
-for name in "${shared_jars[@]}"; do
-    SHARED_SET[$name]=1
-done
-
-for name in "${shared_jars[@]}"; do
-    # Internal: starts with org.opennms. or opennms-
-    if [[ "${name}" == org.opennms.* ]] || [[ "${name}" == opennms-* ]]; then
-        cp "${first_lib}/${name}" "${STAGING}/shared-internal/"
-        shared_internal_count=$(( shared_internal_count + 1 ))
-    else
-        cp "${first_lib}/${name}" "${STAGING}/shared-external/"
-        shared_external_count=$(( shared_external_count + 1 ))
-    fi
-done
-
+while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    case "$name" in
+        org.opennms.*|opennms-*)
+            cp "${first_lib}/${name}" "${STAGING}/shared-internal/"
+            shared_internal_count=$(( shared_internal_count + 1 )) ;;
+        *)
+            cp "${first_lib}/${name}" "${STAGING}/shared-external/"
+            shared_external_count=$(( shared_external_count + 1 )) ;;
+    esac
+done < "${SHARED_FILE}"
 echo "  shared-external: ${shared_external_count} JARs"
 echo "  shared-internal: ${shared_internal_count} JARs"
 echo ""
 
-# ---------------------------------------------------------------------------
-# Step 4b: Move model-jakarta to priority classpath
-# ---------------------------------------------------------------------------
-# model-jakarta MUST load before opennms-model on the classpath so that
-# Hibernate 7 sees jakarta.persistence @Entity annotations instead of the
-# legacy javax.persistence ones from opennms-model. The -cp wildcard (*)
-# expands in filesystem inode order (non-deterministic on Linux), so we
-# place model-jakarta in a separate /opt/libs/priority/ directory that is
-# listed first in the -cp argument.
+# --- Step 4b: Move model-jakarta + dao-jpa-support to priority classpath ---
 echo "--- Moving model-jakarta to priority classpath ---"
 priority_count=0
-for jar_file in "${STAGING}/shared-internal"/org.opennms.core.model-jakarta-*.jar; do
-    if [[ -f "${jar_file}" ]]; then
-        mv "${jar_file}" "${STAGING}/priority/"
-        echo "  moved: $(basename "${jar_file}")"
-        priority_count=$(( priority_count + 1 ))
-    fi
-done
-# Also move dao-jpa-support (depends on model-jakarta, contains @Repository DAOs)
-for jar_file in "${STAGING}/shared-internal"/org.opennms.core.dao-jpa-support-*.jar; do
-    if [[ -f "${jar_file}" ]]; then
+for jar_file in "${STAGING}/shared-internal"/org.opennms.core.model-jakarta-*.jar \
+                "${STAGING}/shared-internal"/org.opennms.core.dao-jpa-support-*.jar; do
+    if [ -f "${jar_file}" ]; then
         mv "${jar_file}" "${STAGING}/priority/"
         echo "  moved: $(basename "${jar_file}")"
         priority_count=$(( priority_count + 1 ))
@@ -228,54 +175,44 @@ done
 echo "  priority: ${priority_count} JARs"
 echo ""
 
-# ---------------------------------------------------------------------------
-# Step 5: Stage per-daemon unique libs and thin app JAR
-# ---------------------------------------------------------------------------
+# --- Step 5: Stage per-daemon unique libs and thin app JAR ---
 echo "--- Staging per-daemon unique libs and app JARs ---"
-for daemon in "${DAEMONS[@]}"; do
+for daemon in $DAEMONS; do
     lib_dir="${EXTRACT_DIR}/${daemon}/lib"
     daemon_libs_dir="${STAGING}/${daemon}/libs"
     daemon_app_dir="${STAGING}/${daemon}/app"
     mkdir -p "${daemon_libs_dir}" "${daemon_app_dir}"
-
     unique_count=0
     for jar_file in "${lib_dir}"/*.jar; do
         name="$(basename "${jar_file}")"
-        if [[ -z "${SHARED_SET[$name]+x}" ]]; then
+        if ! is_shared "${name}"; then
             cp "${jar_file}" "${daemon_libs_dir}/"
             unique_count=$(( unique_count + 1 ))
         fi
     done
-
-    # Copy the thin application JAR (the non-lib file in the extraction directory)
     thin_jar_count=0
     for f in "${EXTRACT_DIR}/${daemon}"/*.jar; do
         cp "${f}" "${daemon_app_dir}/"
         thin_jar_count=$(( thin_jar_count + 1 ))
     done
-
     echo "  ${daemon}: ${unique_count} unique libs, ${thin_jar_count} app JAR(s)"
 done
 echo ""
 
-# ---------------------------------------------------------------------------
-# Step 6: Safety check — no JAR in both shared and daemon-specific
-# ---------------------------------------------------------------------------
+# --- Step 6: Safety check — no JAR in both shared and per-daemon ---
 echo "--- Safety check: no overlap between shared and per-daemon ---"
 overlap_found=0
-for daemon in "${DAEMONS[@]}"; do
-    daemon_libs_dir="${STAGING}/${daemon}/libs"
-    for jar_file in "${daemon_libs_dir}"/*.jar; do
-        [[ -e "${jar_file}" ]] || continue
+for daemon in $DAEMONS; do
+    for jar_file in "${STAGING}/${daemon}/libs"/*.jar; do
+        [ -e "${jar_file}" ] || continue
         name="$(basename "${jar_file}")"
-        if [[ -n "${SHARED_SET[$name]+x}" ]]; then
+        if is_shared "${name}"; then
             echo "  OVERLAP: ${name} in both shared and ${daemon}/libs/"
             overlap_found=1
         fi
     done
 done
-
-if [[ ${overlap_found} -eq 1 ]]; then
+if [ "${overlap_found}" -eq 1 ]; then
     echo "ERROR: Overlap detected — aborting."
     rm -rf "${EXTRACT_DIR}"
     exit 1
@@ -283,25 +220,19 @@ fi
 echo "  OK — no overlaps."
 echo ""
 
-# ---------------------------------------------------------------------------
-# Step 7: Clean up intermediate extraction directory
-# ---------------------------------------------------------------------------
 rm -rf "${EXTRACT_DIR}"
 
-# ---------------------------------------------------------------------------
-# Summary
-# ---------------------------------------------------------------------------
 echo "==========================================="
 echo "  SUMMARY"
 echo "==========================================="
 echo "  priority        : ${priority_count} JARs (model-jakarta, loaded first)"
 echo "  shared-external : ${shared_external_count} JARs"
 echo "  shared-internal : $(( shared_internal_count - priority_count )) JARs"
-echo "  shared total    : ${#shared_jars[@]} JARs"
+echo "  shared total    : ${shared_total} JARs"
 echo ""
 printf "  %-22s %s\n" "DAEMON" "UNIQUE LIBS"
 printf "  %-22s %s\n" "------" "-----------"
-for daemon in "${DAEMONS[@]}"; do
+for daemon in $DAEMONS; do
     count=$(ls -1 "${STAGING}/${daemon}/libs/"*.jar 2>/dev/null | wc -l | tr -d ' ')
     main_class=$(cat "${STAGING}/${daemon}/.main_class")
     printf "  %-22s %3s   %s\n" "${daemon}" "${count}" "${main_class}"
