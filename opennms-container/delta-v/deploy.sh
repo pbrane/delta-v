@@ -44,7 +44,8 @@ do_up() {
         log "Using profile: $profile"
         COMPOSE_PROFILES="$profile" docker compose up -d
     else
-        log "Starting infrastructure only (postgres + kafka + db-init + minion + snmp-agent)"
+        log "Starting infrastructure only — no daemons (postgres, kafka, minion, minion-gateway, envoy, db-init, snmp-agent)."
+        log "  The 12 daemons are profile-gated. For the full stack:  make up PROFILE=full   (or PROFILE=lite | PROFILE=passive)"
         docker compose up -d
     fi
 
