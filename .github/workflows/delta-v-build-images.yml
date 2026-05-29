@@ -93,6 +93,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Free up runner disk space
+        # `make images` builds all ~30 images multi-arch (amd64+arm64) in one
+        # step; Docker layers + buildx cache accumulate and exhaust the
+        # ubuntu-latest disk (~14 GB free), which crashed the v1.3.0-rc3 publish
+        # ("No space left on device"). Reclaim ~25-30 GB by removing preinstalled
+        # toolchains we don't use. Does NOT touch /opt/hostedtoolcache (the JDK
+        # setup-java installs there) or ~/.m2.
+        run: |
+          echo "Before:"; df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift /usr/local/share/powershell 2>/dev/null || true
+          sudo docker image prune --all --force 2>/dev/null || true
+          echo "After:"; df -h /
+
       - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
