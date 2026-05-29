@@ -56,7 +56,11 @@ build_image() {
         args+=(--load)
     fi
     args+=("$@")
-    log "  building ${img}:${VERSION} (push=${PUSH}${PLATFORMS:+ platforms=$PLATFORMS})"
+    if [ "$PUSH" = "true" ]; then
+        log "  building ${img}:${VERSION} (push=true${PLATFORMS:+ platforms=$PLATFORMS})"
+    else
+        log "  building ${img}:${VERSION} (local load)"
+    fi
     docker "${args[@]}"
     apply_env_version_alias "${img}"
 }
@@ -459,6 +463,9 @@ Commands:
 Environment variables:
   DOCKER_REGISTRY   Registry (default: docker.io)
   DOCKER_ORG        Organization (default: deltav)
+  IMAGE_PREFIX      Image name prefix (default: $DOCKER_ORG, i.e. "deltav"; CI sets ghcr.io/pbrane)
+  PUSH              "true" to push images instead of local --load (default: false)
+  PLATFORMS         Comma-separated buildx platforms (e.g. linux/amd64,linux/arm64); used only when PUSH=true
   SKIP_TESTS        Skip tests (default: true)
   JAVA_HOME         JDK 21 path
 
@@ -466,7 +473,7 @@ Examples:
   ./build.sh                                    # Full build
   ./build.sh images                             # Rebuild images only
   ./build.sh daemon alarmd                      # Rebuild just the alarmd image
-  DOCKER_ORG=pbranestrategy ./build.sh push     # Push to custom registry
+  PUSH=true PLATFORMS=linux/amd64,linux/arm64 IMAGE_PREFIX=ghcr.io/pbrane ./build.sh deltav   # Build + push multi-arch
   ./build.sh clean && docker compose up -d      # Fresh deployment
 USAGE
 }
