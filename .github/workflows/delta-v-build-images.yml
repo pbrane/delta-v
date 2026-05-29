@@ -63,13 +63,19 @@ name: Delta-V Build & Push Images
 
 on:
   workflow_dispatch:
+    inputs:
+      image_prefix:
+        description: 'Image prefix override. Leave blank for ghcr.io/<owner>. Set a scratch namespace (e.g. ghcr.io/pbrane/frontdoor-test) for test runs so the published release images are not overwritten.'
+        required: false
+        default: ''
   push:
     tags:
       - 'v*'
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+  # Use the dispatch override when provided; otherwise the owner namespace.
+  IMAGE_PREFIX: ${{ inputs.image_prefix != '' && inputs.image_prefix || format('ghcr.io/{0}', github.repository_owner) }}
   JAVA_VERSION: '21'
   PLATFORMS: linux/amd64,linux/arm64
 
