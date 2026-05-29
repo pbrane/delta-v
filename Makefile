@@ -11,7 +11,7 @@
 # Runtime / lifecycle:
 #   make images                         Build all Docker images (daemons + auxiliaries)
 #   make daemon-image DAEMON=provisiond Build a single daemon Docker image
-#   make up PROFILE=full                Start the stack (profiles: lite|passive|full)
+#   make up PROFILE=full                Start the stack (profiles: active|passive|full|demo)
 #   make down | status | logs SVC=x     Stop / status / tail logs
 #   make verify                         Run deploy health checks
 #   make dev                            Build all images, then bring the stack up
@@ -62,7 +62,7 @@ help: ## Show this help
 	@echo "  DAEMON           Daemon short name (e.g. provisiond)                (current: $(DAEMON))"
 	@echo "  TEST             Test class name (suffix IT = integration test)     (current: $(TEST))"
 	@echo "  MAVEN_FLAGS      Extra Maven flags                                  (current: $(MAVEN_FLAGS))"
-	@echo "  PROFILE          Compose profile for 'up' (lite|passive|full)       (current: $(PROFILE))"
+	@echo "  PROFILE          Compose profile for 'up' (active|passive|full|demo) (current: $(PROFILE))"
 	@echo "  SVC              Service name for 'logs'                            (current: $(SVC))"
 
 build: ## Compile and install all modules (tests skipped)
@@ -97,7 +97,7 @@ daemon-image: ## Build one daemon image (DAEMON=); reuses cached base
 	@test -n "$(DAEMON)" || (echo "ERROR: DAEMON is required, e.g.: make daemon-image DAEMON=alarmd" && exit 1)
 	cd $(DELTAV) && ./build.sh daemon $(DAEMON)
 
-up: ## Start the stack (PROFILE=lite|passive|full)
+up: ## Start the stack (PROFILE=active|passive|full|demo)
 	cd $(DELTAV) && ./deploy.sh up $(PROFILE)
 
 down: ## Stop the stack (preserve data)

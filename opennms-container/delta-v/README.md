@@ -108,9 +108,10 @@ opennms-container/delta-v/build.sh images
 cd opennms-container/delta-v
 
 # Start with a profile
-./deploy.sh up lite       # Essential daemons
-./deploy.sh up passive    # Lite + trapd/syslogd/eventtranslator
-./deploy.sh up full       # All services
+./deploy.sh up active     # Core daemons + flow stack
+./deploy.sh up passive    # Active + trapd/syslogd/eventtranslator
+./deploy.sh up full       # All daemons
+./deploy.sh up demo       # Everything + metrics/dashboards/alerting
 
 # Check status
 ./deploy.sh status
@@ -236,9 +237,10 @@ Running all services requires significant memory. If Docker Desktop runs out of 
 
 | Profile | Services | Approx. Memory |
 |---------|----------|-----------------|
-| lite    | ~10      | ~8 GB           |
+| active  | ~10      | ~8 GB           |
 | passive | ~13      | ~10 GB          |
-| full    | all      | ~12 GB          |
+| full    | all daemons | ~12 GB       |
+| demo    | full + observability | ~14 GB |
 
 ## Kafka Time-Series Producer (Collectd)
 
@@ -354,13 +356,16 @@ Prometheus Remote Write protobuf batches to a configurable endpoint.
 
 ### Profiles
 
-- **lite, full** — starts `prometheus-writer`. Point `PROMETHEUS_WRITER_REMOTE_WRITE_URL`
-  at your TSDB (Mimir, VictoriaMetrics, Cortex, Thanos Receive, Prometheus with
-  `--web.enable-remote-write-receiver`). Without a reachable target, the writer
-  starts healthy, opens its circuit on first POST failure, and stays paused.
+- **active / passive / full** — daemon-only profiles (no TSDB). `prometheus-writer`
+  is NOT started here — it has no remote-write target in these profiles. Run it
+  under `metrics` or `demo`, which include VictoriaMetrics.
 - **metrics** (alias: **metrics-e2e**) — adds a pinned `victoriametrics:v1.106.1`
-  container plus a Grafana service with a starter SNMP dashboard. The canonical
-  demo command is `docker compose --profile lite --profile metrics up`. See the
+  container, `vmagent`, `prometheus-writer`, and a Grafana service with a starter
+  SNMP dashboard.
+- **demo** — the canonical full-stack demo: `full` plus the entire observability
+  pipeline (victoriametrics + vmagent + prometheus-writer + grafana + alertmanager
+  + alerts-forwarder, with alarm-context metrics enabled). One command:
+  `make up PROFILE=demo` (or `docker compose --profile demo up`). See the
   "Grafana access" section below.
 
 ### Configuration
@@ -417,7 +422,7 @@ schemas are frozen. Only forward-compatible additions (new tag numbers) permitte
 
 ## Grafana access (demo mode)
 
-After `docker compose --profile lite --profile metrics up -d`, open
+After `make up PROFILE=demo` (or `docker compose --profile demo up -d`), open
 `http://localhost:13000/d/snmp-overview`. Anonymous Viewer access is on by
 default (no login required) and the SNMP Overview dashboard is pre-provisioned
 with VictoriaMetrics as the datasource.
@@ -434,7 +439,7 @@ To log in as admin (e.g. to create custom dashboards):
 
 **Images not found:** Run `./build.sh` to build all images. Verify with `docker images | grep opennms`.
 
-**OOM kills (exit 137):** Increase Docker Desktop memory or use `./deploy.sh up lite`.
+**OOM kills (exit 137):** Increase Docker Desktop memory or use `make up PROFILE=active`.
 
 **Service won't start:** Check logs: `./deploy.sh logs <service>`. Spring Boot daemons log to stdout. Check `/actuator/health` for health status.
 

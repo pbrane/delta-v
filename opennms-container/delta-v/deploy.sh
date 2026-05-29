@@ -3,7 +3,7 @@
 # deploy.sh — Deploy and manage OpenNMS Delta-V
 #
 # Usage:
-#   ./deploy.sh up [profile] Start services (profiles: lite, passive, full)
+#   ./deploy.sh up [profile] Start services (profiles: active, passive, full, demo)
 #   ./deploy.sh down        Stop all services (preserve data)
 #   ./deploy.sh reset       Stop and remove all data
 #   ./deploy.sh status      Show service status
@@ -45,7 +45,7 @@ do_up() {
         COMPOSE_PROFILES="$profile" docker compose up -d
     else
         log "Starting infrastructure only — no daemons (postgres, kafka, minion, minion-gateway, envoy, db-init, snmp-agent)."
-        log "  The 12 daemons are profile-gated. For the full stack:  make up PROFILE=full   (or PROFILE=lite | PROFILE=passive)"
+        log "  The 12 daemons are profile-gated. For the full stack:  make up PROFILE=full   (active | passive | demo also available)"
         docker compose up -d
     fi
 
@@ -143,7 +143,7 @@ usage() {
 Usage: ./deploy.sh <command> [args]
 
 Commands:
-  up [profile]    Start services (profiles: lite, passive, full)
+  up [profile]    Start services (profiles: active, passive, full, demo)
   down            Stop services (preserve data volumes)
   reset           Stop and destroy all data (clean slate)
   status          Show service status
@@ -153,17 +153,20 @@ Commands:
   help            Show this help
 
 Profiles:
-  (none)    Infrastructure only: postgres + kafka + db-init + minion + snmp-agent
-  lite      + essential daemons (alarmd, pollerd, collectd, discovery, provisiond, bsmd,
-              eventtranslator, perspectivepollerd, flow-enricher, prometheus-writer)
-  passive   + trap/syslog receivers (alarmd, trapd, syslogd, eventtranslator, provisiond)
-  full      All ~20 services (lite + enlinkd + telemetryd + clickhouse + flow testnodes + l8opensim)
+  (none)    Infrastructure only: postgres + kafka + minion + minion-gateway + envoy + db-init + snmp-agent
+  active    + core daemons (alarmd, pollerd, collectd, provisiond, bsmd) + flow stack
+              (clickhouse, flow-enricher, flow testnodes, l8opensim)
+  passive   + trap/syslog receivers (alarmd, trapd, syslogd, discovery, eventtranslator, provisiond)
+  full      All daemons (active + passive + enlinkd + perspectivepollerd + telemetryd)
+  demo      full + observability: victoriametrics + vmagent + prometheus-writer + grafana
+              + alertmanager + alerts-forwarder (metrics, dashboards, and alerting)
 
 Examples:
   ./deploy.sh up                    # Infrastructure only
   ./deploy.sh up full               # Start everything
   ./deploy.sh up passive            # Trap/syslog receivers with alarmd
-  ./deploy.sh up lite               # Essential daemons
+  ./deploy.sh up active             # Core daemons + flow stack
+  ./deploy.sh up demo               # Everything + metrics/dashboards/alerting
   ./deploy.sh logs alarmd           # Tail alarmd logs
   ./deploy.sh test                  # Verify deployment
   ./deploy.sh test-e2e              # Full trap-to-alarm integration test

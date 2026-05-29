@@ -137,7 +137,7 @@ services:
     # ghcr.io/pbrane/ to remove the third-party SPOF. Update deliberately.
     image: ghcr.io/pbrane/l8opensim@sha256:aec42138a627adc30a0f845ad73a5b96d6ca9e6987de343cb3eb80770bd4e3cf
     container_name: delta-v-l8opensim
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     cap_add:
       - NET_ADMIN
       - SYS_ADMIN
@@ -188,7 +188,7 @@ services:
     <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/l8opensim-provisioner:${VERSION}
     container_name: delta-v-l8opensim-provisioner
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     depends_on:
       l8opensim:
         condition: service_healthy
@@ -297,7 +297,7 @@ services:
     <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/minion-boot:${VERSION}
     container_name: delta-v-minion-lab
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     network_mode: "container:delta-v-l8opensim"
     cap_add:
       - NET_RAW
@@ -326,7 +326,7 @@ services:
 
   pollerd:
     <<: *no-search-domain
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/pollerd:${VERSION}
     container_name: delta-v-pollerd
     hostname: pollerd
@@ -362,7 +362,7 @@ services:
 
   collectd:
     <<: *no-search-domain
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/collectd:${VERSION}
     container_name: delta-v-collectd
     hostname: collectd
@@ -398,7 +398,7 @@ services:
 
   discovery:
     <<: *no-search-domain
-    profiles: [passive, full]
+    profiles: [passive, full, demo]
     image: ${IMAGE_PREFIX:-deltav}/discovery:${VERSION}
     container_name: delta-v-discovery
     hostname: discovery
@@ -429,7 +429,7 @@ services:
 
   trapd:
     <<: *no-search-domain
-    profiles: [passive, full]
+    profiles: [passive, full, demo]
     image: ${IMAGE_PREFIX:-deltav}/trapd:${VERSION}
     container_name: delta-v-trapd
     hostname: trapd
@@ -459,7 +459,7 @@ services:
 
   syslogd:
     <<: *no-search-domain
-    profiles: [passive, full]
+    profiles: [passive, full, demo]
     image: ${IMAGE_PREFIX:-deltav}/syslogd:${VERSION}
     container_name: delta-v-syslogd
     hostname: syslogd
@@ -489,7 +489,7 @@ services:
 
   eventtranslator:
     <<: *no-search-domain
-    profiles: [passive, full]
+    profiles: [passive, full, demo]
     image: ${IMAGE_PREFIX:-deltav}/eventtranslator:${VERSION}
     container_name: delta-v-eventtranslator
     hostname: eventtranslator
@@ -517,7 +517,7 @@ services:
 
   enlinkd:
     <<: *no-search-domain
-    profiles: [full]
+    profiles: [full, demo]
     image: ${IMAGE_PREFIX:-deltav}/enlinkd:${VERSION}
     container_name: delta-v-enlinkd
     hostname: enlinkd
@@ -554,7 +554,7 @@ services:
   # so there's no host bind mount to chown here anymore.
   provisiond-imports-init:
     <<: *no-search-domain
-    profiles: [lite, passive, full, metrics]
+    profiles: [active, passive, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/provisiond-imports-init:${VERSION}
     container_name: delta-v-provisiond-imports-init
     user: "0:0"
@@ -592,7 +592,7 @@ services:
 
   provisiond:
     <<: *no-search-domain
-    profiles: [lite, passive, full, metrics]
+    profiles: [active, passive, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/provisiond:${VERSION}
     container_name: delta-v-provisiond
     hostname: provisiond
@@ -652,7 +652,7 @@ services:
 
   bsmd:
     <<: *no-search-domain
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/bsmd:${VERSION}
     container_name: delta-v-bsmd
     hostname: bsmd
@@ -686,7 +686,7 @@ services:
   # applications every 5s, so no daemon restart is needed.
   perspective-app-init:
     <<: *no-search-domain
-    profiles: [full]
+    profiles: [full, demo]
     image: ${IMAGE_PREFIX:-deltav}/perspective-app-init:${VERSION}
     container_name: delta-v-perspective-app-init
     restart: "no"
@@ -703,7 +703,7 @@ services:
 
   perspectivepollerd:
     <<: *no-search-domain
-    profiles: [full]
+    profiles: [full, demo]
     image: ${IMAGE_PREFIX:-deltav}/perspectivepollerd:${VERSION}
     container_name: delta-v-perspectivepollerd
     hostname: perspectivepollerd
@@ -739,7 +739,7 @@ services:
 
   alarmd:
     <<: *no-search-domain
-    profiles: [lite, passive, full, metrics]
+    profiles: [active, passive, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/alarmd:${VERSION}
     container_name: delta-v-alarmd
     hostname: alarmd
@@ -767,7 +767,7 @@ services:
 
   telemetryd:
     <<: *no-search-domain
-    profiles: [full]
+    profiles: [full, demo]
     image: ${IMAGE_PREFIX:-deltav}/telemetryd:${VERSION}
     container_name: delta-v-telemetryd
     hostname: telemetryd
@@ -795,7 +795,7 @@ services:
 
   clickhouse:
     <<: *no-search-domain
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/clickhouse:${VERSION}
     container_name: delta-v-clickhouse
     hostname: clickhouse
@@ -824,7 +824,7 @@ services:
 
   clickhouse-init:
     <<: *no-search-domain
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/clickhouse-init:${VERSION}
     container_name: delta-v-clickhouse-init
     hostname: clickhouse-init
@@ -841,7 +841,7 @@ services:
 
   flow-enricher:
     <<: *no-search-domain
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/flow-enricher:${VERSION}
     container_name: delta-v-flow-enricher
     hostname: flow-enricher
@@ -867,7 +867,7 @@ services:
 
   flow-default-testnode-1:
     <<: *no-search-domain
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/flow-exporter:${VERSION}
     container_name: flow-default-testnode-1
     hostname: flow-default-testnode-1
@@ -886,7 +886,7 @@ services:
 
   flow-sflow-testnode-1:
     <<: *no-search-domain
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/sflow-exporter:${VERSION}
     container_name: flow-sflow-testnode-1
     hostname: flow-sflow-testnode-1
@@ -908,7 +908,7 @@ services:
 
   flow-v5-testnode-1:
     <<: *no-search-domain
-    profiles: [lite, full, metrics]
+    profiles: [active, full, metrics, demo]
     image: ${IMAGE_PREFIX:-deltav}/flow-exporter:${VERSION}
     container_name: flow-v5-testnode-1
     hostname: flow-v5-testnode-1
@@ -928,7 +928,9 @@ services:
   prometheus-writer:
     <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/prometheus-writer:${VERSION}
-    profiles: [lite, full, metrics]
+    # Only runs where VictoriaMetrics exists (its remote-write target). NOT in
+    # active/full — those have no VM, so it would retry writes against nothing.
+    profiles: [metrics, demo]
     depends_on:
       db-init:
         condition: service_completed_successfully
@@ -952,7 +954,7 @@ services:
     <<: *no-search-domain
     image: prom/alertmanager:v0.27.0
     container_name: delta-v-alertmanager-1
-    profiles: [metrics, metrics-e2e]
+    profiles: [metrics, metrics-e2e, demo]
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
     configs:
@@ -973,7 +975,7 @@ services:
     <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/alerts-forwarder:${VERSION}
     container_name: delta-v-alerts-forwarder-1
-    profiles: [metrics, metrics-e2e]
+    profiles: [metrics, metrics-e2e, demo]
     depends_on:
       kafka:
         condition: service_healthy
@@ -983,7 +985,7 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       DELTAV_ALERTS_ALERTMANAGER_URL: http://alertmanager:9093/api/v2/alerts
       DELTAV_ALERTS_ALERTMANAGER_ENABLED: "true"
-      DELTAV_ALERTS_VM_ENABLED: "false"
+      DELTAV_ALERTS_VM_ENABLED: "true"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
@@ -995,7 +997,7 @@ services:
   victoriametrics:
     <<: *no-search-domain
     image: victoriametrics/victoria-metrics:v1.106.1
-    profiles: [metrics, metrics-e2e]
+    profiles: [metrics, metrics-e2e, demo]
     command:
       # VM v1.106.1 rejects retentionPeriod smaller than 1 day; "1h" causes
       # exit code 255 at startup with fatal log:
@@ -1023,7 +1025,7 @@ services:
     <<: *no-search-domain
     image: victoriametrics/vmagent:v1.106.1
     container_name: delta-v-vmagent-1
-    profiles: [metrics, metrics-e2e]
+    profiles: [metrics, metrics-e2e, demo]
     restart: unless-stopped
     depends_on:
       victoriametrics:
@@ -1039,7 +1041,7 @@ services:
   grafana:
     <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/grafana:${VERSION}
-    profiles: [metrics, metrics-e2e]
+    profiles: [metrics, metrics-e2e, demo]
     container_name: delta-v-grafana
     hostname: grafana
     depends_on:

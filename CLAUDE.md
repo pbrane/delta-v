@@ -40,7 +40,7 @@ make daemon DAEMON=provisiond            # boot JAR
 make daemon-image DAEMON=provisiond      # Docker image
 
 # Run the stack
-make up PROFILE=full      # start (profiles: lite|passive|full)
+make up PROFILE=full      # start (profiles: active|passive|full|demo)
 make status               # service status
 make logs SVC=trapd       # tail one service
 make down                 # stop (preserve data)
