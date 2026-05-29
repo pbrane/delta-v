@@ -36,7 +36,7 @@ do_up() {
 
     # Check a sample daemon image exists (Delta-V layered images)
     for img in "$IMAGE_PREFIX/trapd:$VERSION" "$IMAGE_PREFIX/minion-boot:$VERSION"; do
-        docker image inspect "$img" >/dev/null 2>&1 || err "Image $img not found. Run ./build.sh deltav first, or set IMAGE_PREFIX in .env to a registry prefix you've pulled from (e.g. ghcr.io/pbrane)."
+        docker image inspect "$img" >/dev/null 2>&1 || err "Image $img not found. Run 'make images' first, or set IMAGE_PREFIX in .env to a registry prefix you've pulled from (e.g. ghcr.io/pbrane)."
     done
 
     local profile="${1:-}"
@@ -49,7 +49,7 @@ do_up() {
     fi
 
     log "Waiting for services to start..."
-    log "Run './deploy.sh status' to check progress."
+    log "Run 'make status' to check progress."
 }
 
 do_down() {
@@ -68,7 +68,7 @@ do_reset() {
     if [ -n "$stale_vols" ]; then
         echo "$stale_vols" | xargs docker volume rm 2>/dev/null || true
     fi
-    log "Clean slate. Run './deploy.sh up' to start fresh."
+    log "Clean slate. Run 'make up' to start fresh."
 }
 
 do_status() {

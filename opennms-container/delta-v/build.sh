@@ -188,7 +188,7 @@ do_compile() {
 
 do_assemble() {
     log "Karaf assembly removed — Delta-V uses Spring Boot daemons."
-    log "Use './build.sh deltav' to build daemon images."
+    log "Use 'make images' to build daemon images."
 }
 
 do_db_init_image() {
@@ -312,7 +312,7 @@ do_jre_image() {
 
 do_images() {
     log "Karaf-era images removed — Delta-V uses Spring Boot daemons."
-    log "Use './build.sh deltav' to build daemon images."
+    log "Use 'make images' to build daemon images."
 }
 
 do_deltav_images() {
@@ -450,7 +450,7 @@ do_deltav_images() {
 # lands in the shared base changed.
 do_single_daemon_image() {
     local name="${1:-}"
-    [ -n "$name" ] || err "the 'daemon' command needs a daemon name, e.g. './build.sh daemon alarmd'"
+    [ -n "$name" ] || err "the 'daemon' command needs a daemon name, e.g. 'make daemon-image DAEMON=alarmd'"
 
     # Standalone images that have their own Dockerfile in core/<name>/ rather
     # than going through daemon-base + compute-shared-libs.sh. Route them to
@@ -472,12 +472,12 @@ do_single_daemon_image() {
     # reuses them rather than rebuilding. A prior `./build.sh deltav` produces
     # both (and the other 11 daemon-boot JARs that compute-shared-libs needs).
     docker image inspect "${IMAGE_PREFIX}/daemon-base:$VERSION" >/dev/null 2>&1 \
-        || err "${IMAGE_PREFIX}/daemon-base:$VERSION not found — run './build.sh deltav' once first (single-daemon mode reuses the shared base)"
+        || err "${IMAGE_PREFIX}/daemon-base:$VERSION not found — run 'make images' once first (single-daemon mode reuses the shared base)"
     docker image inspect "${IMAGE_PREFIX}/jre-deltav:21" >/dev/null 2>&1 \
-        || err "${IMAGE_PREFIX}/jre-deltav:21 not found — run './build.sh jre' first"
+        || err "${IMAGE_PREFIX}/jre-deltav:21 not found — run 'make images' first (it builds the JRE base)"
 
     log "Single-daemon build: $name (reusing ${IMAGE_PREFIX}/daemon-base:$VERSION)"
-    log "NOTE: the shared base layer is not rebuilt — run './build.sh deltav' if a shared dependency changed."
+    log "NOTE: the shared base layer is not rebuilt — run 'make images' if a shared dependency changed."
 
     # Rebuild this daemon's boot JAR. `-am` also rebuilds its delta-v reactor
     # dependencies (e.g. newly added feature modules) so the staged fat JAR is
@@ -550,7 +550,7 @@ do_clean() {
     log "Removing Delta-V Docker volumes..."
     cd "$SCRIPT_DIR"
     docker compose down -v 2>/dev/null || true
-    log "Volumes removed. Run 'docker compose up -d' for a fresh start."
+    log "Volumes removed. Run 'make up' for a fresh start."
 }
 
 main() {
@@ -560,7 +560,7 @@ main() {
         all)
             do_compile
             do_deltav_images
-            log "Build complete! Run: cd $SCRIPT_DIR && docker compose up -d"
+            log "Build complete! Run: make up"
             ;;
         compile)
             do_compile
