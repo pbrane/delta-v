@@ -23,7 +23,7 @@ Each `opennms-container/delta-v/test-*-e2e.sh` script runs independently. There'
 | `test-flows-e2e.sh` | 17/19 ❌ | **FIX ENVIRONMENT** | V9 + sFlow testnodes can't bind their docker-compose subnet IPs (envoy + minion grab `172.18.0.20/21` first) |
 | `test-prometheus-writer-e2e.sh` | FAIL ❌ | **DEFER — known startup race** | `NodeContextKafkaBootstrap` race (`records_consumed_total=0`); see `project_collectd_publisher_inert_investigation` |
 | `test-enlinkd-e2e.sh` | BLOCKED ⛔ | **HARDWARE-ONLY** | Requires labbox SSH tunnel + Containerlab cEOS + `mhuot-labs` requisition; cannot run from a developer laptop without the tunnel |
-| `test-perspective-e2e.sh` | BLOCKED ⛔ | **HARDWARE-ONLY** | Same labbox dependency + `l8opensim-lab` Minion location |
+| `test-perspective-e2e.sh` | BLOCKED ⛔ | **HARDWARE-ONLY** | Same labbox dependency + `nl6-lab` Minion location |
 
 ## Detailed dispositions
 
@@ -54,7 +54,7 @@ These tests are valuable and should NOT be deleted. They fail because of known o
 These tests require physical Containerlab cEOS hardware that lives on the lab machine reachable via SSH tunnel. They are blocked on a developer laptop. **Disposition:** keep the scripts in the repo but skip them in the laptop smoke loop; run them in a dedicated CI workflow that has the tunnel set up (or run them manually from the lab).
 
 - **`test-enlinkd-e2e.sh`** — LLDP topology discovery against real Cisco IOS XR boxes via Containerlab. The most direct regression detector for PR #265's topology entity cache fill, but cannot run without the hardware.
-- **`test-perspective-e2e.sh`** — perspective polling from `l8opensim-lab` Minion location through to ClickHouse + Grafana. Same hardware constraint plus a non-trivial setup (see `project_smoke_perspective_monitoring`).
+- **`test-perspective-e2e.sh`** — perspective polling from `nl6-lab` Minion location through to ClickHouse + Grafana. Same hardware constraint plus a non-trivial setup (see `project_smoke_perspective_monitoring`).
 
 ## Recommended next actions
 

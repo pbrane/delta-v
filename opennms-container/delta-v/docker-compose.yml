@@ -199,11 +199,15 @@ services:
         # devices.json is a batch-manifest array; fleet.sh import
         # auto-detects the shape and POSTs each entry to /api/v1/devices.
         sh /seed/fleet.sh import http://127.0.0.1:8080 /seed/devices.json
-        # Verify total count.
-        count=$$(curl -sf http://127.0.0.1:8080/api/v1/devices \
-                 | jq '.data | length')
+        # Verify exact count. Match fleet.sh's shape hedging so a future
+        # response envelope change ({data:[]}, {devices:[]}, or bare array)
+        # doesn't silently null-out the count.
+        body=$$(curl -sf http://127.0.0.1:8080/api/v1/devices) || {
+            echo "FAIL could not GET /api/v1/devices for verification"; exit 1;
+        }
+        count=$$(printf '%s' "$$body" | jq '(.data // .devices // (if type=="array" then . else [] end)) | length')
         echo "provisioner: nl6 now reports $$count devices"
-        [ "$$count" -ge 20 ] || { echo "FAIL expected >= 20 devices got $$count"; exit 1; }
+        [ "$$count" -eq 20 ] || { echo "FAIL expected 20 devices got $$count"; exit 1; }
 
   # gRPC-to-Kafka translator for the Minion-facing surface (Heartbeat in rc1;
   # Sink/RPC channels follow in v1.3). Sole inbound surface for Minions per
