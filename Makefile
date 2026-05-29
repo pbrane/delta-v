@@ -8,6 +8,15 @@
 #   make daemon DAEMON=provisiond       Rebuild a single daemon boot JAR
 #   make clean                          Remove all build artifacts
 #
+# Runtime / lifecycle:
+#   make images                         Build all Docker images (daemons + auxiliaries)
+#   make daemon-image DAEMON=provisiond Build a single daemon Docker image
+#   make up PROFILE=full                Start the stack (profiles: lite|passive|full)
+#   make down | status | logs SVC=x     Stop / status / tail logs
+#   make verify                         Run deploy health checks
+#   make dev                            Build all images, then bring the stack up
+#   make doctor                         Preflight: JDK 21, Docker, GH Packages auth, images
+#
 # Overridable variables:
 #   MODULE           Maven module selector (e.g. :org.opennms.core.daemon-boot-pollerd)
 #   DAEMON           Daemon short name for single-daemon target (e.g. provisiond, minion)
@@ -32,7 +41,8 @@ MAVEN_OPTS  ?= -Xmx3g \
                -Djdk.util.zip.disableZip64ExtraFieldValidation=true \
                -Dmaven.wagon.http.retryHandler.count=3
 
-MVN := ./mvnw
+MVN    := ./mvnw
+DELTAV := opennms-container/delta-v
 
 export MAVEN_OPTS
 
@@ -49,8 +59,8 @@ help: ## Show this help
 	@echo "  DAEMON           Daemon short name (e.g. provisiond)                (current: $(DAEMON))"
 	@echo "  TEST             Test class name (suffix IT = integration test)     (current: $(TEST))"
 	@echo "  MAVEN_FLAGS      Extra Maven flags                                  (current: $(MAVEN_FLAGS))"
-	@echo "  PROFILE          Compose profile for 'up' (lite|passive|full)    (current: $(PROFILE))"
-	@echo "  SVC              Service name for 'logs'                          (current: $(SVC))"
+	@echo "  PROFILE          Compose profile for 'up' (lite|passive|full)       (current: $(PROFILE))"
+	@echo "  SVC              Service name for 'logs'                            (current: $(SVC))"
 
 build: ## Compile and install all modules (tests skipped)
 	$(MVN) $(MAVEN_FLAGS) install
@@ -77,13 +87,11 @@ daemon: ## Rebuild a single daemon boot JAR; set DAEMON=provisiond (etc)
 clean: ## Remove all build artifacts
 	$(MVN) -B clean
 
-DELTAV := opennms-container/delta-v
-
 images: ## Build ALL Docker images (daemons + auxiliaries)
 	cd $(DELTAV) && ./build.sh deltav
 
 daemon-image: ## Build one daemon image (DAEMON=); reuses cached base
-	@test -n "$(DAEMON)" || (echo "ERROR: DAEMON required, e.g. make daemon-image DAEMON=alarmd" && exit 1)
+	@test -n "$(DAEMON)" || (echo "ERROR: DAEMON is required, e.g.: make daemon-image DAEMON=alarmd" && exit 1)
 	cd $(DELTAV) && ./build.sh daemon $(DAEMON)
 
 up: ## Start the stack (PROFILE=lite|passive|full)
@@ -104,7 +112,9 @@ logs: ## Tail logs (SVC=<service>)
 verify: ## Run deploy health checks
 	cd $(DELTAV) && ./deploy.sh test
 
-dev: images up ## Build all images then bring the stack up
+dev: ## Build all images, then bring the stack up (sequential; safe under make -j)
+	cd $(DELTAV) && ./build.sh deltav
+	cd $(DELTAV) && ./deploy.sh up $(PROFILE)
 
 doctor: ## Preflight: verify the environment can build & run
 	cd $(DELTAV) && ./doctor.sh
