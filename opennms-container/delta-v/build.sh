@@ -163,8 +163,13 @@ check_prereqs() {
     # the multi-arch docker-container builder set up by setup-buildx-action —
     # the "default"/docker driver cannot do multi-arch --push, so don't switch.
     if [ "$PUSH" != "true" ]; then
-        local current_buildx
-        current_buildx=$(docker buildx inspect 2>/dev/null | head -1 | sed 's/^Name: *//')
+        # Capture the full `buildx inspect` output FIRST, then extract the name.
+        # Piping `... | head -1` directly closes the pipe early and SIGPIPEs
+        # buildx (exit 141), which under `set -o pipefail` aborts the script
+        # intermittently (race on the pipe buffer). Full-capture avoids the pipe.
+        local buildx_info current_buildx
+        buildx_info=$(docker buildx inspect 2>/dev/null) || true
+        current_buildx=$(printf '%s\n' "$buildx_info" | sed -n '1s/^Name: *//p')
         if [ "$current_buildx" != "default" ]; then
             log "Switching Docker buildx from '$current_buildx' to 'default'..."
             docker context use default 2>/dev/null || true
