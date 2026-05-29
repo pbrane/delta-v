@@ -239,6 +239,44 @@ do_alerts_forwarder_image() {
     build_image alerts-forwarder -f "$REPO_ROOT/core/alerts-forwarder/Dockerfile" "$REPO_ROOT/core/alerts-forwarder"
 }
 
+do_clickhouse_image() {
+    log "Building clickhouse image..."
+    cd "$SCRIPT_DIR"
+    build_image clickhouse -f Dockerfile.clickhouse .
+}
+do_clickhouse_init_image() {
+    log "Building clickhouse-init image..."
+    cd "$SCRIPT_DIR"
+    build_image clickhouse-init -f Dockerfile.clickhouse-init .
+}
+do_grafana_image() {
+    log "Building grafana image..."
+    cd "$SCRIPT_DIR"
+    build_image grafana -f Dockerfile.grafana .
+}
+do_provisiond_imports_init_image() {
+    log "Building provisiond-imports-init image..."
+    cd "$SCRIPT_DIR"
+    build_image provisiond-imports-init -f Dockerfile.provisiond-imports-init .
+}
+do_l8opensim_provisioner_image() {
+    log "Building l8opensim-provisioner image..."
+    cd "$SCRIPT_DIR"
+    build_image l8opensim-provisioner -f Dockerfile.l8opensim-provisioner .
+}
+do_mock_snmp_agent_image() {
+    log "Building mock-snmp-agent image..."
+    build_image mock-snmp-agent -f "$SCRIPT_DIR/mock-snmp-agent/Dockerfile" "$SCRIPT_DIR/mock-snmp-agent"
+}
+do_flow_exporter_image() {
+    log "Building flow-exporter image..."
+    build_image flow-exporter -f "$SCRIPT_DIR/flow-exporter/Dockerfile" "$SCRIPT_DIR/flow-exporter"
+}
+do_sflow_exporter_image() {
+    log "Building sflow-exporter image..."
+    build_image sflow-exporter -f "$SCRIPT_DIR/sflow-exporter/Dockerfile" "$SCRIPT_DIR/sflow-exporter"
+}
+
 do_jre_image() {
     log "Building ${IMAGE_PREFIX}/jre-deltav:21..."
     cd "$SCRIPT_DIR"
@@ -368,6 +406,18 @@ do_deltav_images() {
     # application + service map + perspective locations after provisiond
     # imports the perspective-smoke requisition.
     do_perspective_app_init_image
+
+    # --- Auxiliary images (no Maven; previously only built in CI) ---
+    # These complete the set docker-compose.yml references so a single
+    # `make images` yields a deployable stack with no missing-image pulls.
+    do_clickhouse_image
+    do_clickhouse_init_image
+    do_grafana_image
+    do_provisiond_imports_init_image
+    do_l8opensim_provisioner_image
+    do_mock_snmp_agent_image
+    do_flow_exporter_image
+    do_sflow_exporter_image
 
     log "Delta-V images built:"
     docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init" | sort | head -30
