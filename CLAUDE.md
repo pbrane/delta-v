@@ -151,7 +151,8 @@ Run all tests for a module:
 
 Run integration tests:
 ```bash
-./mvnw -Pfailsafe --projects :opennms-dao -am verify
+# Integration tests (Failsafe) for a module
+./mvnw --projects :opennms-dao -am failsafe:integration-test failsafe:verify
 ```
 
 ## Branching Model
