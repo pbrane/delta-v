@@ -19,6 +19,8 @@
 MODULE      ?=
 DAEMON      ?=
 TEST        ?=
+PROFILE     ?=
+SVC         ?=
 MAVEN_FLAGS ?= -DskipTests -B
 MAVEN_OPTS  ?= -Xmx3g \
                -XX:ReservedCodeCacheSize=512m \
@@ -34,7 +36,7 @@ MVN := ./mvnw
 
 export MAVEN_OPTS
 
-.PHONY: help build test test-class daemon clean
+.PHONY: help build test test-class daemon clean images daemon-image up down reset status logs verify dev doctor
 
 .DEFAULT_GOAL := help
 
@@ -47,6 +49,8 @@ help: ## Show this help
 	@echo "  DAEMON           Daemon short name (e.g. provisiond)                (current: $(DAEMON))"
 	@echo "  TEST             Test class name (suffix IT = integration test)     (current: $(TEST))"
 	@echo "  MAVEN_FLAGS      Extra Maven flags                                  (current: $(MAVEN_FLAGS))"
+	@echo "  PROFILE          Compose profile for 'up' (lite|passive|full)    (current: $(PROFILE))"
+	@echo "  SVC              Service name for 'logs'                          (current: $(SVC))"
 
 build: ## Compile and install all modules (tests skipped)
 	$(MVN) $(MAVEN_FLAGS) install
@@ -72,3 +76,35 @@ daemon: ## Rebuild a single daemon boot JAR; set DAEMON=provisiond (etc)
 
 clean: ## Remove all build artifacts
 	$(MVN) -B clean
+
+DELTAV := opennms-container/delta-v
+
+images: ## Build ALL Docker images (daemons + auxiliaries)
+	cd $(DELTAV) && ./build.sh deltav
+
+daemon-image: ## Build one daemon image (DAEMON=); reuses cached base
+	@test -n "$(DAEMON)" || (echo "ERROR: DAEMON required, e.g. make daemon-image DAEMON=alarmd" && exit 1)
+	cd $(DELTAV) && ./build.sh daemon $(DAEMON)
+
+up: ## Start the stack (PROFILE=lite|passive|full)
+	cd $(DELTAV) && ./deploy.sh up $(PROFILE)
+
+down: ## Stop the stack (preserve data)
+	cd $(DELTAV) && ./deploy.sh down
+
+reset: ## Stop and remove all data volumes
+	cd $(DELTAV) && ./deploy.sh reset
+
+status: ## Show service status
+	cd $(DELTAV) && ./deploy.sh status
+
+logs: ## Tail logs (SVC=<service>)
+	cd $(DELTAV) && ./deploy.sh logs $(SVC)
+
+verify: ## Run deploy health checks
+	cd $(DELTAV) && ./deploy.sh test
+
+dev: images up ## Build all images then bring the stack up
+
+doctor: ## Preflight: verify the environment can build & run
+	cd $(DELTAV) && ./doctor.sh
