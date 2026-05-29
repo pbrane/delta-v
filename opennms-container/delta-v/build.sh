@@ -158,15 +158,18 @@ check_prereqs() {
     [ "$java_version" = "21" ] || err "Java 21 required (JAVA_HOME=$JAVA_HOME reports: $java_version)"
     export PATH="${JAVA_HOME}/bin:${PATH}"
 
-    # Ensure Docker buildx uses the "default" builder instance.
-    # Docker Desktop sets the active builder to "desktop-linux", which the
-    # Makefile in opennms-container/core and sentinel rejects.
-    local current_buildx
-    current_buildx=$(docker buildx inspect 2>/dev/null | head -1 | sed 's/^Name: *//')
-    if [ "$current_buildx" != "default" ]; then
-        log "Switching Docker buildx from '$current_buildx' to 'default'..."
-        docker context use default 2>/dev/null || true
-        docker buildx use default 2>/dev/null || true
+    # Local --load builds need the "default" builder (Docker Desktop's
+    # "desktop-linux" is rejected by some sub-Makefiles). In CI, PUSH=true uses
+    # the multi-arch docker-container builder set up by setup-buildx-action —
+    # the "default"/docker driver cannot do multi-arch --push, so don't switch.
+    if [ "$PUSH" != "true" ]; then
+        local current_buildx
+        current_buildx=$(docker buildx inspect 2>/dev/null | head -1 | sed 's/^Name: *//')
+        if [ "$current_buildx" != "default" ]; then
+            log "Switching Docker buildx from '$current_buildx' to 'default'..."
+            docker context use default 2>/dev/null || true
+            docker buildx use default 2>/dev/null || true
+        fi
     fi
 }
 
