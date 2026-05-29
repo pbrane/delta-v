@@ -40,13 +40,25 @@ do_up() {
     done
 
     local profile="${1:-}"
+
+    # The 'demo' profile mirrors the smoke-VM orchestration: full stack +
+    # observability, with the lean JVM override (docker-compose.dev.yml) layered
+    # on top — sizing heaps/GC/thread-stacks for resource-constrained lab/demo
+    # hosts. Other profiles keep the production-shaped JVM defaults.
+    local -a compose_files
+    compose_files=(-f docker-compose.yml)
+    if [ "$profile" = "demo" ]; then
+        compose_files+=(-f docker-compose.dev.yml)
+        log "Demo: layering lean JVM override (docker-compose.dev.yml)"
+    fi
+
     if [ -n "$profile" ]; then
         log "Using profile: $profile"
-        COMPOSE_PROFILES="$profile" docker compose up -d
+        COMPOSE_PROFILES="$profile" docker compose "${compose_files[@]}" up -d
     else
         log "Starting infrastructure only — no daemons (postgres, kafka, minion, minion-gateway, envoy, db-init, snmp-agent)."
         log "  The 12 daemons are profile-gated. For the full stack:  make up PROFILE=full   (active | passive | demo also available)"
-        docker compose up -d
+        docker compose "${compose_files[@]}" up -d
     fi
 
     log "Waiting for services to start..."
