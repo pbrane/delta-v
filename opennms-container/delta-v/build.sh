@@ -437,8 +437,17 @@ do_deltav_images() {
     do_flow_exporter_image
     do_sflow_exporter_image
 
-    log "Delta-V images built:"
-    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|nl6-provisioner|mock-snmp-agent|flow-exporter|sflow-exporter" | sort | head -60
+    # Post-build summary. With PUSH=true the images are multi-arch and pushed
+    # to the registry — they are NOT loaded into the local daemon, so a local
+    # `docker images` summary would be empty (and the grep would exit 1, which
+    # under `set -euo pipefail` would fail the whole build after every image
+    # already pushed successfully). Only show the local listing for --load builds.
+    if [ "$PUSH" = "true" ]; then
+        log "Delta-V images pushed to ${IMAGE_PREFIX} (multi-arch; not loaded locally)."
+    else
+        log "Delta-V images built:"
+        docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|nl6-provisioner|mock-snmp-agent|flow-exporter|sflow-exporter" | sort | head -60 || true
+    fi
 }
 
 # Build a single daemon's layered image, reusing the existing cached
