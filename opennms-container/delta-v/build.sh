@@ -240,40 +240,48 @@ do_alerts_forwarder_image() {
 }
 
 do_clickhouse_image() {
-    log "Building clickhouse image..."
-    cd "$SCRIPT_DIR"
-    build_image clickhouse -f Dockerfile.clickhouse .
+    log "Building ${IMAGE_PREFIX}/clickhouse:$VERSION..."
+    # Repo-root context: Dockerfile.clickhouse COPYs from opennms-container/delta-v/clickhouse/
+    # and core/flow-enricher/src/main/proto/ (paths relative to the build context).
+    build_image clickhouse -f "$SCRIPT_DIR/Dockerfile.clickhouse" "$REPO_ROOT"
 }
+
 do_clickhouse_init_image() {
-    log "Building clickhouse-init image..."
-    cd "$SCRIPT_DIR"
-    build_image clickhouse-init -f Dockerfile.clickhouse-init .
+    log "Building ${IMAGE_PREFIX}/clickhouse-init:$VERSION..."
+    # Repo-root context (same reason as clickhouse).
+    build_image clickhouse-init -f "$SCRIPT_DIR/Dockerfile.clickhouse-init" "$REPO_ROOT"
 }
+
 do_grafana_image() {
-    log "Building grafana image..."
+    log "Building ${IMAGE_PREFIX}/grafana:$VERSION..."
     cd "$SCRIPT_DIR"
     build_image grafana -f Dockerfile.grafana .
 }
+
 do_provisiond_imports_init_image() {
-    log "Building provisiond-imports-init image..."
+    log "Building ${IMAGE_PREFIX}/provisiond-imports-init:$VERSION..."
     cd "$SCRIPT_DIR"
     build_image provisiond-imports-init -f Dockerfile.provisiond-imports-init .
 }
+
 do_l8opensim_provisioner_image() {
-    log "Building l8opensim-provisioner image..."
+    log "Building ${IMAGE_PREFIX}/l8opensim-provisioner:$VERSION..."
     cd "$SCRIPT_DIR"
     build_image l8opensim-provisioner -f Dockerfile.l8opensim-provisioner .
 }
+
 do_mock_snmp_agent_image() {
-    log "Building mock-snmp-agent image..."
+    log "Building ${IMAGE_PREFIX}/mock-snmp-agent:$VERSION..."
     build_image mock-snmp-agent -f "$SCRIPT_DIR/mock-snmp-agent/Dockerfile" "$SCRIPT_DIR/mock-snmp-agent"
 }
+
 do_flow_exporter_image() {
-    log "Building flow-exporter image..."
+    log "Building ${IMAGE_PREFIX}/flow-exporter:$VERSION..."
     build_image flow-exporter -f "$SCRIPT_DIR/flow-exporter/Dockerfile" "$SCRIPT_DIR/flow-exporter"
 }
+
 do_sflow_exporter_image() {
-    log "Building sflow-exporter image..."
+    log "Building ${IMAGE_PREFIX}/sflow-exporter:$VERSION..."
     build_image sflow-exporter -f "$SCRIPT_DIR/sflow-exporter/Dockerfile" "$SCRIPT_DIR/sflow-exporter"
 }
 
@@ -420,7 +428,7 @@ do_deltav_images() {
     do_sflow_exporter_image
 
     log "Delta-V images built:"
-    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init" | sort | head -30
+    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|l8opensim-provisioner|mock-snmp-agent|flow-exporter|sflow-exporter" | sort | head -60
 }
 
 # Build a single daemon's layered image, reusing the existing cached
