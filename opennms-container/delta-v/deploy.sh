@@ -3,7 +3,7 @@
 # deploy.sh — Deploy and manage OpenNMS Delta-V
 #
 # Usage:
-#   ./deploy.sh up [profile] Start services (profiles: lite, passive, full)
+#   ./deploy.sh up [profile] Start services (profiles: active, passive, full, demo)
 #   ./deploy.sh down        Stop all services (preserve data)
 #   ./deploy.sh reset       Stop and remove all data
 #   ./deploy.sh status      Show service status
@@ -29,24 +29,40 @@ log() { echo "==> $*"; }
 err() { echo "ERROR: $*" >&2; exit 1; }
 
 do_up() {
+    if [ -z "${VERSION:-}" ]; then
+        err "VERSION is empty (no .env, or VERSION unset). Run: cp .env.example .env  (docker compose would otherwise default to ':latest' and pull nonexistent images)."
+    fi
     log "Starting Delta-V (version $VERSION)..."
 
     # Check a sample daemon image exists (Delta-V layered images)
     for img in "$IMAGE_PREFIX/trapd:$VERSION" "$IMAGE_PREFIX/minion-boot:$VERSION"; do
-        docker image inspect "$img" >/dev/null 2>&1 || err "Image $img not found. Run ./build.sh deltav first, or set IMAGE_PREFIX in .env to a registry prefix you've pulled from (e.g. ghcr.io/pbrane)."
+        docker image inspect "$img" >/dev/null 2>&1 || err "Image $img not found. Run 'make images' first, or set IMAGE_PREFIX in .env to a registry prefix you've pulled from (e.g. ghcr.io/pbrane)."
     done
 
     local profile="${1:-}"
+
+    # The 'demo' profile mirrors the smoke-VM orchestration: full stack +
+    # observability, with the lean JVM override (docker-compose.dev.yml) layered
+    # on top — sizing heaps/GC/thread-stacks for resource-constrained lab/demo
+    # hosts. Other profiles keep the production-shaped JVM defaults.
+    local -a compose_files
+    compose_files=(-f docker-compose.yml)
+    if [ "$profile" = "demo" ]; then
+        compose_files+=(-f docker-compose.dev.yml)
+        log "Demo: layering lean JVM override (docker-compose.dev.yml)"
+    fi
+
     if [ -n "$profile" ]; then
         log "Using profile: $profile"
-        COMPOSE_PROFILES="$profile" docker compose up -d
+        COMPOSE_PROFILES="$profile" docker compose "${compose_files[@]}" up -d
     else
-        log "Starting infrastructure only (postgres + kafka + db-init + minion + snmp-agent)"
-        docker compose up -d
+        log "Starting infrastructure only — no daemons (postgres, kafka, minion, minion-gateway, envoy, db-init, snmp-agent)."
+        log "  The 12 daemons are profile-gated. For the full stack:  make up PROFILE=full   (active | passive | demo also available)"
+        docker compose "${compose_files[@]}" up -d
     fi
 
     log "Waiting for services to start..."
-    log "Run './deploy.sh status' to check progress."
+    log "Run 'make status' to check progress."
 }
 
 do_down() {
@@ -65,7 +81,7 @@ do_reset() {
     if [ -n "$stale_vols" ]; then
         echo "$stale_vols" | xargs docker volume rm 2>/dev/null || true
     fi
-    log "Clean slate. Run './deploy.sh up' to start fresh."
+    log "Clean slate. Run 'make up' to start fresh."
 }
 
 do_status() {
@@ -139,7 +155,7 @@ usage() {
 Usage: ./deploy.sh <command> [args]
 
 Commands:
-  up [profile]    Start services (profiles: lite, passive, full)
+  up [profile]    Start services (profiles: active, passive, full, demo)
   down            Stop services (preserve data volumes)
   reset           Stop and destroy all data (clean slate)
   status          Show service status
@@ -149,17 +165,20 @@ Commands:
   help            Show this help
 
 Profiles:
-  (none)    Infrastructure only: postgres + kafka + db-init + minion + snmp-agent
-  lite      + essential daemons (alarmd, pollerd, collectd, discovery, provisiond, bsmd,
-              eventtranslator, perspectivepollerd, flow-enricher, prometheus-writer)
-  passive   + trap/syslog receivers (alarmd, trapd, syslogd, eventtranslator, provisiond)
-  full      All ~20 services (lite + enlinkd + telemetryd + clickhouse + flow testnodes + nl6)
+  (none)    Infrastructure only: postgres + kafka + minion + minion-gateway + envoy + db-init + snmp-agent
+  active    + core daemons (alarmd, pollerd, collectd, provisiond, bsmd) + flow stack
+              (clickhouse, flow-enricher, flow testnodes, nl6)
+  passive   + trap/syslog receivers (alarmd, trapd, syslogd, discovery, eventtranslator, provisiond)
+  full      All daemons (active + passive + enlinkd + perspectivepollerd + telemetryd)
+  demo      full + observability: victoriametrics + vmagent + prometheus-writer + grafana
+              + alertmanager + alerts-forwarder (metrics, dashboards, and alerting)
 
 Examples:
   ./deploy.sh up                    # Infrastructure only
   ./deploy.sh up full               # Start everything
   ./deploy.sh up passive            # Trap/syslog receivers with alarmd
-  ./deploy.sh up lite               # Essential daemons
+  ./deploy.sh up active             # Core daemons + flow stack
+  ./deploy.sh up demo               # Everything + metrics/dashboards/alerting
   ./deploy.sh logs alarmd           # Tail alarmd logs
   ./deploy.sh test                  # Verify deployment
   ./deploy.sh test-e2e              # Full trap-to-alarm integration test

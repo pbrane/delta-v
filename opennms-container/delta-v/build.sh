@@ -24,14 +24,46 @@ SKIP_TESTS="${SKIP_TESTS:-true}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-docker.io}"
 DOCKER_ORG="${DOCKER_ORG:-deltav}"
 
-# The 12 horizon-derived Spring Boot daemons that share deltav/daemon-base.
+# Image prefix used for every tag. Local default is the bare org ("deltav");
+# CI overrides via IMAGE_PREFIX=ghcr.io/pbrane. Explicit IMAGE_PREFIX wins.
+IMAGE_PREFIX="${IMAGE_PREFIX:-$DOCKER_ORG}"
+
+# Push vs local-load, and target platforms. Local default: no push, host arch.
+# CI sets PUSH=true and PLATFORMS=linux/amd64,linux/arm64.
+PUSH="${PUSH:-false}"
+PLATFORMS="${PLATFORMS:-}"
+
+# The 12 horizon-derived Spring Boot daemons that share daemon-base.
 DAEMON_NAMES="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd"
 
-# Detect version from POM (skip parent version, get project version)
 VERSION="$(cd "$REPO_ROOT" && ./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout 2>/dev/null || grep '<version>0\.' "$REPO_ROOT/pom.xml" | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
 
 log() { echo "==> $*"; }
 err() { echo "ERROR: $*" >&2; exit 1; }
+
+# build_image SHORT_NAME -f DOCKERFILE [docker-build-args...] CONTEXT
+# Tags ${IMAGE_PREFIX}/SHORT_NAME at :$VERSION and :latest. Uses buildx;
+# --load for local single-arch, --platform/--push when PUSH=true.
+build_image() {
+    local short="$1"; shift
+    local img="${IMAGE_PREFIX}/${short}"
+    local -a args
+    args=(buildx build -t "${img}:${VERSION}" -t "${img}:latest")
+    if [ "$PUSH" = "true" ]; then
+        [ -n "$PLATFORMS" ] && args+=(--platform "$PLATFORMS")
+        args+=(--push)
+    else
+        args+=(--load)
+    fi
+    args+=("$@")
+    if [ "$PUSH" = "true" ]; then
+        log "  building ${img}:${VERSION} (push=true${PLATFORMS:+ platforms=$PLATFORMS})"
+    else
+        log "  building ${img}:${VERSION} (local load)"
+    fi
+    docker "${args[@]}"
+    apply_env_version_alias "${img}"
+}
 
 # Tag the just-built image with the .env-declared VERSION too, if it differs
 # from the resolved POM $VERSION. Resolves the chronic foot-gun where pom.xml
@@ -126,15 +158,23 @@ check_prereqs() {
     [ "$java_version" = "21" ] || err "Java 21 required (JAVA_HOME=$JAVA_HOME reports: $java_version)"
     export PATH="${JAVA_HOME}/bin:${PATH}"
 
-    # Ensure Docker buildx uses the "default" builder instance.
-    # Docker Desktop sets the active builder to "desktop-linux", which the
-    # Makefile in opennms-container/core and sentinel rejects.
-    local current_buildx
-    current_buildx=$(docker buildx inspect 2>/dev/null | head -1 | sed 's/^Name: *//')
-    if [ "$current_buildx" != "default" ]; then
-        log "Switching Docker buildx from '$current_buildx' to 'default'..."
-        docker context use default 2>/dev/null || true
-        docker buildx use default 2>/dev/null || true
+    # Local --load builds need the "default" builder (Docker Desktop's
+    # "desktop-linux" is rejected by some sub-Makefiles). In CI, PUSH=true uses
+    # the multi-arch docker-container builder set up by setup-buildx-action —
+    # the "default"/docker driver cannot do multi-arch --push, so don't switch.
+    if [ "$PUSH" != "true" ]; then
+        # Capture the full `buildx inspect` output FIRST, then extract the name.
+        # Piping `... | head -1` directly closes the pipe early and SIGPIPEs
+        # buildx (exit 141), which under `set -o pipefail` aborts the script
+        # intermittently (race on the pipe buffer). Full-capture avoids the pipe.
+        local buildx_info current_buildx
+        buildx_info=$(docker buildx inspect 2>/dev/null) || true
+        current_buildx=$(printf '%s\n' "$buildx_info" | sed -n '1s/^Name: *//p')
+        if [ "$current_buildx" != "default" ]; then
+            log "Switching Docker buildx from '$current_buildx' to 'default'..."
+            docker context use default 2>/dev/null || true
+            docker buildx use default 2>/dev/null || true
+        fi
     fi
 }
 
@@ -148,108 +188,141 @@ do_compile() {
 
 do_assemble() {
     log "Karaf assembly removed — Delta-V uses Spring Boot daemons."
-    log "Use './build.sh deltav' to build daemon images."
+    log "Use 'make images' to build daemon images."
 }
 
 do_db_init_image() {
-    log "Building db-init image (deltav/db-init:$VERSION)..."
+    log "Building db-init image (${IMAGE_PREFIX}/db-init:$VERSION)..."
     cd "$REPO_ROOT"
     ./mvnw -B -f core/db-init/pom.xml -DskipTests package
-    cd "$REPO_ROOT/core/db-init"
-    docker build -t "deltav/db-init:$VERSION" -t "deltav/db-init:latest" .
-    apply_env_version_alias "deltav/db-init"
+    build_image db-init -f "$REPO_ROOT/core/db-init/Dockerfile" "$REPO_ROOT/core/db-init"
 }
 
 do_minion_gateway_image() {
-    log "Building minion-gateway image (deltav/minion-gateway:$VERSION)..."
+    log "Building minion-gateway image (${IMAGE_PREFIX}/minion-gateway:$VERSION)..."
     cd "$REPO_ROOT"
     # Use -pl ... -am install (not -f pom.xml package) because minion-gateway
     # depends on org.opennms.core.minion-grpc-contracts; Spring Boot repackage
     # needs the contracts JAR present in ~/.m2 (feedback_spring_boot_repackage_needs_clean).
     ./mvnw -B -pl core/minion-gateway -am -DskipTests install
-    docker build \
-        -t "deltav/minion-gateway:$VERSION" \
-        -t "deltav/minion-gateway:latest" \
+    build_image minion-gateway \
         -f "$SCRIPT_DIR/minion-gateway/Dockerfile" \
+        --build-arg "JRE_BASE=${IMAGE_PREFIX}/jre-deltav:21" \
         "$REPO_ROOT/core/minion-gateway/"
-    apply_env_version_alias "deltav/minion-gateway"
 }
 
 do_envoy_image() {
-    log "Building envoy image (deltav/envoy:$VERSION)..."
+    log "Building envoy image (${IMAGE_PREFIX}/envoy:$VERSION)..."
     # Pure Docker build — Envoy is the upstream image plus envoy.yaml + curl
     # (for the docker-compose healthcheck). No Maven involvement.
-    cd "$SCRIPT_DIR/envoy"
-    docker build \
-        -t "deltav/envoy:$VERSION" \
-        -t "deltav/envoy:latest" \
-        .
-    apply_env_version_alias "deltav/envoy"
+    build_image envoy -f "$SCRIPT_DIR/envoy/Dockerfile" "$SCRIPT_DIR/envoy"
 }
 
 do_perspective_app_init_image() {
-    log "Building perspective-app-init image (deltav/perspective-app-init:$VERSION)..."
+    log "Building perspective-app-init image (${IMAGE_PREFIX}/perspective-app-init:$VERSION)..."
     # Tiny Alpine + psql client + init.sh. Seeds the smoke-baseline
     # perspective application after provisiond imports the perspective-smoke
     # requisition. No Maven involvement.
-    cd "$SCRIPT_DIR"
-    docker build \
-        -f Dockerfile.perspective-app-init \
-        -t "deltav/perspective-app-init:$VERSION" \
-        -t "deltav/perspective-app-init:latest" \
-        .
-    apply_env_version_alias "deltav/perspective-app-init"
+    build_image perspective-app-init -f "$SCRIPT_DIR/Dockerfile.perspective-app-init" "$SCRIPT_DIR"
 }
 
 do_flow_enricher_image() {
-    log "Building flow-enricher image (deltav/flow-enricher:$VERSION)..."
+    log "Building flow-enricher image (${IMAGE_PREFIX}/flow-enricher:$VERSION)..."
     cd "$REPO_ROOT"
     ./mvnw -B -f core/flow-enricher/pom.xml -DskipTests package
-    cd "$REPO_ROOT/core/flow-enricher"
-    docker build -t "deltav/flow-enricher:$VERSION" -t "deltav/flow-enricher:latest" .
-    apply_env_version_alias "deltav/flow-enricher"
+    build_image flow-enricher -f "$REPO_ROOT/core/flow-enricher/Dockerfile" "$REPO_ROOT/core/flow-enricher"
 }
 
 do_prometheus_writer_image() {
-    log "Building prometheus-writer image (deltav/prometheus-writer:$VERSION)..."
+    log "Building prometheus-writer image (${IMAGE_PREFIX}/prometheus-writer:$VERSION)..."
     cd "$REPO_ROOT"
     ./mvnw -B -f core/prometheus-writer/pom.xml -DskipTests package
-    cd "$REPO_ROOT/core/prometheus-writer"
-    docker build -t "deltav/prometheus-writer:$VERSION" -t "deltav/prometheus-writer:latest" .
-    apply_env_version_alias "deltav/prometheus-writer"
+    build_image prometheus-writer -f "$REPO_ROOT/core/prometheus-writer/Dockerfile" "$REPO_ROOT/core/prometheus-writer"
 }
 
 do_alerts_forwarder_image() {
-    log "Building alerts-forwarder image (deltav/alerts-forwarder:$VERSION)..."
+    log "Building alerts-forwarder image (${IMAGE_PREFIX}/alerts-forwarder:$VERSION)..."
     cd "$REPO_ROOT"
     ./mvnw -B -f core/alerts-forwarder/pom.xml -DskipTests package
-    cd "$REPO_ROOT/core/alerts-forwarder"
-    docker build -t "deltav/alerts-forwarder:$VERSION" -t "deltav/alerts-forwarder:latest" .
-    apply_env_version_alias "deltav/alerts-forwarder"
+    build_image alerts-forwarder -f "$REPO_ROOT/core/alerts-forwarder/Dockerfile" "$REPO_ROOT/core/alerts-forwarder"
+}
+
+do_clickhouse_image() {
+    log "Building ${IMAGE_PREFIX}/clickhouse:$VERSION..."
+    # Repo-root context: Dockerfile.clickhouse COPYs from opennms-container/delta-v/clickhouse/
+    # and core/flow-enricher/src/main/proto/ (paths relative to the build context).
+    build_image clickhouse -f "$SCRIPT_DIR/Dockerfile.clickhouse" "$REPO_ROOT"
+}
+
+do_clickhouse_init_image() {
+    log "Building ${IMAGE_PREFIX}/clickhouse-init:$VERSION..."
+    # Repo-root context (same reason as clickhouse).
+    build_image clickhouse-init -f "$SCRIPT_DIR/Dockerfile.clickhouse-init" "$REPO_ROOT"
+}
+
+do_grafana_image() {
+    log "Building ${IMAGE_PREFIX}/grafana:$VERSION..."
+    cd "$SCRIPT_DIR"
+    build_image grafana -f Dockerfile.grafana .
+}
+
+do_provisiond_imports_init_image() {
+    log "Building ${IMAGE_PREFIX}/provisiond-imports-init:$VERSION..."
+    cd "$SCRIPT_DIR"
+    build_image provisiond-imports-init -f Dockerfile.provisiond-imports-init .
+}
+
+do_nl6_provisioner_image() {
+    log "Building ${IMAGE_PREFIX}/nl6-provisioner:$VERSION..."
+    cd "$SCRIPT_DIR"
+    build_image nl6-provisioner -f Dockerfile.nl6-provisioner .
+}
+
+do_mock_snmp_agent_image() {
+    log "Building ${IMAGE_PREFIX}/mock-snmp-agent:$VERSION..."
+    build_image mock-snmp-agent -f "$SCRIPT_DIR/mock-snmp-agent/Dockerfile" "$SCRIPT_DIR/mock-snmp-agent"
+}
+
+do_flow_exporter_image() {
+    log "Building ${IMAGE_PREFIX}/flow-exporter:$VERSION..."
+    build_image flow-exporter -f "$SCRIPT_DIR/flow-exporter/Dockerfile" "$SCRIPT_DIR/flow-exporter"
+}
+
+do_sflow_exporter_image() {
+    log "Building ${IMAGE_PREFIX}/sflow-exporter:$VERSION..."
+    build_image sflow-exporter -f "$SCRIPT_DIR/sflow-exporter/Dockerfile" "$SCRIPT_DIR/sflow-exporter"
 }
 
 do_jre_image() {
-    log "Building deltav/jre-deltav:21..."
+    log "Building ${IMAGE_PREFIX}/jre-deltav:21..."
     cd "$SCRIPT_DIR"
-    docker build -f Dockerfile.jre \
-        -t "deltav/jre-deltav:21" \
-        -t "deltav/jre-deltav:latest" \
-        .
+    local -a args
+    args=(buildx build -f Dockerfile.jre -t "${IMAGE_PREFIX}/jre-deltav:21" -t "${IMAGE_PREFIX}/jre-deltav:latest")
+    if [ "$PUSH" = "true" ]; then
+        [ -n "$PLATFORMS" ] && args+=(--platform "$PLATFORMS")
+        args+=(--push)
+    else
+        args+=(--load)
+    fi
+    args+=(.)
+    docker "${args[@]}"
     log "JRE image built:"
-    docker images deltav/jre-deltav --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}"
+    docker images "${IMAGE_PREFIX}/jre-deltav" --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" 2>/dev/null || true
 }
 
 do_images() {
     log "Karaf-era images removed — Delta-V uses Spring Boot daemons."
-    log "Use './build.sh deltav' to build daemon images."
+    log "Use 'make images' to build daemon images."
 }
 
 do_deltav_images() {
     log "Building Delta-V layered images..."
 
-    # Check that JRE base image exists
-    if ! docker image inspect deltav/jre-deltav:21 >/dev/null 2>&1; then
-        err "deltav/jre-deltav:21 not found — run './build.sh jre' first"
+    # Ensure the JRE base image exists. On a fresh runner/clone it won't be in
+    # the local daemon (and multi-arch --push never loads locally), so build it.
+    # Keeps `make images` self-contained both locally (--load) and in CI (--push).
+    if ! docker image inspect "${IMAGE_PREFIX}/jre-deltav:21" >/dev/null 2>&1; then
+        do_jre_image
     fi
 
     # Phase 0: Self-heal stale daemon-boot JARs before staging. If any
@@ -265,28 +338,24 @@ do_deltav_images() {
     cd "$SCRIPT_DIR"
 
     # Phase 2: Build daemon-base image
-    log "Building deltav/daemon-base:$VERSION..."
-    docker build --no-cache \
+    log "Building ${IMAGE_PREFIX}/daemon-base:$VERSION..."
+    build_image daemon-base --no-cache \
         -f Dockerfile.daemon-base \
-        -t "deltav/daemon-base:$VERSION" \
-        -t "deltav/daemon-base:latest" \
+        --build-arg "JRE_IMAGE=${IMAGE_PREFIX}/jre-deltav:21" \
         .
-    apply_env_version_alias "deltav/daemon-base"
 
     # Phase 3: Build per-daemon images
     for name in $DAEMON_NAMES; do
         local main_class
         main_class=$(cat "staging/$name/.main_class")
-        log "Building deltav/$name:$VERSION (main: $main_class)..."
-        docker build \
+        log "Building ${IMAGE_PREFIX}/$name:$VERSION (main: $main_class)..."
+        build_image "$name" \
             -f Dockerfile.daemon-per \
             --build-arg "VERSION=$VERSION" \
+            --build-arg "DAEMON_BASE_IMAGE=${IMAGE_PREFIX}/daemon-base" \
             --build-arg "DAEMON_NAME=$name" \
             --build-arg "MAIN_CLASS=$main_class" \
-            -t "deltav/$name:$VERSION" \
-            -t "deltav/$name:latest" \
             .
-        apply_env_version_alias "deltav/$name"
     done
 
     # --- Stage Minion Boot fat JAR ---
@@ -299,14 +368,12 @@ do_deltav_images() {
         -exec cp {} "$SCRIPT_DIR/staging/minion-boot/daemon-boot-minion.jar" \;
 
     # --- Build Minion Boot image ---
-    log "Building deltav/minion-boot:$VERSION..."
-    docker build \
+    log "Building ${IMAGE_PREFIX}/minion-boot:$VERSION..."
+    build_image minion-boot \
         --build-arg "VERSION=$VERSION" \
+        --build-arg "JRE_IMAGE=${IMAGE_PREFIX}/jre-deltav:21" \
         -f Dockerfile.minion-boot \
-        -t "deltav/minion-boot:$VERSION" \
-        -t "deltav/minion-boot:latest" \
         .
-    apply_env_version_alias "deltav/minion-boot"
 
     # Clean up staging
     rm -rf "$SCRIPT_DIR/staging"
@@ -358,8 +425,29 @@ do_deltav_images() {
     # imports the perspective-smoke requisition.
     do_perspective_app_init_image
 
-    log "Delta-V images built:"
-    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|daemon-deltav|minion-deltav|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init" | sort | head -30
+    # --- Auxiliary images (no Maven; previously only built in CI) ---
+    # These complete the set docker-compose.yml references so a single
+    # `make images` yields a deployable stack with no missing-image pulls.
+    do_clickhouse_image
+    do_clickhouse_init_image
+    do_grafana_image
+    do_provisiond_imports_init_image
+    do_nl6_provisioner_image
+    do_mock_snmp_agent_image
+    do_flow_exporter_image
+    do_sflow_exporter_image
+
+    # Post-build summary. With PUSH=true the images are multi-arch and pushed
+    # to the registry — they are NOT loaded into the local daemon, so a local
+    # `docker images` summary would be empty (and the grep would exit 1, which
+    # under `set -euo pipefail` would fail the whole build after every image
+    # already pushed successfully). Only show the local listing for --load builds.
+    if [ "$PUSH" = "true" ]; then
+        log "Delta-V images pushed to ${IMAGE_PREFIX} (multi-arch; not loaded locally)."
+    else
+        log "Delta-V images built:"
+        docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|nl6-provisioner|mock-snmp-agent|flow-exporter|sflow-exporter" | sort | head -60 || true
+    fi
 }
 
 # Build a single daemon's layered image, reusing the existing cached
@@ -371,7 +459,7 @@ do_deltav_images() {
 # lands in the shared base changed.
 do_single_daemon_image() {
     local name="${1:-}"
-    [ -n "$name" ] || err "the 'daemon' command needs a daemon name, e.g. './build.sh daemon alarmd'"
+    [ -n "$name" ] || err "the 'daemon' command needs a daemon name, e.g. 'make daemon-image DAEMON=alarmd'"
 
     # Standalone images that have their own Dockerfile in core/<name>/ rather
     # than going through daemon-base + compute-shared-libs.sh. Route them to
@@ -392,13 +480,13 @@ do_single_daemon_image() {
     # The shared base and JRE images must already exist — single-daemon mode
     # reuses them rather than rebuilding. A prior `./build.sh deltav` produces
     # both (and the other 11 daemon-boot JARs that compute-shared-libs needs).
-    docker image inspect "deltav/daemon-base:$VERSION" >/dev/null 2>&1 \
-        || err "deltav/daemon-base:$VERSION not found — run './build.sh deltav' once first (single-daemon mode reuses the shared base)"
-    docker image inspect deltav/jre-deltav:21 >/dev/null 2>&1 \
-        || err "deltav/jre-deltav:21 not found — run './build.sh jre' first"
+    docker image inspect "${IMAGE_PREFIX}/daemon-base:$VERSION" >/dev/null 2>&1 \
+        || err "${IMAGE_PREFIX}/daemon-base:$VERSION not found — run 'make images' once first (single-daemon mode reuses the shared base)"
+    docker image inspect "${IMAGE_PREFIX}/jre-deltav:21" >/dev/null 2>&1 \
+        || err "${IMAGE_PREFIX}/jre-deltav:21 not found — run 'make images' first (it builds the JRE base)"
 
-    log "Single-daemon build: $name (reusing deltav/daemon-base:$VERSION)"
-    log "NOTE: the shared base layer is not rebuilt — run './build.sh deltav' if a shared dependency changed."
+    log "Single-daemon build: $name (reusing ${IMAGE_PREFIX}/daemon-base:$VERSION)"
+    log "NOTE: the shared base layer is not rebuilt — run 'make images' if a shared dependency changed."
 
     # Rebuild this daemon's boot JAR. `-am` also rebuilds its delta-v reactor
     # dependencies (e.g. newly added feature modules) so the staged fat JAR is
@@ -418,19 +506,17 @@ do_single_daemon_image() {
 
     local main_class
     main_class=$(cat "staging/$name/.main_class")
-    log "Building deltav/$name:$VERSION (main: $main_class)..."
-    docker build \
+    log "Building ${IMAGE_PREFIX}/$name:$VERSION (main: $main_class)..."
+    build_image "$name" \
         -f Dockerfile.daemon-per \
         --build-arg "VERSION=$VERSION" \
+        --build-arg "DAEMON_BASE_IMAGE=${IMAGE_PREFIX}/daemon-base" \
         --build-arg "DAEMON_NAME=$name" \
         --build-arg "MAIN_CLASS=$main_class" \
-        -t "deltav/$name:$VERSION" \
-        -t "deltav/$name:latest" \
         .
-    apply_env_version_alias "deltav/$name"
 
     rm -rf "$SCRIPT_DIR/staging"
-    log "Built deltav/$name:$VERSION (+ :latest). Recreate just that service with: docker compose up -d $name"
+    log "Built ${IMAGE_PREFIX}/$name:$VERSION (+ :latest). Recreate just that service with: docker compose up -d $name"
 }
 
 
@@ -454,6 +540,9 @@ Commands:
 Environment variables:
   DOCKER_REGISTRY   Registry (default: docker.io)
   DOCKER_ORG        Organization (default: deltav)
+  IMAGE_PREFIX      Image name prefix (default: $DOCKER_ORG, i.e. "deltav"; CI sets ghcr.io/pbrane)
+  PUSH              "true" to push images instead of local --load (default: false)
+  PLATFORMS         Comma-separated buildx platforms (e.g. linux/amd64,linux/arm64); used only when PUSH=true
   SKIP_TESTS        Skip tests (default: true)
   JAVA_HOME         JDK 21 path
 
@@ -461,7 +550,7 @@ Examples:
   ./build.sh                                    # Full build
   ./build.sh images                             # Rebuild images only
   ./build.sh daemon alarmd                      # Rebuild just the alarmd image
-  DOCKER_ORG=pbranestrategy ./build.sh push     # Push to custom registry
+  PUSH=true PLATFORMS=linux/amd64,linux/arm64 IMAGE_PREFIX=ghcr.io/pbrane ./build.sh deltav   # Build + push multi-arch
   ./build.sh clean && docker compose up -d      # Fresh deployment
 USAGE
 }
@@ -470,7 +559,7 @@ do_clean() {
     log "Removing Delta-V Docker volumes..."
     cd "$SCRIPT_DIR"
     docker compose down -v 2>/dev/null || true
-    log "Volumes removed. Run 'docker compose up -d' for a fresh start."
+    log "Volumes removed. Run 'make up' for a fresh start."
 }
 
 main() {
@@ -479,11 +568,8 @@ main() {
     case "${1:-all}" in
         all)
             do_compile
-            if ! docker image inspect deltav/jre-deltav:21 >/dev/null 2>&1; then
-                do_jre_image
-            fi
             do_deltav_images
-            log "Build complete! Run: cd $SCRIPT_DIR && docker compose up -d"
+            log "Build complete! Run: make up"
             ;;
         compile)
             do_compile
@@ -507,9 +593,6 @@ main() {
             do_compile
             do_assemble
             do_images push
-            if ! docker image inspect deltav/jre-deltav:21 >/dev/null 2>&1; then
-                do_jre_image
-            fi
             do_deltav_images
             ;;
         clean)

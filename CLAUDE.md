@@ -20,47 +20,38 @@ OpenNMS Horizon is an enterprise-grade open-source network monitoring platform. 
 
 ## Build Commands
 
-The project ships its own Maven in `maven/bin/mvn`. The `compile.pl` and `assemble.pl` Perl scripts wrap Maven with sensible defaults.
+Delta-V uses the bundled Maven wrapper (`./mvnw`) with a `make` front door. `make` is the single entry point for building and running.
 
 ```bash
-# Full compile (skip tests for speed)
-make build
+# Compile + install all reactor modules (tests skipped)
+make build            # = ./mvnw -DskipTests -B install
 
-# Assemble for local running (dir profile = run from target/)
-make assemble
+# Run all tests
+make test
 
-# Build a single module and its dependencies
-make module MODULE=:opennms-dao
+# Run a single test class
+make test-class MODULE=:org.opennms.core.daemon-boot-pollerd TEST=SomePollerTest
 
-# Build everything that depends on a changed module
-make dependents MODULE=:opennms-dao
+# Build ALL Docker images (daemons + auxiliaries)
+make images
 
-# Build modules matching a grep pattern
-./compile.pl -DskipTests --projects $(tools/development/grep-pom-artifact.sh -i jdom) install
+# Rebuild a single daemon's boot JAR / image
+make daemon DAEMON=provisiond            # boot JAR
+make daemon-image DAEMON=provisiond      # Docker image
 
-# Run a single unit test class
-make test-class MODULE=:opennms-dao TEST=SomeDaoTest
+# Run the stack
+make up PROFILE=full      # start (profiles: active|passive|full|demo)
+make status               # service status
+make logs SVC=trapd       # tail one service
+make down                 # stop (preserve data)
 
-# Run a single integration test class
-make test-class MODULE=:opennms-dao TEST=SomeDaoIT
+# Preflight: verify the environment can build & run
+make doctor               # JDK 21, Docker, GitHub Packages auth, image completeness
 
-# Run tests determined by changed files (CI-style)
-./runtests.sh
-
-# Build the Vue UI
-cd ui && pnpm install && pnpm build && pnpm test
+make help                 # list all targets
 ```
 
-### make goals
-```bash
-make help
-```
-
-### Local development quick start
-```bash
-./tools/local_development/dependencies.sh --check-dependencies
-./tools/local_development/opennms.sh
-```
+`build.sh`, `deploy.sh`, and `doctor.sh` (under `opennms-container/delta-v/`) are internal engines invoked by `make`; you normally don't call them directly. The legacy `compile.pl`/`assemble.pl` Perl wrappers from upstream Horizon do NOT exist in delta-v.
 
 ## Running Locally After Build
 
@@ -119,7 +110,7 @@ OpenNMS embeds Apache Karaf (4.3.10) as an OSGi container. Karaf is embedded *ab
 | Layer | Technology |
 |-------|-----------|
 | Language | Java 21 |
-| Build | Maven (bundled), Perl wrapper scripts |
+| Build | Maven wrapper (`./mvnw`), `make` front door |
 | OSGi Container | Apache Karaf 4.3.10 |
 | Web Framework | Spring 4.2.x (OpenNMS-patched fork), Spring Security 4.2.x (patched) |
 | ORM | Hibernate 3.6.11 (OpenNMS build) |
@@ -155,12 +146,13 @@ The UI also has a `menu/` sub-build that provides embeddable Vue components for 
 
 Run all tests for a module:
 ```bash
-./compile.pl --projects :opennms-dao -am verify
+./mvnw --projects :opennms-dao -am verify
 ```
 
 Run integration tests:
 ```bash
-./compile.pl -t --projects :opennms-dao -am verify
+# Integration tests (Failsafe) for a module
+./mvnw --projects :opennms-dao -am failsafe:integration-test failsafe:verify
 ```
 
 ## Branching Model
@@ -178,7 +170,7 @@ Run integration tests:
 - REST endpoints use **CXF/JAX-RS** annotations
 - OSGi services registered via **Karaf blueprint** or **SCR annotations**
 - The Maven Enforcer Plugin bans certain dependencies (e.g., `commons-logging` — use `slf4j-api` instead). Fix violations by adding `<exclusions>` and using the approved alternative
-- License validation: `./compile.pl -DskipTests -Denable.license=true -Passemblies -Psmoke install`
+- License validation: `./mvnw -DskipTests -Denable.license=true -Passemblies -Psmoke install`
 - Commit messages should reference JIRA issues: `NMS-XXXXX: description`
 
 ## CI/CD
