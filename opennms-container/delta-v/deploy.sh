@@ -29,6 +29,9 @@ log() { echo "==> $*"; }
 err() { echo "ERROR: $*" >&2; exit 1; }
 
 do_up() {
+    if [ -z "${VERSION:-}" ]; then
+        err "VERSION is empty (no .env, or VERSION unset). Run: cp .env.example .env  (docker compose would otherwise default to ':latest' and pull nonexistent images)."
+    fi
     log "Starting Delta-V (version $VERSION)..."
 
     # Check a sample daemon image exists (Delta-V layered images)
