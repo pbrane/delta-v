@@ -55,7 +55,7 @@ cleanup() {
     # Restore provisiond-configuration.xml from the committed state (captured
     # before mutation in Step 3) so this test never leaves the working tree
     # in a state that breaks other e2e tests that depend on the full set of
-    # requisition-defs (rpc-canary, cloud-services, l8opensim-lab, …).
+    # requisition-defs (rpc-canary, cloud-services, nl6-lab, …).
     if [ -f "${PROVISIOND_CONFIG_BACKUP}" ]; then
         cp "${PROVISIOND_CONFIG_BACKUP}" "${PROVISIOND_CONFIG}"
         rm -f "${PROVISIOND_CONFIG_BACKUP}"
@@ -126,7 +126,7 @@ REQEOF
 # Add the requisition-def to provisiond-configuration.xml so provisiond
 # auto-imports.  Insert our E2E requisition-def immediately before the
 # closing </provisiond-configuration> tag, preserving every other
-# requisition-def (delta-v, rpc-canary, cloud-services, l8opensim-lab,
+# requisition-def (delta-v, rpc-canary, cloud-services, nl6-lab,
 # perspective-test, flow-test) that other e2e tests depend on.
 # The committed state is backed up in cleanup()'s trap and restored on exit.
 echo "==> Injecting ${E2E_FOREIGN_SOURCE} requisition-def into ${PROVISIOND_CONFIG}"

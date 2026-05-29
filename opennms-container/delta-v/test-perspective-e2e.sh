@@ -261,7 +261,7 @@ esac
 # committed state on EXIT. Provisiond's import of mhuot-labs.xml (which has
 # nodes with location="mhuot-labs") is what populates monitoringlocations with
 # the mhuot-labs row — without this step, the LOC_COUNT check below would fail
-# because only Default (+ l8opensim-lab) get registered.
+# because only Default (+ nl6-lab) get registered.
 cp "${PROVISIOND_CONFIG}" "${PROVISIOND_CONFIG_BACKUP}"
 python3 - "${PROVISIOND_CONFIG}" <<'PYEOF'
 import re, sys

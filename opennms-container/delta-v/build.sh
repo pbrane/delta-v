@@ -272,10 +272,10 @@ do_provisiond_imports_init_image() {
     build_image provisiond-imports-init -f Dockerfile.provisiond-imports-init .
 }
 
-do_l8opensim_provisioner_image() {
-    log "Building ${IMAGE_PREFIX}/l8opensim-provisioner:$VERSION..."
+do_nl6_provisioner_image() {
+    log "Building ${IMAGE_PREFIX}/nl6-provisioner:$VERSION..."
     cd "$SCRIPT_DIR"
-    build_image l8opensim-provisioner -f Dockerfile.l8opensim-provisioner .
+    build_image nl6-provisioner -f Dockerfile.nl6-provisioner .
 }
 
 do_mock_snmp_agent_image() {
@@ -432,13 +432,13 @@ do_deltav_images() {
     do_clickhouse_init_image
     do_grafana_image
     do_provisiond_imports_init_image
-    do_l8opensim_provisioner_image
+    do_nl6_provisioner_image
     do_mock_snmp_agent_image
     do_flow_exporter_image
     do_sflow_exporter_image
 
     log "Delta-V images built:"
-    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|l8opensim-provisioner|mock-snmp-agent|flow-exporter|sflow-exporter" | sort | head -60
+    docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|nl6-provisioner|mock-snmp-agent|flow-exporter|sflow-exporter" | sort | head -60
 }
 
 # Build a single daemon's layered image, reusing the existing cached
