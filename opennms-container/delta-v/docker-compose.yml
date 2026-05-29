@@ -195,7 +195,10 @@ services:
     command:
       - |
         set -eu
-        echo "provisioner: importing 20-device seed via upstream fleet.sh"
+        # Derive expected count from devices.json so adding a 21st entry
+        # doesn't silently break the verifier.
+        expected=$$(jq '[.[].device_count] | add' /seed/devices.json)
+        echo "provisioner: importing $$expected-device seed via upstream fleet.sh"
         # devices.json is a batch-manifest array; fleet.sh import
         # auto-detects the shape and POSTs each entry to /api/v1/devices.
         sh /seed/fleet.sh import http://127.0.0.1:8080 /seed/devices.json
@@ -205,9 +208,14 @@ services:
         body=$$(curl -sf http://127.0.0.1:8080/api/v1/devices) || {
             echo "FAIL could not GET /api/v1/devices for verification"; exit 1;
         }
-        count=$$(printf '%s' "$$body" | jq '(.data // .devices // (if type=="array" then . else [] end)) | length')
-        echo "provisioner: nl6 now reports $$count devices"
-        [ "$$count" -eq 20 ] || { echo "FAIL expected 20 devices got $$count"; exit 1; }
+        count=$$(printf '%s' "$$body" | jq '(.data // .devices // (if type=="array" then . else [] end)) | length' 2>/dev/null) || {
+            echo "FAIL could not parse /api/v1/devices response: $$body"; exit 1;
+        }
+        # Coerce empty/null to 0 so busybox `[` doesn't error out before
+        # the friendly FAIL message can run.
+        case "$$count" in ''|null) count=0 ;; esac
+        echo "provisioner: nl6 now reports $$count devices (expected $$expected)"
+        [ "$$count" -eq "$$expected" ] || { echo "FAIL expected $$expected devices got $$count"; exit 1; }
 
   # gRPC-to-Kafka translator for the Minion-facing surface (Heartbeat in rc1;
   # Sink/RPC channels follow in v1.3). Sole inbound surface for Minions per
