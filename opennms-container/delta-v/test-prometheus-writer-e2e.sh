@@ -152,7 +152,7 @@ while (( SECONDS < deadline )); do
     # Query opennms_mib2_x_interfaces_ifhcinoctets_total instead of the
     # narrower opennms_mib2_interface_errors_ifindiscards_total: the HC
     # interface counters come from the MIB-2 mib2-X-interfaces group which
-    # every MIB-2-compliant device serves, so the l8opensim-lab simulator
+    # every MIB-2-compliant device serves, so the nl6-lab simulator
     # (reliable) produces them alongside rpc-canary (which goes through the
     # flaky in-compose mock-snmp-agent, see project_mock_snmp_agent_systemgroup_bug).
     # Any reliable opennms_ metric proves the pipeline+labels work; there is
@@ -307,20 +307,20 @@ if ! echo "$dash" | grep -q '"title":"SNMP Overview"'; then
 fi
 echo "==> Dashboard OK"
 
-# ── Step 10: Verify l8opensim-lab location is producing metrics ───────────────
-echo "==> Step 10: Verify l8opensim-lab location produces interface HC counters"
+# ── Step 10: Verify nl6-lab location is producing metrics ───────────────
+echo "==> Step 10: Verify nl6-lab location produces interface HC counters"
 deadline=$((SECONDS + VM_QUERY_TIMEOUT))
 lab_landed=false
 while (( SECONDS < deadline )); do
     resp=$(curl -sGf "http://localhost:18428/api/v1/query" \
-            --data-urlencode 'query=opennms_mib2_x_interfaces_ifhcinoctets_total{foreign_source="l8opensim-lab"}' \
+            --data-urlencode 'query=opennms_mib2_x_interfaces_ifhcinoctets_total{foreign_source="nl6-lab"}' \
             2>/dev/null || echo '{"data":{"result":[]}}')
     count=$(echo "$resp" | python3 -c \
             'import json,sys; d=json.load(sys.stdin); print(len(d.get("data",{}).get("result",[])))' \
             2>/dev/null || echo "0")
     if (( count > 0 )); then
-        echo "==> VM returned ${count} series for l8opensim-lab (Minion-lab is working)"
-        echo "$resp" | grep -q '"location":"l8opensim-lab"' || \
+        echo "==> VM returned ${count} series for nl6-lab (Minion-lab is working)"
+        echo "$resp" | grep -q '"location":"nl6-lab"' || \
             { echo "FAIL: series missing location label"; exit 1; }
         lab_landed=true
         break
@@ -328,31 +328,31 @@ while (( SECONDS < deadline )); do
     sleep 2
 done
 if [[ "$lab_landed" != "true" ]]; then
-    echo "FAIL: l8opensim-lab produced no interface HC metrics within ${VM_QUERY_TIMEOUT}s"
+    echo "FAIL: nl6-lab produced no interface HC metrics within ${VM_QUERY_TIMEOUT}s"
     echo "Last VM response: $resp"
     docker compose logs minion-lab | tail -30
     exit 1
 fi
 
-# ── Step 11: Verify l8opensim-lab IPFIX flows + full 4-protocol coverage in ClickHouse ──
-# Asserts the flow pipeline (l8opensim → minion-lab → flow-enricher → ClickHouse)
+# ── Step 11: Verify nl6-lab IPFIX flows + full 4-protocol coverage in ClickHouse ──
+# Asserts the flow pipeline (nl6 → minion-lab → flow-enricher → ClickHouse)
 # delivers IPFIX flows AND that all four parser paths (NetFlow v5, NetFlow v9,
 # IPFIX, sFlow) reach ClickHouse. sFlow was relaxed to ">=3" while the pcap
 # runtime lib was missing from the sflow-exporter image (fixed in
 # delta-v sflow-exporter/Dockerfile); the assertion is now "==4" so a
 # regression in any parser path fails the gate.
-echo "==> Step 11: Verify l8opensim-lab flows land in ClickHouse with full 4-protocol coverage"
+echo "==> Step 11: Verify nl6-lab flows land in ClickHouse with full 4-protocol coverage"
 deadline=$((SECONDS + CLICKHOUSE_QUERY_TIMEOUT))
 flows_landed=false
 while (( SECONDS < deadline )); do
     rows=$(curl -sf -u deltav:deltav 'http://localhost:8123/' \
-           --data-binary "SELECT count() FROM deltav.flows_raw WHERE location = 'l8opensim-lab'" \
+           --data-binary "SELECT count() FROM deltav.flows_raw WHERE location = 'nl6-lab'" \
            2>/dev/null || echo "0")
     if (( rows > 0 )); then
         protos=$(curl -sf -u deltav:deltav 'http://localhost:8123/' \
                  --data-binary "SELECT count(DISTINCT netflow_version) FROM deltav.flows_raw WHERE netflow_version != ''" \
                  2>/dev/null || echo "0")
-        echo "==> ClickHouse has ${rows} l8opensim-lab flow rows across ${protos} protocol(s)"
+        echo "==> ClickHouse has ${rows} nl6-lab flow rows across ${protos} protocol(s)"
         if (( protos >= 4 )); then
             echo "==> All 4 protocols present (NetFlow v5/v9, IPFIX, sFlow)"
             flows_landed=true
@@ -362,7 +362,7 @@ while (( SECONDS < deadline )); do
     sleep 3
 done
 if [[ "$flows_landed" != "true" ]]; then
-    echo "FAIL: l8opensim-lab flows did not land with full 4-protocol coverage within ${CLICKHOUSE_QUERY_TIMEOUT}s"
+    echo "FAIL: nl6-lab flows did not land with full 4-protocol coverage within ${CLICKHOUSE_QUERY_TIMEOUT}s"
     echo "Last rows: ${rows:-0}; last protocols: ${protos:-0}"
     docker compose logs flow-enricher | tail -30
     docker compose logs minion-lab | tail -20

@@ -16,7 +16,7 @@ set -eu
 
 APP_NAME="${PERSPECTIVE_APP_NAME:-Devices-API-Perspective-App}"
 LOCATION_A="${PERSPECTIVE_LOCATION_A:-Default}"
-LOCATION_B="${PERSPECTIVE_LOCATION_B:-l8opensim-lab}"
+LOCATION_B="${PERSPECTIVE_LOCATION_B:-nl6-lab}"
 WAIT_TIMEOUT="${PERSPECTIVE_WAIT_TIMEOUT:-300}"
 POLL_INTERVAL=5
 
@@ -66,8 +66,8 @@ wait_for_ifservice() {
 }
 
 # 1. Wait for both perspective monitoring locations to exist. Default is
-#    present from db-init; l8opensim-lab only appears once provisiond has
-#    imported the l8opensim-lab requisition, whose nodes are scanned through
+#    present from db-init; nl6-lab only appears once provisiond has
+#    imported the nl6-lab requisition, whose nodes are scanned through
 #    Minion RPC -- on a cold start that lags well behind provisiond becoming
 #    healthy, so this needs a retry loop just like the ifservices waits.
 log "Waiting for monitoring locations ${LOCATION_A}, ${LOCATION_B} (timeout ${WAIT_TIMEOUT}s)..."

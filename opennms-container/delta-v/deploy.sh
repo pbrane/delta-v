@@ -153,7 +153,7 @@ Profiles:
   lite      + essential daemons (alarmd, pollerd, collectd, discovery, provisiond, bsmd,
               eventtranslator, perspectivepollerd, flow-enricher, prometheus-writer)
   passive   + trap/syslog receivers (alarmd, trapd, syslogd, eventtranslator, provisiond)
-  full      All ~20 services (lite + enlinkd + telemetryd + clickhouse + flow testnodes + l8opensim)
+  full      All ~20 services (lite + enlinkd + telemetryd + clickhouse + flow testnodes + nl6)
 
 Examples:
   ./deploy.sh up                    # Infrastructure only

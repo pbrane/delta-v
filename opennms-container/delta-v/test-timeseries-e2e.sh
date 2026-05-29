@@ -18,7 +18,7 @@
 # the legacy horizon-core webapp REST API (which was removed from delta-v
 # in PR #28 — project_webapp_removed). The committed full stack already
 # imports multiple requisitions at startup (delta-v, cloud-services,
-# rpc-canary, flow-test, l8opensim-lab, perspective-test) so Collectd has
+# rpc-canary, flow-test, nl6-lab, perspective-test) so Collectd has
 # plenty of nodes to poll without this test needing to provision its own.
 #
 # Prerequisites:
