@@ -890,66 +890,6 @@ services:
       retries: 12
       start_period: 30s
 
-  flow-default-testnode-1:
-    <<: *no-search-domain
-    profiles: [active, full, metrics, demo]
-    image: ${IMAGE_PREFIX:-deltav}/flow-exporter:${VERSION}
-    container_name: flow-default-testnode-1
-    hostname: flow-default-testnode-1
-    cap_add:
-      - NET_RAW
-    depends_on:
-      minion:
-        condition: service_healthy
-    environment:
-      NETFLOW_COLLECTOR: minion:4729
-      NETFLOW_VERSION: "9"
-      TRAFFIC_INTERVAL: "5"
-    networks:
-      default:
-        ipv4_address: 172.18.0.21
-
-  flow-sflow-testnode-1:
-    <<: *no-search-domain
-    profiles: [active, full, metrics, demo]
-    image: ${IMAGE_PREFIX:-deltav}/sflow-exporter:${VERSION}
-    container_name: flow-sflow-testnode-1
-    hostname: flow-sflow-testnode-1
-    cap_add:
-      - NET_RAW
-    depends_on:
-      minion:
-        condition: service_healthy
-    environment:
-      SFLOW_COLLECTOR: minion:4729
-      # sampling=1 means sample every packet — necessary for a low-traffic
-      # test bed. polling=10 emits counter samples every 10s.
-      SAMPLING_RATE: "1"
-      POLLING_INTERVAL: "10"
-      TRAFFIC_INTERVAL: "2"
-    networks:
-      default:
-        ipv4_address: 172.18.0.20
-
-  flow-v5-testnode-1:
-    <<: *no-search-domain
-    profiles: [active, full, metrics, demo]
-    image: ${IMAGE_PREFIX:-deltav}/flow-exporter:${VERSION}
-    container_name: flow-v5-testnode-1
-    hostname: flow-v5-testnode-1
-    cap_add:
-      - NET_RAW
-    depends_on:
-      minion:
-        condition: service_healthy
-    environment:
-      NETFLOW_COLLECTOR: minion:4729
-      NETFLOW_VERSION: "5"
-      TRAFFIC_INTERVAL: "5"
-    networks:
-      default:
-        ipv4_address: 172.18.0.22
-
   prometheus-writer:
     <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/prometheus-writer:${VERSION}

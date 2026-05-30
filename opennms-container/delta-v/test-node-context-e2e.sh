@@ -127,7 +127,7 @@ REQEOF
 # auto-imports.  Insert our E2E requisition-def immediately before the
 # closing </provisiond-configuration> tag, preserving every other
 # requisition-def (delta-v, rpc-canary, cloud-services, nl6-lab,
-# perspective-test, flow-test) that other e2e tests depend on.
+# perspective-test) that other e2e tests depend on.
 # The committed state is backed up in cleanup()'s trap and restored on exit.
 echo "==> Injecting ${E2E_FOREIGN_SOURCE} requisition-def into ${PROVISIOND_CONFIG}"
 cp "${PROVISIOND_CONFIG}" "${PROVISIOND_CONFIG_BACKUP}"

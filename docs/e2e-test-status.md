@@ -20,7 +20,7 @@ Each `opennms-container/delta-v/test-*-e2e.sh` script runs independently. There'
 | `test-e2e.sh` (alarm lifecycle, traps) | 13/13 ✅ (after fix) | KEEP | **Was 7/12 — fixed in this branch via 3 hardening tweaks ported from test-minion-e2e.sh: consumer warmup 3s→8s, ALARM_TIMEOUT 30s→45s, IFINDEX 1→3.** The alarmd pipeline was never broken; the test harness had stale 2026-04-01 timing that pre-dated the gRPC migration. |
 | `test-passive-e2e.sh` | 20/22 ❌ | **DEFER — outage table, not alarm table** | Phase-2/3 **alarm** assertions all pass — alarmd creates and clears the `serviceDown` alarm correctly. The 2 failures are `outages` table inserts (alarm-driven outage open + close). That's a Pollerd-side flow, separate from the alarmd-lifecycle gap. test-passive-e2e.sh already has hardening from 2026-04-28; the test-e2e.sh bit-rot recipe doesn't apply here. |
 | `test-minion-rpc-e2e.sh` | 8/9 ❌ | **DEFER — pollerd Kafka producer bug** | Phase 3 only; see `project_pollerd_kafka_producer_metadata_timeout` |
-| `test-flows-e2e.sh` | 17/19 ❌ | **FIX ENVIRONMENT** | V9 + sFlow testnodes can't bind their docker-compose subnet IPs (envoy + minion grab `172.18.0.20/21` first) |
+| `test-flows-e2e.sh` | RE-VALIDATE 🔄 | **RESOLVED — testnodes removed** | The static-IP testnodes are gone; the nl6 fleet now emits all four protocols (netflow9/netflow5/sflow/ipfix) to `minion:4729` by hostname, so the `172.18.0.20/21` subnet-binding race no longer exists. Pass count to be re-confirmed on the next full run. |
 | `test-prometheus-writer-e2e.sh` | FAIL ❌ | **DEFER — known startup race** | `NodeContextKafkaBootstrap` race (`records_consumed_total=0`); see `project_collectd_publisher_inert_investigation` |
 | `test-enlinkd-e2e.sh` | BLOCKED ⛔ | **HARDWARE-ONLY** | Requires labbox SSH tunnel + Containerlab cEOS + `mhuot-labs` requisition; cannot run from a developer laptop without the tunnel |
 | `test-perspective-e2e.sh` | BLOCKED ⛔ | **HARDWARE-ONLY** | Same labbox dependency + `nl6-lab` Minion location |
@@ -47,7 +47,7 @@ These tests are valuable and should NOT be deleted. They fail because of known o
 
 ### FIX ENVIRONMENT — the test is fine, the dev stack is broken
 
-- **`test-flows-e2e.sh`** — *flow ingestion through ClickHouse*. The V9 + sFlow testnode containers require static IPs `172.18.0.20` / `172.18.0.21`, which envoy + minion grab first at compose startup. Docker-compose subnet allocation is non-deterministic for unreserved IPs. Fix is in the compose file (carve out the testnode IPs from the default range), not in the test script.
+- **`test-flows-e2e.sh`** — *flow ingestion through ClickHouse*. **RESOLVED:** the three static-IP testnode containers (V9/sFlow/v5) were removed entirely. The nl6 simulator fleet now sources all flow traffic — its 29 devices are round-robined across netflow9/netflow5/sflow/ipfix and emit to `minion:4729` by hostname, so there is no longer any static-IP (`172.18.0.20/21/22`) subnet-binding race. The test's per-protocol gate asserts V9/V5/SFLOW/IPFIX (all present in the nl6 mix; IPFIX confirmed nl6-only in live `flows_raw`).
 
 ### HARDWARE-ONLY — move to a separate CI lane, do not run on developer laptops
 

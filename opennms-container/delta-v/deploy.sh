@@ -167,7 +167,7 @@ Commands:
 Profiles:
   (none)    Infrastructure only: postgres + kafka + minion + minion-gateway + envoy + db-init + snmp-agent
   active    + core daemons (alarmd, pollerd, collectd, provisiond, bsmd) + flow stack
-              (clickhouse, flow-enricher, flow testnodes, nl6)
+              (clickhouse, flow-enricher, nl6 — emits netflow9/netflow5/sflow/ipfix)
   passive   + trap/syslog receivers (alarmd, trapd, syslogd, discovery, eventtranslator, provisiond)
   full      All daemons (active + passive + enlinkd + perspectivepollerd + telemetryd)
   demo      full + observability: victoriametrics + vmagent + prometheus-writer + grafana
