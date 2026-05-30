@@ -23,8 +23,8 @@ docker system prune -a --volumes -f
 rm -rf ~/delta-v-smoke
 mkdir -p ~/delta-v-smoke && cd ~/delta-v-smoke
 
-GIT_REF=v1.3.0-rc3
-IMG_TAG=1.3.0-rc3
+GIT_REF=v1.3.0-rc5
+IMG_TAG=1.3.0-rc5
 
 BASE=https://raw.githubusercontent.com/pbrane/delta-v/$GIT_REF/opennms-container/delta-v
 
