@@ -337,10 +337,11 @@ fi
 # ── Step 11: Verify nl6-lab IPFIX flows + full 4-protocol coverage in ClickHouse ──
 # Asserts the flow pipeline (nl6 → minion-lab → flow-enricher → ClickHouse)
 # delivers IPFIX flows AND that all four parser paths (NetFlow v5, NetFlow v9,
-# IPFIX, sFlow) reach ClickHouse. sFlow was relaxed to ">=3" while the pcap
-# runtime lib was missing from the sflow-exporter image (fixed in
-# delta-v sflow-exporter/Dockerfile); the assertion is now "==4" so a
-# regression in any parser path fails the gate.
+# IPFIX, sFlow) reach ClickHouse. All four protocols now come from the nl6
+# fleet (its 29 devices are round-robined across netflow9/netflow5/sflow/ipfix
+# — PR #315; the dedicated flow-exporter/sflow-exporter test-nodes were
+# removed). The assertion is "==4" so a regression in any parser path fails
+# the gate.
 echo "==> Step 11: Verify nl6-lab flows land in ClickHouse with full 4-protocol coverage"
 deadline=$((SECONDS + CLICKHOUSE_QUERY_TIMEOUT))
 flows_landed=false
