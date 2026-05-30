@@ -1,0 +1,84 @@
+#!/bin/bash
+#
+# smoke-vm.sh — Delta-V post-publish smoke test for a clean VM.
+#
+# Validates the no-git-clone contract: curl the published compose files for a
+# release tag and run the stack from images alone. There is intentionally NO
+# source tree / Makefile on the smoke VM — this is the raw `docker compose`
+# path a real image-only consumer uses (the `make` front door is for developers
+# with a checkout). See the "Delta-V smoke test procedure" reference for the
+# wider rationale.
+#
+# Usage on a clean VM (post tag-push + image publish):
+#   1. Copy this script to the VM (or curl it from the tag).
+#   2. Set GIT_REF / IMG_TAG below to the cut you're smoking.
+#   3. ./smoke-vm.sh
+#
+# Hard reset first (intentional — leftover state from a prior cut pollutes the
+# next attempt). This removes ALL containers/volumes/images on the host.
+
+cd ~ && docker rm -f $(docker ps -aq) 2>/dev/null
+docker volume rm -f $(docker volume ls -q) 2>/dev/null
+docker system prune -a --volumes -f
+rm -rf ~/delta-v-smoke
+mkdir -p ~/delta-v-smoke && cd ~/delta-v-smoke
+
+GIT_REF=v1.3.0-rc3
+IMG_TAG=1.3.0-rc3
+
+BASE=https://raw.githubusercontent.com/pbrane/delta-v/$GIT_REF/opennms-container/delta-v
+
+curl -OL $BASE/docker-compose.yml
+curl -OL $BASE/docker-compose.dev.yml
+
+cat > .env <<EOF
+IMAGE_PREFIX=ghcr.io/pbrane
+VERSION=$IMG_TAG
+EOF
+
+# 'demo' profile (rc3+) = full daemon stack + the whole observability pipeline
+# (victoriametrics, vmagent, prometheus-writer, grafana, alertmanager,
+#  alerts-forwarder) + the Track 3 alarms-materializer — one token replaces the
+# old '--profile full --profile metrics'. docker-compose.dev.yml keeps the lean
+# JVM sizing for the resource-constrained VM (raw compose doesn't auto-layer it
+# the way 'make up PROFILE=demo' does).
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo pull
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo up -d
+
+# --- Print all browser-accessible URLs ---
+HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+HOST_IP="${HOST_IP:-localhost}"
+
+cat <<EOF
+
+==============================================================
+ Delta-V $IMG_TAG is starting on $HOST_IP
+==============================================================
+
+ Observability
+   Grafana                http://$HOST_IP:13000           (admin/admin)
+   VictoriaMetrics UI     http://$HOST_IP:18428
+   Alertmanager           http://$HOST_IP:9093
+   Prometheus Writer      http://$HOST_IP:18080/actuator/health
+
+ Data plane
+   ClickHouse HTTP        http://$HOST_IP:8123/play
+   nl6 REST/UI            http://$HOST_IP:19081
+
+ Daemon actuators
+   Minion                 http://$HOST_IP:8301/actuator/health
+   Bsmd                   http://$HOST_IP:8180/actuator/health
+
+ Ingress (not browser URLs, FYI)
+   Minion gateway (gRPC)  $HOST_IP:8443
+   Kafka bootstrap        $HOST_IP:19092
+   SNMP test agent        $HOST_IP:19161/udp
+   Trapd / Syslog / Flow  $HOST_IP:11162/udp, 1514/udp, 4729/udp
+
+ Track 3 (alarms-materializer): no host port — check health with
+   'docker compose ps alarms-materializer'; its metrics appear in Grafana/VM
+   (deltav_alarms_materializer_*). Default persistence.mode is 'dual-write'.
+
+ Tip: 'docker compose ps' to watch health; Grafana takes ~30-60s to come up.
+==============================================================
+EOF
