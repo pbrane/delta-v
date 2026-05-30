@@ -163,8 +163,9 @@ done
 # Pre-flight: confirm gateway-side flow stream opens
 # ══════════════════════════════════════════════════════════════════
 
-# Flow exporters in the `full` profile (flow-default-testnode + sFlow + v5)
-# emit continuously; we don't need to drive synthetic traffic. Wait up to
+# The nl6 simulator fleet emits flows continuously — its 29 devices are
+# round-robined across all four protocols (netflow9 / netflow5 / sflow / ipfix
+# to minion:4729), so we don't need to drive synthetic traffic. Wait up to
 # 10s for any of the four publish* methods to log a stream open.
 # Capture+case avoids SIGPIPE under pipefail (per
 # feedback_grep_q_sigpipe_in_pipefail).
@@ -205,11 +206,13 @@ else
   exit 1
 fi
 
-# Per-protocol assertions. Proves each exporter's datagrams travel the full
-# Minion → Kafka → flow-enricher → ClickHouse path. The netflow_version
-# column is a String whose value comes from the FlowDocument protobuf enum
-# name (NetflowVersion.V9 → "V9", NetflowVersion.SFLOW → "SFLOW").
-for proto in V9 SFLOW; do
+# Per-protocol assertions. Proves the nl6 fleet's datagrams travel the full
+# Minion → Kafka → flow-enricher → ClickHouse path for each protocol. The
+# netflow_version column is a String whose value comes from the FlowDocument
+# protobuf enum name (NetflowVersion.V9 → "V9", .V5 → "V5", .SFLOW → "SFLOW",
+# .IPFIX → "IPFIX"). All four enum names are confirmed in live flows_raw data;
+# the nl6 fleet round-robins its 29 devices across all four protocols.
+for proto in V9 V5 SFLOW IPFIX; do
   PROTO_QUERY="SELECT count() FROM deltav.flows_raw WHERE netflow_version = '${proto}' AND timestamp > now() - INTERVAL 10 MINUTE"
   if wait_for_ch "$PROTO_QUERY" 120 "flows_raw ${proto} rows (last 10 min)" 10; then
     PROTO_COUNT=$(ch_query "$PROTO_QUERY" 2>/dev/null || echo "0")

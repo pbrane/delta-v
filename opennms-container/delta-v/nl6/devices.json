@@ -43,7 +43,7 @@
       "device_type": "Linux Server",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -73,7 +73,7 @@
       "device_type": "Juniper",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -103,7 +103,7 @@
       "device_type": "Check Point",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -163,7 +163,7 @@
       "device_type": "IBM",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -193,7 +193,7 @@
       "device_type": "NVIDIA GPU Server",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -223,7 +223,7 @@
       "device_type": "Dell",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -283,7 +283,7 @@
       "device_type": "Nokia",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -313,7 +313,7 @@
       "device_type": "Cisco Router/Switch",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -343,7 +343,7 @@
       "device_type": "HPE",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -403,7 +403,7 @@
       "device_type": "NetApp",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -433,7 +433,7 @@
       "device_type": "Cisco Router/Switch",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -463,7 +463,7 @@
       "device_type": "Extreme Networks",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -523,7 +523,7 @@
       "device_type": "D-Link",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -553,7 +553,7 @@
       "device_type": "Arista",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -583,7 +583,7 @@
       "device_type": "Palo Alto",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -643,7 +643,7 @@
       "device_type": "Cisco Router/Switch",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -673,7 +673,7 @@
       "device_type": "Juniper",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -703,7 +703,7 @@
       "device_type": "Cisco IOS",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -763,7 +763,7 @@
       "device_type": "NVIDIA GPU Server",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -793,7 +793,7 @@
       "device_type": "AWS",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
@@ -823,7 +823,7 @@
       "device_type": "Fortinet",
       "flow": {
         "collector": "minion:4729",
-        "protocol": "netflow9",
+        "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
