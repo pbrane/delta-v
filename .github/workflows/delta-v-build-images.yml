@@ -38,10 +38,8 @@
 #     - ghcr.io/<owner>/grafana:<version>                  Grafana + baked provisioning / dashboards
 #     - ghcr.io/<owner>/provisiond-imports-init:<version>  Seeds requisitions named volume on first boot
 #     - ghcr.io/<owner>/perspective-app-init:<version>     Seeds smoke-baseline perspective application
-#     - ghcr.io/<owner>/l8opensim-provisioner:<version>    POSTs 20-device seed to l8opensim
+#     - ghcr.io/<owner>/nl6-provisioner:<version>          POSTs 29-device seed to nl6
 #     - ghcr.io/<owner>/mock-snmp-agent:<version>          Mock SNMP agent (test infra)
-#     - ghcr.io/<owner>/flow-exporter:<version>            NetFlow v5/v9 test-node exporter
-#     - ghcr.io/<owner>/sflow-exporter:<version>           sFlow test-node exporter (hsflowd)
 #
 # Usage after build:
 #   1. Set IMAGE_PREFIX in opennms-container/delta-v/.env:
@@ -184,7 +182,7 @@ jobs:
           echo "     ./deploy.sh up lite"
           echo ""
           echo "### Images"
-          DAEMONS="alarmd alerts-forwarder bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd minion-boot db-init flow-enricher prometheus-writer clickhouse clickhouse-init grafana provisiond-imports-init perspective-app-init l8opensim-provisioner mock-snmp-agent flow-exporter sflow-exporter jre-deltav daemon-base"
+          DAEMONS="alarmd alerts-forwarder bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd minion-boot db-init flow-enricher prometheus-writer clickhouse clickhouse-init grafana provisiond-imports-init perspective-app-init nl6-provisioner mock-snmp-agent jre-deltav daemon-base"
           for name in $DAEMONS; do
             echo "  ${{ env.IMAGE_PREFIX }}/$name:${VERSION}"
           done

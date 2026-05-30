@@ -283,16 +283,6 @@ do_mock_snmp_agent_image() {
     build_image mock-snmp-agent -f "$SCRIPT_DIR/mock-snmp-agent/Dockerfile" "$SCRIPT_DIR/mock-snmp-agent"
 }
 
-do_flow_exporter_image() {
-    log "Building ${IMAGE_PREFIX}/flow-exporter:$VERSION..."
-    build_image flow-exporter -f "$SCRIPT_DIR/flow-exporter/Dockerfile" "$SCRIPT_DIR/flow-exporter"
-}
-
-do_sflow_exporter_image() {
-    log "Building ${IMAGE_PREFIX}/sflow-exporter:$VERSION..."
-    build_image sflow-exporter -f "$SCRIPT_DIR/sflow-exporter/Dockerfile" "$SCRIPT_DIR/sflow-exporter"
-}
-
 do_alarms_materializer_image() {
     log "Building alarms-materializer image..."
     cd "$REPO_ROOT"
@@ -448,8 +438,6 @@ do_deltav_images() {
     do_provisiond_imports_init_image
     do_nl6_provisioner_image
     do_mock_snmp_agent_image
-    do_flow_exporter_image
-    do_sflow_exporter_image
 
     # Post-build summary. With PUSH=true the images are multi-arch and pushed
     # to the registry — they are NOT loaded into the local daemon, so a local
@@ -460,7 +448,7 @@ do_deltav_images() {
         log "Delta-V images pushed to ${IMAGE_PREFIX} (multi-arch; not loaded locally)."
     else
         log "Delta-V images built:"
-        docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|alarms-materializer|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|nl6-provisioner|mock-snmp-agent|flow-exporter|sflow-exporter" | sort | head -60 || true
+        docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|alarms-materializer|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|nl6-provisioner|mock-snmp-agent" | sort | head -60 || true
     fi
 }
 
