@@ -140,7 +140,7 @@ services:
       - SYS_ADMIN
     devices:
       - /dev/net/tun
-    # Start with no devices; the provisioner POSTs the 20-device mix from
+    # Start with no devices; the provisioner POSTs the 29-device mix from
     # ./nl6/devices.json after this service is healthy.
     # `-no-namespace` mode keeps the per-device TUN interfaces in this
     # container's root netns so minion-lab (which shares the netns) can
@@ -195,20 +195,25 @@ services:
     command:
       - |
         set -eu
-        # Derive expected count from devices.json so adding a 21st entry
-        # doesn't silently break the verifier. Symmetric error handling
-        # with the count= block below: friendly FAIL if devices.json is
-        # unreadable/malformed, and reject null/empty/zero before the
-        # integer compare so busybox `[` doesn't error out raw.
-        expected=$$(jq '[.[].device_count] | add' /seed/devices.json 2>/dev/null) || {
+        # Derive expected count from devices.json so adding a device
+        # doesn't silently break the verifier. Shape-aware to match
+        # fleet.sh's import auto-detection: a batch-manifest array sums
+        # each entry's device_count, while a {data:[...]} (or {devices:[...]})
+        # GET-response counts one device per entry (no device_count field).
+        # Symmetric error handling with the count= block below: friendly
+        # FAIL if devices.json is unreadable/malformed, and reject
+        # null/empty/zero before the integer compare so busybox `[`
+        # doesn't error out raw.
+        expected=$$(jq '(.data? // .devices? // .) as $$arr | if ($$arr|type)=="array" then ([ $$arr[] | (.device_count // 1) ] | add) else null end' /seed/devices.json 2>/dev/null) || {
             echo "FAIL could not parse /seed/devices.json"; exit 1;
         }
         case "$$expected" in
             ''|null|0) echo "FAIL /seed/devices.json yields no devices (expected=$$expected)"; exit 1 ;;
         esac
         echo "provisioner: importing $$expected-device seed via upstream fleet.sh"
-        # devices.json is a batch-manifest array; fleet.sh import
-        # auto-detects the shape and POSTs each entry to /api/v1/devices.
+        # fleet.sh import auto-detects the devices.json shape (batch-manifest
+        # array or {data:[...]} GET-response) and POSTs each entry to
+        # /api/v1/devices.
         sh /seed/fleet.sh import http://127.0.0.1:8080 /seed/devices.json
         # Verify exact count. Match fleet.sh's shape hedging so a future
         # response envelope change ({data:[]}, {devices:[]}, or bare array)

@@ -1,141 +1,179 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import"
-              date-stamp="2026-04-20T00:00:00.000Z"
-              foreign-source="nl6-lab">
-   <node location="nl6-lab" foreign-id="lab-01" node-label="lab-01-core-rtr-01">
-      <interface ip-addr="10.0.0.1" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-02" node-label="lab-02-core-rtr-02">
-      <interface ip-addr="10.0.0.2" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-03" node-label="lab-03-edge-rtr-01">
-      <interface ip-addr="10.0.0.3" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-04" node-label="lab-04-edge-rtr-02">
-      <interface ip-addr="10.0.0.4" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-05" node-label="lab-05-dc-sw-01">
-      <interface ip-addr="10.0.0.5" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-06" node-label="lab-06-dc-sw-02">
+              date-stamp="2026-05-30T08:47:33.000Z"
+              foreign-source="nl6">
+   <node location="nl6-lab" foreign-id="juniper-mx960-10.0.0.6" node-label="juniper-mx960-10.0.0.6">
       <interface ip-addr="10.0.0.6" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
          <monitored-service service-name="SNMP"/>
       </interface>
    </node>
-   <node location="nl6-lab" foreign-id="lab-07" node-label="lab-07-dc-sw-03">
-      <interface ip-addr="10.0.0.7" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-08" node-label="lab-08-campus-sw-01">
-      <interface ip-addr="10.0.0.8" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-09" node-label="lab-09-campus-sw-02">
-      <interface ip-addr="10.0.0.9" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-10" node-label="lab-10-fw-01">
-      <interface ip-addr="10.0.0.10" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-11" node-label="lab-11-fw-02">
+   <node location="nl6-lab" foreign-id="check-point-15600-10.0.0.11" node-label="check-point-15600-10.0.0.11">
       <interface ip-addr="10.0.0.11" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
          <monitored-service service-name="SNMP"/>
       </interface>
    </node>
-   <node location="nl6-lab" foreign-id="lab-12" node-label="lab-12-server-01">
-      <interface ip-addr="10.0.0.12" status="1" snmp-primary="P">
+   <node location="nl6-lab" foreign-id="nvidia-dgx-h100-10.0.0.23" node-label="nvidia-dgx-h100-10.0.0.23">
+      <interface ip-addr="10.0.0.23" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
          <monitored-service service-name="SNMP"/>
       </interface>
    </node>
-   <node location="nl6-lab" foreign-id="lab-13" node-label="lab-13-server-02">
-      <interface ip-addr="10.0.0.13" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-14" node-label="lab-14-server-03">
-      <interface ip-addr="10.0.0.14" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-15" node-label="lab-15-server-04">
-      <interface ip-addr="10.0.0.15" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-16" node-label="lab-16-gpu-dgx-01">
-      <interface ip-addr="10.0.0.16" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-17" node-label="lab-17-gpu-hgx-01">
-      <interface ip-addr="10.0.0.17" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-18" node-label="lab-18-storage-01">
-      <interface ip-addr="10.0.0.18" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-19" node-label="lab-19-storage-02">
-      <interface ip-addr="10.0.0.19" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="lab-20" node-label="lab-20-storage-03">
+   <node location="nl6-lab" foreign-id="ibm-power-s922-10.0.0.20" node-label="ibm-power-s922-10.0.0.20">
       <interface ip-addr="10.0.0.20" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
          <monitored-service service-name="SNMP"/>
       </interface>
    </node>
-   <!--
-     Aggregate flow exporter node. nl6's 20 simulated devices share a
-     single Go process; flow packets exit via 127.0.0.2 (loopback inside the
-     nl6+minion-lab shared netns). Collector is 127.0.0.2 (not 127.0.0.1)
-     so this node has a unique loopback IP that doesn't collide with
-     delta-v/localhost. Provisiond's IP-based flow attribution lookup matches
-     127.0.0.2 → this node, giving the Grafana flow sources inventory +
-     per-exporter rate panels a canonical foreign-source/foreign-id for the
-     nl6-lab origin. Per-device source/destination IP detail is still
-     visible inside flow records (Top conversations panel).
-   -->
-   <node location="nl6-lab" foreign-id="nl6-aggregate" node-label="nl6-aggregate-flow-exporter">
-      <interface ip-addr="127.0.0.2" status="1" snmp-primary="P">
+   <node location="nl6-lab" foreign-id="nvidia-hgx-h200-10.0.0.24" node-label="nvidia-hgx-h200-10.0.0.24">
+      <interface ip-addr="10.0.0.24" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="dell-emc-unity-10.0.0.27" node-label="dell-emc-unity-10.0.0.27">
+      <interface ip-addr="10.0.0.27" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="pure-storage-flasharray-10.0.0.26" node-label="pure-storage-flasharray-10.0.0.26">
+      <interface ip-addr="10.0.0.26" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="nokia-7750-sr12-10.0.0.15" node-label="nokia-7750-sr12-10.0.0.15">
+      <interface ip-addr="10.0.0.15" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="cisco-catalyst-9500-10.0.0.29" node-label="cisco-catalyst-9500-10.0.0.29">
+      <interface ip-addr="10.0.0.29" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="hpe-proliant-dl380-10.0.0.19" node-label="hpe-proliant-dl380-10.0.0.19">
+      <interface ip-addr="10.0.0.19" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="asr9k-10.0.0.3" node-label="asr9k-10.0.0.3">
+      <interface ip-addr="10.0.0.3" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="netapp-ontap-10.0.0.25" node-label="netapp-ontap-10.0.0.25">
+      <interface ip-addr="10.0.0.25" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="cisco-catalyst-9500-10.0.0.1" node-label="cisco-catalyst-9500-10.0.0.1">
+      <interface ip-addr="10.0.0.1" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="extreme-vsp4450-10.0.0.14" node-label="extreme-vsp4450-10.0.0.14">
+      <interface ip-addr="10.0.0.14" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="sonicwall-nsa6700-10.0.0.16" node-label="sonicwall-nsa6700-10.0.0.16">
+      <interface ip-addr="10.0.0.16" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="dlink-dgs3630-10.0.0.17" node-label="dlink-dgs3630-10.0.0.17">
+      <interface ip-addr="10.0.0.17" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="arista-7280r3-10.0.0.10" node-label="arista-7280r3-10.0.0.10">
+      <interface ip-addr="10.0.0.10" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="palo-alto-pa3220-10.0.0.4" node-label="palo-alto-pa3220-10.0.0.4">
+      <interface ip-addr="10.0.0.4" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="dell-poweredge-r750-10.0.0.18" node-label="dell-poweredge-r750-10.0.0.18">
+      <interface ip-addr="10.0.0.18" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="cisco-nexus-9500-10.0.0.7" node-label="cisco-nexus-9500-10.0.0.7">
+      <interface ip-addr="10.0.0.7" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="juniper-mx240-10.0.0.2" node-label="juniper-mx240-10.0.0.2">
+      <interface ip-addr="10.0.0.2" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="cisco-ios-10.0.0.13" node-label="cisco-ios-10.0.0.13">
+      <interface ip-addr="10.0.0.13" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="huawei-ne8000-10.0.0.8" node-label="huawei-ne8000-10.0.0.8">
+      <interface ip-addr="10.0.0.8" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="nvidia-dgx-a100-10.0.0.22" node-label="nvidia-dgx-a100-10.0.0.22">
+      <interface ip-addr="10.0.0.22" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="aws-s3-storage-10.0.0.28" node-label="aws-s3-storage-10.0.0.28">
+      <interface ip-addr="10.0.0.28" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="fortinet-fortigate-600e-10.0.0.5" node-label="fortinet-fortigate-600e-10.0.0.5">
+      <interface ip-addr="10.0.0.5" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="nec-ix3315-10.0.0.9" node-label="nec-ix3315-10.0.0.9">
+      <interface ip-addr="10.0.0.9" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="cisco-crs-x-10.0.0.12" node-label="cisco-crs-x-10.0.0.12">
+      <interface ip-addr="10.0.0.12" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+   </node>
+   <node location="nl6-lab" foreign-id="linux-server-10.0.0.21" node-label="linux-server-10.0.0.21">
+      <interface ip-addr="10.0.0.21" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
       </interface>
    </node>
 </model-import>
