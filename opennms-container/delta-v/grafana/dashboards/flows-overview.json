@@ -119,6 +119,20 @@
           "rawSql": "SELECT $__timeInterval(timestamp) AS time, location, sum(num_bytes) * 8 / ($__interval_ms / 1000) AS bps FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY time, location ORDER BY time",
           "format": 1
         }
+      ],
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "location"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": false
+            }
+          }
+        }
       ]
     },
     {

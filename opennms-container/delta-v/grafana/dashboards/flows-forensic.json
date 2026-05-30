@@ -238,6 +238,20 @@
           "rawSql": "SELECT $__timeInterval(timestamp) AS time, application, sum(num_bytes) * 8 / ($__interval_ms / 1000) AS bps FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(concat(exporter_node_foreign_source, '/', exporter_node_foreign_id), '${exporter_instance:regex}') AND match(application, '${application:regex}') AND match(toString(protocol), '^(?:${l4_protocol:regex})$') AND match(IPv6NumToString(src_address), '${src_address:regex}') AND match(IPv6NumToString(dst_address), '${dst_address:regex}') AND match(toString(src_port), '^(?:${src_port:regex})$') AND match(toString(dst_port), '^(?:${dst_port:regex})$') GROUP BY time, application ORDER BY time",
           "format": 1
         }
+      ],
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "application"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": false
+            }
+          }
+        }
       ]
     },
     {
