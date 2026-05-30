@@ -189,6 +189,11 @@ services:
     depends_on:
       nl6:
         condition: service_healthy
+      # nl6 device flows target minion:4729 by hostname; the seed validates
+      # that collector via DNS, so minion must be registered before seeding —
+      # otherwise the import fails "lookup minion ... no such host" (a race).
+      minion:
+        condition: service_started
     network_mode: "container:delta-v-nl6"
     restart: "no"
     entrypoint: ["sh", "-c"]
