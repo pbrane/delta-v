@@ -12,14 +12,14 @@
       "resource_file": "cisco_crs_x.json",
       "device_type": "Cisco Router/Switch",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow9",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -27,7 +27,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -42,14 +42,14 @@
       "resource_file": "linux_server.json",
       "device_type": "Linux Server",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -57,7 +57,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -72,14 +72,14 @@
       "resource_file": "juniper_mx960.json",
       "device_type": "Juniper",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -87,7 +87,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -102,14 +102,14 @@
       "resource_file": "check_point_15600.json",
       "device_type": "Check Point",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -117,7 +117,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -132,14 +132,14 @@
       "resource_file": "nvidia_dgx_h100.json",
       "device_type": "NVIDIA GPU Server",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow9",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -147,7 +147,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -162,14 +162,14 @@
       "resource_file": "ibm_power_s922.json",
       "device_type": "IBM",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -177,7 +177,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -192,14 +192,14 @@
       "resource_file": "nvidia_hgx_h200.json",
       "device_type": "NVIDIA GPU Server",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -207,7 +207,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -222,14 +222,14 @@
       "resource_file": "dell_emc_unity.json",
       "device_type": "Dell",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -237,7 +237,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -252,14 +252,14 @@
       "resource_file": "pure_storage_flasharray.json",
       "device_type": "Pure Storage",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow9",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -267,7 +267,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -282,14 +282,14 @@
       "resource_file": "nokia_7750_sr12.json",
       "device_type": "Nokia",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -297,7 +297,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -312,14 +312,14 @@
       "resource_file": "cisco_catalyst_9500.json",
       "device_type": "Cisco Router/Switch",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -327,7 +327,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -342,14 +342,14 @@
       "resource_file": "hpe_proliant_dl380.json",
       "device_type": "HPE",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -357,7 +357,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -372,14 +372,14 @@
       "resource_file": "asr9k.json",
       "device_type": "Cisco ASR9K",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow9",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -387,7 +387,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -402,14 +402,14 @@
       "resource_file": "netapp_ontap.json",
       "device_type": "NetApp",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -417,7 +417,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -432,14 +432,14 @@
       "resource_file": "cisco_catalyst_9500.json",
       "device_type": "Cisco Router/Switch",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -447,7 +447,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -462,14 +462,14 @@
       "resource_file": "extreme_vsp4450.json",
       "device_type": "Extreme Networks",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -477,7 +477,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -492,14 +492,14 @@
       "resource_file": "sonicwall_nsa6700.json",
       "device_type": "SonicWall",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow9",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -507,7 +507,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -522,14 +522,14 @@
       "resource_file": "dlink_dgs3630.json",
       "device_type": "D-Link",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -537,7 +537,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -552,14 +552,14 @@
       "resource_file": "arista_7280r3.json",
       "device_type": "Arista",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -567,7 +567,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -582,14 +582,14 @@
       "resource_file": "palo_alto_pa3220.json",
       "device_type": "Palo Alto",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -597,7 +597,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -612,14 +612,14 @@
       "resource_file": "dell_poweredge_r750.json",
       "device_type": "Dell",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow9",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -627,7 +627,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -642,14 +642,14 @@
       "resource_file": "cisco_nexus_9500.json",
       "device_type": "Cisco Router/Switch",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -657,7 +657,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -672,14 +672,14 @@
       "resource_file": "juniper_mx240.json",
       "device_type": "Juniper",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -687,7 +687,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -702,14 +702,14 @@
       "resource_file": "cisco_ios.json",
       "device_type": "Cisco IOS",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -717,7 +717,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -732,14 +732,14 @@
       "resource_file": "huawei_ne8000.json",
       "device_type": "Huawei",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow9",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -747,7 +747,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -762,14 +762,14 @@
       "resource_file": "nvidia_dgx_a100.json",
       "device_type": "NVIDIA GPU Server",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow5",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -777,7 +777,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -792,14 +792,14 @@
       "resource_file": "aws_s3_storage.json",
       "device_type": "AWS",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "sflow",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -807,7 +807,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -822,14 +822,14 @@
       "resource_file": "fortinet_fortigate_600e.json",
       "device_type": "Fortinet",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "ipfix",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -837,7 +837,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
@@ -852,14 +852,14 @@
       "resource_file": "nec_ix3315.json",
       "device_type": "NEC",
       "flow": {
-        "collector": "minion:4729",
+        "collector": "10.254.0.1:4729",
         "protocol": "netflow9",
         "tick_interval": "5s",
         "active_timeout": "30s",
         "inactive_timeout": "15s"
       },
       "traps": {
-        "collector": "minion:1162",
+        "collector": "10.254.0.1:1162",
         "mode": "trap",
         "community": "public",
         "interval": "30s",
@@ -867,7 +867,7 @@
         "inform_retries": 2
       },
       "syslog": {
-        "collector": "minion:1514",
+        "collector": "10.254.0.1:1514",
         "format": "5424",
         "interval": "10s"
       }
