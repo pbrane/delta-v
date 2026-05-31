@@ -616,18 +616,28 @@ services:
       - -c
       - |
         set -e
-        # Use a marker file, not the emptiness check: when the named volume
-        # first mounts into the provisiond container, Docker auto-populates
-        # it from provisiond's image content at /opt/deltav/etc/imports
-        # (which contains a baked `.gitkeep`). That write happens before
-        # this sidecar runs, so an emptiness check was fooled into thinking
-        # the volume was already seeded and skipped the actual seed.
-        if [ ! -f /runtime/.seeded ]; then
-            echo "[provisiond-imports-init] Seeding /runtime from /seed"
+        # Re-seed when the SEED CONTENT changes, not just once. A signature of
+        # /seed is stored in /runtime/.seed-sig and compared on every boot.
+        #
+        # The old one-time `.seeded` marker meant a seed bump (e.g. the nl6-lab
+        # requisition growing 21 -> 29 nodes in 7659e39) never reached an
+        # already-seeded named volume: the marker was present, so the sidecar
+        # skipped the copy and the deployed env stayed permanently diverged from
+        # the committed requisitions. The signature comparison makes the volume
+        # converge to /seed on every image update. (An emptiness check can't be
+        # used either: Docker auto-populates the volume from provisiond's baked
+        # /opt/deltav/etc/imports `.gitkeep` before this sidecar runs.)
+        #
+        # Runtime `last-import=` drift in the copied requisitions is discardable
+        # state; the re-import provisiond runs afterwards is idempotent.
+        NEW_SIG=$$(cd /seed && find . -type f | sort | xargs md5sum 2>/dev/null | md5sum | awk '{print $$1}')
+        OLD_SIG=$$(cat /runtime/.seed-sig 2>/dev/null || echo none)
+        if [ "$$NEW_SIG" != "$$OLD_SIG" ]; then
+            echo "[provisiond-imports-init] Seeding /runtime from /seed (sig $${OLD_SIG} -> $${NEW_SIG})"
             cp -R /seed/. /runtime/
-            touch /runtime/.seeded
+            printf '%s\n' "$$NEW_SIG" > /runtime/.seed-sig
         else
-            echo "[provisiond-imports-init] /runtime already seeded — normalizing perms"
+            echo "[provisiond-imports-init] /runtime seed current (sig $${NEW_SIG}) — normalizing perms"
         fi
         # Always normalize ownership AND permissions, regardless of seed state.
         # Pre-existing volumes from earlier compose iterations occasionally end up
