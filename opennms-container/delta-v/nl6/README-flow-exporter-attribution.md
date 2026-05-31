@@ -35,6 +35,15 @@ flow payload. So per-device attribution depends entirely on the on-wire source I
    back to the egress interface (`172.18.0.30`) for every device — the original
    bug.
 
+   **The nl6 service MUST run `privileged: true`.** Creating the `opensim` netns
+   does `mount --make-shared /var/run/netns`, which fails with "Permission
+   denied" under plain `cap_add: [NET_ADMIN, SYS_ADMIN]`. When that mount fails
+   nl6 silently falls back to the root netns (the `-no-namespace` failure mode
+   above) and emits **zero** attributable flows, while its `/health` endpoint
+   still reports healthy — so the regression is invisible unless you check
+   ClickHouse. A narrower grant may suffice later, but `privileged` is the
+   proven baseline.
+
 2. **Collector MUST be the veth host end `10.254.0.1`** (where `minion-lab`,
    sharing nl6's root netns via `network_mode: container:delta-v-nl6`, listens on
    `:4729`/`:1162`/`:1514`). There is no NAT on the veth, so the `10.0.0.x`
@@ -50,6 +59,19 @@ flow payload. So per-device attribution depends entirely on the on-wire source I
 4. **SNMP polling still works** across the veth: `minion-lab` (root netns) polls
    each device at `10.0.0.x:161` in opensim; the symmetric root route
    `10.0.0.0/24 via 10.254.0.2 dev veth-sim-host` keeps this reachable.
+
+## Operations: recreate nl6 and minion-lab together
+
+`minion-lab` joins nl6's netns via `network_mode: container:delta-v-nl6`, pinned
+**by container ID**. Any nl6 recreate (image bump, command/config change)
+invalidates that reference: `minion-lab` exits and `docker restart` cannot
+recover it (`joining network namespace of container: No such container`). Since
+all nl6 flows route through `minion-lab`, an unnoticed nl6 recreate silently
+stops the entire flow pipeline. Always recreate the pair together:
+
+```sh
+docker compose up -d --force-recreate nl6 minion-lab
+```
 
 ## Known caveats
 

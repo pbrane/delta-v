@@ -135,6 +135,14 @@ services:
     image: ghcr.io/labmonkeys-space/nl6@sha256:26738adbef8e091df66b29dfb4fce426ddd19973c5695e7069577b093a3de53e  # v0.9.1
     container_name: delta-v-nl6
     profiles: [active, full, metrics, demo]
+    # privileged is REQUIRED for namespace mode: creating the 'opensim' netns
+    # does `mount --make-shared /var/run/netns`, which fails with "Permission
+    # denied" under plain cap_add: [NET_ADMIN, SYS_ADMIN]. Without it nl6
+    # silently falls back to the root netns, the 10.254.0.1 veth is never
+    # built, and every device exports to a dead collector -> 0 flows. A
+    # narrower grant (shared-propagation mount for /var/run/netns, or a
+    # targeted --security-opt) may suffice; privileged is the proven baseline.
+    privileged: true
     cap_add:
       - NET_ADMIN
       - SYS_ADMIN
@@ -193,9 +201,12 @@ services:
     depends_on:
       nl6:
         condition: service_healthy
-      # nl6 device flows target minion:4729 by hostname; the seed validates
-      # that collector via DNS, so minion must be registered before seeding —
-      # otherwise the import fails "lookup minion ... no such host" (a race).
+      # NOTE: collectors are now the literal veth IP 10.254.0.1 (see nl6 above),
+      # NOT the `minion` hostname, so the seed no longer does a DNS lookup of
+      # `minion` — the original "lookup minion ... no such host" race is gone.
+      # The real flow listener is minion-lab (shared netns), not this Default
+      # `minion`. This dependency is retained only as soft ordering safety and
+      # is a candidate for removal once validated.
       minion:
         condition: service_started
     network_mode: "container:delta-v-nl6"
@@ -327,11 +338,22 @@ services:
     image: ${IMAGE_PREFIX:-deltav}/minion-boot:${VERSION}
     container_name: delta-v-minion-lab
     profiles: [active, full, metrics, demo]
+    # network_mode pins this container to nl6's netns BY CONTAINER ID. If nl6 is
+    # ever recreated (image bump, command/config change), this netns reference
+    # is invalidated: minion-lab exits and `docker restart` CANNOT recover it
+    # ("joining network namespace of container: No such container"). Because all
+    # nl6 flows route through here, an unnoticed nl6 recreate silently kills the
+    # whole flow pipeline. Recreate the two TOGETHER:
+    #   docker compose up -d --force-recreate nl6 minion-lab
     network_mode: "container:delta-v-nl6"
     cap_add:
       - NET_RAW
     depends_on:
       envoy:
+        condition: service_healthy
+      # Explicit dependency on the netns owner so this never starts against a
+      # missing/stale nl6 sandbox (the network_mode coupling above).
+      nl6:
         condition: service_healthy
       nl6-provisioner:
         condition: service_completed_successfully
