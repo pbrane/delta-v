@@ -142,26 +142,30 @@ services:
       - /dev/net/tun
     # Start with no devices; the provisioner POSTs the 29-device mix from
     # ./nl6/devices.json after this service is healthy.
-    # `-no-namespace` mode keeps the per-device TUN interfaces in this
-    # container's root netns so minion-lab (which shares the netns) can
-    # reach the device IPs at 10.0.0.1-20 directly.
-    # `-flow-protocol ipfix -flow-collector 127.0.0.1:4729`: nl6's flow
-    # config is process-wide (no per-device REST API), so all 20 devices emit
-    # IPFIX to the loopback minion-lab listener. Together with the test-node
-    # containers at Default location (NetFlow v5/v9 + sFlow), all 4 flow
-    # protocols reach the Minion dispatcher and exercise all flow-enricher
-    # parser paths.
-    # `-flow-source-per-device` makes each simulated device send flow packets
-    # from its own TUN-interface IP (10.0.0.1-20) instead of all flows
-    # appearing to come from one process source IP (127.0.0.1). This gives
-    # provisiond the correct per-device exporter IP for foreign-source /
-    # foreign-id attribution in the Grafana flow sources inventory.
-    # Collector on 127.0.0.2 (not 127.0.0.1) so the aggregate exporter node in
-    # the nl6-lab requisition has a unique loopback address that doesn't
-    # collide with delta-v/localhost (also at 127.0.0.1). Linux loopback covers
-    # 127.0.0.0/8 — minion-lab listens on 0.0.0.0:4729 in the shared netns and
-    # receives packets to any 127.x.x.x address.
-    command: ["-no-namespace", "-flow-protocol", "ipfix", "-flow-collector", "127.0.0.2:4729", "-flow-source-per-device"]
+    #
+    # NAMESPACE MODE (default; -no-namespace is intentionally NOT set) is
+    # required for true per-device flow exporter attribution. nl6 builds an
+    # 'opensim' netns holding the per-device TUN interfaces (10.0.0.1-29 on
+    # simN), joined to the container root netns by a veth pair:
+    #   veth-sim-ns (10.254.0.2, in opensim) <-> veth-sim-host (10.254.0.1, root)
+    # `-flow-source-per-device` then binds a per-device UDP socket inside
+    # opensim, so each flow/trap/syslog packet carries the device's own
+    # 10.0.0.x source IP. There is no NAT on the veth (verified), so the
+    # source survives to the collector — giving flow-enricher the correct
+    # per-device exporter IP, which maps to the per-device nodes in the
+    # nl6-lab requisition (one node per 10.0.0.x, location nl6-lab).
+    #
+    # COLLECTOR = the veth host end 10.254.0.1, where minion-lab (which shares
+    # this root netns via network_mode: container:delta-v-nl6) listens on
+    # :4729/:1162/:1514. The per-device collectors in ./nl6/devices.json
+    # (flow 10.254.0.1:4729, trap :1162, syslog :1514) OVERRIDE the CLI
+    # -flow-collector below, so devices.json is the source of truth; the CLI
+    # value only covers nl6's own auto-start devices (none here) and must
+    # stay consistent. Do NOT target minion:4729 (the Default minion across
+    # the docker bridge): 10.0.0.x-sourced packets can't traverse the bridge,
+    # which is why every nl6 flow previously collapsed to the container IP
+    # 172.18.0.30 at location Default. See delta-v#318-era flow attribution.
+    command: ["-flow-protocol", "ipfix", "-flow-collector", "10.254.0.1:4729", "-flow-source-per-device"]
     healthcheck:
       # 127.0.0.1 not localhost — BusyBox wget IPv6 quirk per delta-v#182.
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/health"]
