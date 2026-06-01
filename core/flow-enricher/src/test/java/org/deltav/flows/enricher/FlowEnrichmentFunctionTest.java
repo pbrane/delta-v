@@ -40,6 +40,7 @@ import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator;
 import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator.Locality;
 import org.deltav.flows.enricher.enrichment.InterfaceMarkingCache;
 import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
+import org.deltav.flows.enricher.enrichment.JdbcSnmpInterfaceLookup;
 import org.deltav.flows.enricher.mapping.FlowToDocumentMapper;
 import org.deltav.flows.enricher.protocol.ProtocolMessageProcessor;
 import org.deltav.flows.proto.FlowDocumentProtos;
@@ -66,6 +67,7 @@ class FlowEnrichmentFunctionTest {
     private InterfaceMarkingCache interfaceMarkingCache;
     private ApplicationClassifier applicationClassifier;
     private FlowToDocumentMapper flowToDocumentMapper;
+    private JdbcSnmpInterfaceLookup snmpInterfaceLookup;
     private ProtocolMessageProcessor nf5Processor;
 
     private FlowEnrichmentFunction function;
@@ -78,6 +80,7 @@ class FlowEnrichmentFunctionTest {
         interfaceMarkingCache = mock(InterfaceMarkingCache.class);
         applicationClassifier = mock(ApplicationClassifier.class);
         flowToDocumentMapper = new FlowToDocumentMapper();
+        snmpInterfaceLookup = mock(JdbcSnmpInterfaceLookup.class);
         nf5Processor = mock(ProtocolMessageProcessor.class);
 
         // Default mock behavior: unknown locality for unknown addresses,
@@ -93,6 +96,7 @@ class FlowEnrichmentFunctionTest {
                 interfaceMarkingCache,
                 applicationClassifier,
                 flowToDocumentMapper,
+                snmpInterfaceLookup,
                 Map.of(NF5_MODULE_ID, nf5Processor));
     }
 
@@ -228,7 +232,7 @@ class FlowEnrichmentFunctionTest {
     void callsInterfaceMarkingForInputAndOutputIfindex() {
         // Exporter node resolves, flow has non-zero input/output ifindex.
         JdbcNodeInfoLookup.NodeInfo exporterInfo =
-                new JdbcNodeInfoLookup.NodeInfo(42, "Minions", "exporter-1", MINION_LOCATION);
+                new JdbcNodeInfoLookup.NodeInfo(42, "Minions", "exporter-1", MINION_LOCATION, "exporter-1-label");
         when(nodeInfoLookup.lookupByIpAddress(EXPORTER_ADDRESS)).thenReturn(exporterInfo);
         Flow flow = buildFlow("10.0.0.1", "10.0.0.2", 111, 222, 6, 7, 11);
         when(nf5Processor.process(any())).thenReturn(List.of(flow));
@@ -256,7 +260,7 @@ class FlowEnrichmentFunctionTest {
     @Test
     void skipsInterfaceMarkingWhenIfindexIsZeroOrNull() {
         JdbcNodeInfoLookup.NodeInfo exporterInfo =
-                new JdbcNodeInfoLookup.NodeInfo(99, "Minions", "exporter-9", MINION_LOCATION);
+                new JdbcNodeInfoLookup.NodeInfo(99, "Minions", "exporter-9", MINION_LOCATION, "exporter-9-label");
         when(nodeInfoLookup.lookupByIpAddress(EXPORTER_ADDRESS)).thenReturn(exporterInfo);
         // Ifindex 0 for both directions: "unknown" per Netflow spec.
         Flow flow = buildFlow("10.0.0.1", "10.0.0.2", 111, 222, 6, 0, 0);
@@ -347,7 +351,7 @@ class FlowEnrichmentFunctionTest {
     @Test
     void populatesExporterNodeInfoFromLookup() throws InvalidProtocolBufferException {
         JdbcNodeInfoLookup.NodeInfo exporterInfo =
-                new JdbcNodeInfoLookup.NodeInfo(77, "Minions", "exporter-77", MINION_LOCATION);
+                new JdbcNodeInfoLookup.NodeInfo(77, "Minions", "exporter-77", MINION_LOCATION, "exporter-77-label");
         when(nodeInfoLookup.lookupByIpAddress(EXPORTER_ADDRESS)).thenReturn(exporterInfo);
         Flow flow = buildFlow("10.0.0.1", "10.0.0.2", 111, 222, 6, 1, 2);
         when(nf5Processor.process(any())).thenReturn(List.of(flow));

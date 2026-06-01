@@ -89,7 +89,9 @@ public class FlowToDocumentMapper {
             String flowLocality,
             String host,
             String location,
-            long clockCorrection) {
+            long clockCorrection,
+            String inputIfName,
+            String outputIfName) {
 
         FlowDocumentProtos.FlowDocument.Builder builder = FlowDocumentProtos.FlowDocument.newBuilder();
 
@@ -263,11 +265,42 @@ public class FlowToDocumentMapper {
             builder.setLocation(location);
         }
 
+        // Exporter SNMP interface names (resolved by the caller from the
+        // exporter node's snmpinterface). proto3 scalar strings default to "",
+        // so only write non-empty values.
+        if (inputIfName != null && !inputIfName.isEmpty()) {
+            builder.setInputIfName(inputIfName);
+        }
+        if (outputIfName != null && !outputIfName.isEmpty()) {
+            builder.setOutputIfName(outputIfName);
+        }
+
         // Clock skew correction (milliseconds). Plain uint64; 0 is a valid value
         // meaning "no correction applied", so we always set it.
         builder.setClockCorrection(clockCorrection);
 
         return builder.build();
+    }
+
+    /**
+     * Backwards-compatible overload for callers without resolved exporter
+     * interface names; delegates with empty {@code inputIfName}/{@code outputIfName}.
+     */
+    public FlowDocumentProtos.FlowDocument map(
+            Flow flow,
+            JdbcNodeInfoLookup.NodeInfo exporterNodeInfo,
+            JdbcNodeInfoLookup.NodeInfo srcNodeInfo,
+            JdbcNodeInfoLookup.NodeInfo destNodeInfo,
+            String application,
+            String srcLocality,
+            String dstLocality,
+            String flowLocality,
+            String host,
+            String location,
+            long clockCorrection) {
+        return map(flow, exporterNodeInfo, srcNodeInfo, destNodeInfo, application,
+                srcLocality, dstLocality, flowLocality, host, location, clockCorrection,
+                null, null);
     }
 
     private static FlowDocumentProtos.NodeInfo toProtoNodeInfo(JdbcNodeInfoLookup.NodeInfo info) {
@@ -278,6 +311,9 @@ public class FlowToDocumentMapper {
         }
         if (info.foreignId() != null) {
             b.setForeignId(info.foreignId());
+        }
+        if (info.nodeLabel() != null && !info.nodeLabel().isEmpty()) {
+            b.setNodeLabel(info.nodeLabel());
         }
         // The JdbcNodeInfoLookup.NodeInfo record does not carry OpenNMS
         // category data; the proto NodeInfo.categories field is left empty

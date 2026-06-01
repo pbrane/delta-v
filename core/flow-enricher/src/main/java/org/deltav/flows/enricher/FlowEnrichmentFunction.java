@@ -26,6 +26,7 @@ import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator;
 import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator.Locality;
 import org.deltav.flows.enricher.enrichment.InterfaceMarkingCache;
 import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
+import org.deltav.flows.enricher.enrichment.JdbcSnmpInterfaceLookup;
 import org.deltav.flows.enricher.mapping.FlowToDocumentMapper;
 import org.deltav.flows.enricher.protocol.ProtocolMessageProcessor;
 import org.deltav.flows.proto.FlowDocumentProtos;
@@ -104,6 +105,7 @@ public class FlowEnrichmentFunction {
     private final InterfaceMarkingCache interfaceMarkingCache;
     private final ApplicationClassifier applicationClassifier;
     private final FlowToDocumentMapper flowToDocumentMapper;
+    private final JdbcSnmpInterfaceLookup snmpInterfaceLookup;
     private final Map<String, ProtocolMessageProcessor> processorsByModuleId;
 
     public FlowEnrichmentFunction(
@@ -113,6 +115,7 @@ public class FlowEnrichmentFunction {
             InterfaceMarkingCache interfaceMarkingCache,
             ApplicationClassifier applicationClassifier,
             FlowToDocumentMapper flowToDocumentMapper,
+            JdbcSnmpInterfaceLookup snmpInterfaceLookup,
             Map<String, ProtocolMessageProcessor> processorsByModuleId) {
         this.deserializer = deserializer;
         this.nodeInfoLookup = nodeInfoLookup;
@@ -120,6 +123,7 @@ public class FlowEnrichmentFunction {
         this.interfaceMarkingCache = interfaceMarkingCache;
         this.applicationClassifier = applicationClassifier;
         this.flowToDocumentMapper = flowToDocumentMapper;
+        this.snmpInterfaceLookup = snmpInterfaceLookup;
         this.processorsByModuleId = Map.copyOf(processorsByModuleId);
     }
 
@@ -217,14 +221,18 @@ public class FlowEnrichmentFunction {
         // the exporter node is known (otherwise nodeId is meaningless) and
         // when the ifindex is present and strictly positive (0 is "unknown"
         // per the Netflow spec).
+        String inputIfName = null;
+        String outputIfName = null;
         if (exporterNodeInfo != null) {
             Integer inputIfIndex = flow.getInputSnmp();
             if (inputIfIndex != null && inputIfIndex > 0) {
                 interfaceMarkingCache.markIfNeeded(exporterNodeInfo.nodeId(), inputIfIndex);
+                inputIfName = snmpInterfaceLookup.lookupIfName(exporterNodeInfo.nodeId(), inputIfIndex);
             }
             Integer outputIfIndex = flow.getOutputSnmp();
             if (outputIfIndex != null && outputIfIndex > 0) {
                 interfaceMarkingCache.markIfNeeded(exporterNodeInfo.nodeId(), outputIfIndex);
+                outputIfName = snmpInterfaceLookup.lookupIfName(exporterNodeInfo.nodeId(), outputIfIndex);
             }
         }
 
@@ -244,7 +252,9 @@ public class FlowEnrichmentFunction {
                 localityName(flowLocalityEnum),
                 exporterAddress,
                 location,
-                0L);
+                0L,
+                inputIfName,
+                outputIfName);
         return doc.toByteArray();
     }
 

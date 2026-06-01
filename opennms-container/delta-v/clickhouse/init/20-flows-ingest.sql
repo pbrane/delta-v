@@ -1,4 +1,8 @@
-CREATE MATERIALIZED VIEW IF NOT EXISTS deltav.flows_ingest
+-- Recreated unconditionally (dropped in 03-flows-kafka.sql) so the SELECT stays
+-- in sync with the flows_kafka schema and the flows_raw column order. The MV
+-- inserts into flows_raw BY POSITION, so the projection order below must equal
+-- the flows_raw column order exactly.
+CREATE MATERIALIZED VIEW deltav.flows_ingest
 TO deltav.flows_raw AS
 SELECT
     toDateTime64(timestamp / 1000.0, 3, 'UTC')      AS timestamp,
@@ -53,8 +57,11 @@ SELECT
     exporter_node.foreign_source                     AS exporter_node_foreign_source,
     exporter_node.foreign_id                         AS exporter_node_foreign_id,
     exporter_node.categories                         AS exporter_node_categories,
+    exporter_node.node_label                         AS exporter_node_label,
     ifNull(input_snmp_ifindex.value, 0)              AS input_snmp_ifindex,
     toNullable(output_snmp_ifindex.value)            AS output_snmp_ifindex,
+    input_if_name                                    AS input_if_name,
+    output_if_name                                   AS output_if_name,
 
     ifNull(src_node.node_id, 0)                      AS src_node_id,
     src_node.foreign_source                          AS src_node_foreign_source,

@@ -34,6 +34,7 @@ import org.deltav.flows.enricher.classification.PortBasedApplicationClassifier;
 import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator;
 import org.deltav.flows.enricher.enrichment.InterfaceMarkingCache;
 import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
+import org.deltav.flows.enricher.enrichment.JdbcSnmpInterfaceLookup;
 import org.deltav.flows.enricher.mapping.FlowToDocumentMapper;
 import org.deltav.flows.enricher.parser.DropwizardToPrometheusBridge;
 import org.deltav.flows.enricher.parser.LoggingEventForwarder;
@@ -81,6 +82,13 @@ public class FlowEnricherConfiguration {
             JdbcTemplate flowEnricherJdbcTemplate,
             @Value("${deltav.flows.node-lookup.cache-ttl:5m}") Duration cacheTtl) {
         return new JdbcNodeInfoLookup(flowEnricherJdbcTemplate, cacheTtl);
+    }
+
+    @Bean
+    JdbcSnmpInterfaceLookup jdbcSnmpInterfaceLookup(
+            JdbcTemplate flowEnricherJdbcTemplate,
+            @Value("${deltav.flows.interface-lookup.cache-ttl:5m}") Duration cacheTtl) {
+        return new JdbcSnmpInterfaceLookup(flowEnricherJdbcTemplate, cacheTtl);
     }
 
     @Bean
@@ -401,6 +409,7 @@ public class FlowEnricherConfiguration {
             InterfaceMarkingCache interfaceMarkingCache,
             ApplicationClassifier applicationClassifier,
             FlowToDocumentMapper flowToDocumentMapper,
+            JdbcSnmpInterfaceLookup snmpInterfaceLookup,
             Netflow5MessageProcessor netflow5Processor,
             Netflow9MessageProcessor netflow9Processor,
             IpfixMessageProcessor ipfixProcessor,
@@ -419,6 +428,7 @@ public class FlowEnricherConfiguration {
                 interfaceMarkingCache,
                 applicationClassifier,
                 flowToDocumentMapper,
+                snmpInterfaceLookup,
                 dispatchMap);
     }
 

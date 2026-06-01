@@ -63,8 +63,11 @@ CREATE TABLE IF NOT EXISTS deltav.flows_raw
     exporter_node_foreign_source   LowCardinality(String),
     exporter_node_foreign_id       String,
     exporter_node_categories       Array(LowCardinality(String)),
+    exporter_node_label            LowCardinality(String),
     input_snmp_ifindex             UInt32,
     output_snmp_ifindex            Nullable(UInt32),
+    input_if_name                  LowCardinality(String),
+    output_if_name                 LowCardinality(String),
 
     -- Source node inventory (from NodeInfo src_node)
     src_node_id                    UInt32,
@@ -83,3 +86,11 @@ PARTITION BY toDate(timestamp)
 ORDER BY (exporter_node_id, timestamp, input_snmp_ifindex)
 TTL timestamp + INTERVAL ${DELTAV_CLICKHOUSE_FLOWS_RAW_TTL_DAYS} DAY DELETE
 SETTINGS index_granularity = 8192;
+
+-- Additive migration for clusters created before these columns existed.
+-- ADD COLUMN IF NOT EXISTS is a no-op once applied. Positions are chosen to
+-- match the flows_ingest SELECT order (the materialized view inserts by
+-- column position, so flows_raw column order must equal the SELECT order).
+ALTER TABLE deltav.flows_raw ADD COLUMN IF NOT EXISTS exporter_node_label LowCardinality(String) AFTER exporter_node_categories;
+ALTER TABLE deltav.flows_raw ADD COLUMN IF NOT EXISTS input_if_name  LowCardinality(String) AFTER output_snmp_ifindex;
+ALTER TABLE deltav.flows_raw ADD COLUMN IF NOT EXISTS output_if_name LowCardinality(String) AFTER input_if_name;

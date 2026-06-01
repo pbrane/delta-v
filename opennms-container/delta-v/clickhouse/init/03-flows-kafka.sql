@@ -1,4 +1,13 @@
-CREATE TABLE IF NOT EXISTS deltav.flows_kafka
+-- flows_ingest reads flows_kafka; drop it before recreating the kafka table so
+-- no materialized view is left attached to a dropped table. It is recreated in
+-- 20-flows-ingest.sql. Both objects are stateless (a Kafka consumer view and a
+-- streaming MV), so DROP+recreate is the clean migration for schema changes;
+-- the consumer rejoins group 'deltav-clickhouse-persister' at its committed
+-- offset, so no messages are lost.
+DROP VIEW IF EXISTS deltav.flows_ingest;
+DROP TABLE IF EXISTS deltav.flows_kafka;
+
+CREATE TABLE deltav.flows_kafka
 (
     -- Timing and identity
     timestamp               UInt64,
@@ -69,7 +78,8 @@ CREATE TABLE IF NOT EXISTS deltav.flows_kafka
         node_id             UInt32,
         foreign_source      String,
         foreign_id          String,
-        categories          Array(String)
+        categories          Array(String),
+        node_label          String
     ),
     dest_node               Tuple(
         node_id             UInt32,
@@ -80,7 +90,11 @@ CREATE TABLE IF NOT EXISTS deltav.flows_kafka
 
     -- SNMP ifindex lives at the top level of the proto, not in NodeInfo
     input_snmp_ifindex      Tuple(value UInt32),
-    output_snmp_ifindex     Tuple(value UInt32)
+    output_snmp_ifindex     Tuple(value UInt32),
+
+    -- Resolved interface names (top-level proto strings)
+    input_if_name           String,
+    output_if_name          String
 )
 ENGINE = Kafka
 SETTINGS

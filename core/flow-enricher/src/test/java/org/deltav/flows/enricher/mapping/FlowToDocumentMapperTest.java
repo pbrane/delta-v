@@ -121,7 +121,7 @@ class FlowToDocumentMapperTest {
     @Test
     void populatesExporterNodeWhenEnrichmentProvidesIt() {
         JdbcNodeInfoLookup.NodeInfo exporter = new JdbcNodeInfoLookup.NodeInfo(
-                42, "delta-v", "exporter-1", "Default");
+                42, "delta-v", "exporter-1", "Default", "exporter-1-label");
 
         FlowDocumentProtos.FlowDocument doc = mapper.map(
                 flow, exporter, null, null, null, null, null, null, null, null, 0L);
@@ -243,11 +243,11 @@ class FlowToDocumentMapperTest {
     @Test
     void mapsSrcAndDstNodeInfoWhenAllProvided() {
         JdbcNodeInfoLookup.NodeInfo exporter = new JdbcNodeInfoLookup.NodeInfo(
-                1, "fs", "exporter", "Default");
+                1, "fs", "exporter", "Default", "exporter-label");
         JdbcNodeInfoLookup.NodeInfo src = new JdbcNodeInfoLookup.NodeInfo(
-                2, "fs", "src", "Default");
+                2, "fs", "src", "Default", "src-label");
         JdbcNodeInfoLookup.NodeInfo dst = new JdbcNodeInfoLookup.NodeInfo(
-                3, "fs", "dst", "Default");
+                3, "fs", "dst", "Default", "dst-label");
 
         FlowDocumentProtos.FlowDocument doc = mapper.map(
                 flow, exporter, src, dst, null, null, null, null, null, null, 0L);
@@ -314,5 +314,33 @@ class FlowToDocumentMapperTest {
 
         assertThat(doc.hasSamplingInterval()).isTrue();
         assertThat(doc.getSamplingInterval().getValue()).isEqualTo(0.0);
+    }
+
+    @Test
+    void setsExporterNodeLabelAndInterfaceNames() {
+        JdbcNodeInfoLookup.NodeInfo exporter =
+                new JdbcNodeInfoLookup.NodeInfo(7, "nl6", "dev-7", "nl6-lab", "cisco-7");
+
+        FlowDocumentProtos.FlowDocument doc = mapper.map(
+                flow, exporter, null, null,
+                "HTTPS", "PRIVATE", "PUBLIC", "PRIVATE",
+                "10.0.0.7", "nl6-lab", 0L,
+                "Gi0/1", "Gi0/2");
+
+        assertThat(doc.getExporterNode().getNodeLabel()).isEqualTo("cisco-7");
+        assertThat(doc.getInputIfName()).isEqualTo("Gi0/1");
+        assertThat(doc.getOutputIfName()).isEqualTo("Gi0/2");
+    }
+
+    @Test
+    void leavesInterfaceNamesEmptyWhenNull() {
+        FlowDocumentProtos.FlowDocument doc = mapper.map(
+                flow, null, null, null,
+                "HTTPS", "PRIVATE", "PUBLIC", "PRIVATE",
+                "10.0.0.7", "nl6-lab", 0L,
+                null, null);
+
+        assertThat(doc.getInputIfName()).isEmpty();
+        assertThat(doc.getOutputIfName()).isEmpty();
     }
 }
