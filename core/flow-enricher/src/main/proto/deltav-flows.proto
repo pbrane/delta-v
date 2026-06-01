@@ -43,6 +43,10 @@ message NodeInfo {
     string foreign_source = 2;
     string foreign_id = 3;
     repeated string categories = 4;
+    // Human-readable node label (OnmsNode.label). Populated for all three
+    // NodeInfo sub-messages by the enricher; only the exporter's is persisted
+    // to ClickHouse today.
+    string node_label = 5;
 }
 
 enum Direction {
@@ -124,4 +128,9 @@ message FlowDocument {
     uint64 clock_correction = 45;
     google.protobuf.UInt32Value dscp = 46;
     google.protobuf.UInt32Value ecn = 47;
+    // Resolved SNMP interface names for the exporter's input/output ifIndex
+    // (snmpinterface.snmpifname). Empty when the exporter is unresolved or the
+    // interface is unknown. Fields 25 and 44 are reserved (formerly removed).
+    string input_if_name = 48;
+    string output_if_name = 49;
 }
