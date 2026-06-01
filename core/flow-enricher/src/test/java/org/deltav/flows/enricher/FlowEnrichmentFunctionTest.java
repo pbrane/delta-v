@@ -40,6 +40,7 @@ import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator;
 import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator.Locality;
 import org.deltav.flows.enricher.enrichment.InterfaceMarkingCache;
 import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
+import org.deltav.flows.enricher.enrichment.JdbcSnmpInterfaceLookup;
 import org.deltav.flows.enricher.mapping.FlowToDocumentMapper;
 import org.deltav.flows.enricher.protocol.ProtocolMessageProcessor;
 import org.deltav.flows.proto.FlowDocumentProtos;
@@ -66,6 +67,7 @@ class FlowEnrichmentFunctionTest {
     private InterfaceMarkingCache interfaceMarkingCache;
     private ApplicationClassifier applicationClassifier;
     private FlowToDocumentMapper flowToDocumentMapper;
+    private JdbcSnmpInterfaceLookup snmpInterfaceLookup;
     private ProtocolMessageProcessor nf5Processor;
 
     private FlowEnrichmentFunction function;
@@ -78,6 +80,7 @@ class FlowEnrichmentFunctionTest {
         interfaceMarkingCache = mock(InterfaceMarkingCache.class);
         applicationClassifier = mock(ApplicationClassifier.class);
         flowToDocumentMapper = new FlowToDocumentMapper();
+        snmpInterfaceLookup = mock(JdbcSnmpInterfaceLookup.class);
         nf5Processor = mock(ProtocolMessageProcessor.class);
 
         // Default mock behavior: unknown locality for unknown addresses,
@@ -93,6 +96,7 @@ class FlowEnrichmentFunctionTest {
                 interfaceMarkingCache,
                 applicationClassifier,
                 flowToDocumentMapper,
+                snmpInterfaceLookup,
                 Map.of(NF5_MODULE_ID, nf5Processor));
     }
 
