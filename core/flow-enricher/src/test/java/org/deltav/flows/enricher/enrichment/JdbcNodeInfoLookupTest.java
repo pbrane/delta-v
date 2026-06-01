@@ -38,7 +38,7 @@ import org.springframework.jdbc.core.RowMapper;
 class JdbcNodeInfoLookupTest {
 
     private static final JdbcNodeInfoLookup.NodeInfo SAMPLE =
-            new JdbcNodeInfoLookup.NodeInfo(5, "delta-v", "router-1", "Default");
+            new JdbcNodeInfoLookup.NodeInfo(5, "delta-v", "router-1", "Default", "router-1-label");
 
     @Test
     void lookupByIpAddressReturnsNodeInfo() {
@@ -129,5 +129,20 @@ class JdbcNodeInfoLookupTest {
         lookup.lookupByNodeId(5);
 
         verify(jdbc, times(1)).query(anyString(), any(RowMapper.class), any(Object[].class));
+    }
+
+    @Test
+    void lookupByNodeIdCarriesNodeLabel() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        JdbcNodeInfoLookup.NodeInfo row =
+                new JdbcNodeInfoLookup.NodeInfo(7, "nl6", "dev-7", "nl6-lab", "cisco-7");
+        when(jdbc.query(contains("nodeid"), any(RowMapper.class), eq(7)))
+                .thenReturn(List.of(row));
+
+        JdbcNodeInfoLookup lookup = new JdbcNodeInfoLookup(jdbc, Duration.ofMinutes(5));
+        JdbcNodeInfoLookup.NodeInfo result = lookup.lookupByNodeId(7);
+
+        assertThat(result).isNotNull();
+        assertThat(result.nodeLabel()).isEqualTo("cisco-7");
     }
 }

@@ -48,20 +48,21 @@ public class JdbcNodeInfoLookup {
     private static final Logger LOG = LoggerFactory.getLogger(JdbcNodeInfoLookup.class);
 
     private static final String SQL_BY_IP =
-            "SELECT n.nodeid, n.foreignsource, n.foreignid, n.location " +
+            "SELECT n.nodeid, n.foreignsource, n.foreignid, n.location, n.nodelabel " +
             "FROM node n JOIN ipinterface i ON n.nodeid = i.nodeid " +
             "WHERE i.ipaddr = ? LIMIT 1";
 
     private static final String SQL_BY_NODE_ID =
-            "SELECT nodeid, foreignsource, foreignid, location FROM node WHERE nodeid = ?";
+            "SELECT nodeid, foreignsource, foreignid, location, nodelabel FROM node WHERE nodeid = ?";
 
     private static final RowMapper<NodeInfo> ROW_MAPPER = (rs, rowNum) -> new NodeInfo(
             rs.getInt("nodeid"),
             rs.getString("foreignsource"),
             rs.getString("foreignid"),
-            rs.getString("location"));
+            rs.getString("location"),
+            rs.getString("nodelabel"));
 
-    public record NodeInfo(int nodeId, String foreignSource, String foreignId, String location) {}
+    public record NodeInfo(int nodeId, String foreignSource, String foreignId, String location, String nodeLabel) {}
 
     private final JdbcTemplate jdbc;
     private final Cache<String, Optional<NodeInfo>> ipCache;

@@ -121,7 +121,7 @@ class FlowToDocumentMapperTest {
     @Test
     void populatesExporterNodeWhenEnrichmentProvidesIt() {
         JdbcNodeInfoLookup.NodeInfo exporter = new JdbcNodeInfoLookup.NodeInfo(
-                42, "delta-v", "exporter-1", "Default");
+                42, "delta-v", "exporter-1", "Default", "exporter-1-label");
 
         FlowDocumentProtos.FlowDocument doc = mapper.map(
                 flow, exporter, null, null, null, null, null, null, null, null, 0L);
@@ -243,11 +243,11 @@ class FlowToDocumentMapperTest {
     @Test
     void mapsSrcAndDstNodeInfoWhenAllProvided() {
         JdbcNodeInfoLookup.NodeInfo exporter = new JdbcNodeInfoLookup.NodeInfo(
-                1, "fs", "exporter", "Default");
+                1, "fs", "exporter", "Default", "exporter-label");
         JdbcNodeInfoLookup.NodeInfo src = new JdbcNodeInfoLookup.NodeInfo(
-                2, "fs", "src", "Default");
+                2, "fs", "src", "Default", "src-label");
         JdbcNodeInfoLookup.NodeInfo dst = new JdbcNodeInfoLookup.NodeInfo(
-                3, "fs", "dst", "Default");
+                3, "fs", "dst", "Default", "dst-label");
 
         FlowDocumentProtos.FlowDocument doc = mapper.map(
                 flow, exporter, src, dst, null, null, null, null, null, null, 0L);
