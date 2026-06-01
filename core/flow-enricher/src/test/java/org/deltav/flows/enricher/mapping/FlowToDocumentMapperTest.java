@@ -315,4 +315,32 @@ class FlowToDocumentMapperTest {
         assertThat(doc.hasSamplingInterval()).isTrue();
         assertThat(doc.getSamplingInterval().getValue()).isEqualTo(0.0);
     }
+
+    @Test
+    void setsExporterNodeLabelAndInterfaceNames() {
+        JdbcNodeInfoLookup.NodeInfo exporter =
+                new JdbcNodeInfoLookup.NodeInfo(7, "nl6", "dev-7", "nl6-lab", "cisco-7");
+
+        FlowDocumentProtos.FlowDocument doc = mapper.map(
+                flow, exporter, null, null,
+                "HTTPS", "PRIVATE", "PUBLIC", "PRIVATE",
+                "10.0.0.7", "nl6-lab", 0L,
+                "Gi0/1", "Gi0/2");
+
+        assertThat(doc.getExporterNode().getNodeLabel()).isEqualTo("cisco-7");
+        assertThat(doc.getInputIfName()).isEqualTo("Gi0/1");
+        assertThat(doc.getOutputIfName()).isEqualTo("Gi0/2");
+    }
+
+    @Test
+    void leavesInterfaceNamesEmptyWhenNull() {
+        FlowDocumentProtos.FlowDocument doc = mapper.map(
+                flow, null, null, null,
+                "HTTPS", "PRIVATE", "PUBLIC", "PRIVATE",
+                "10.0.0.7", "nl6-lab", 0L,
+                null, null);
+
+        assertThat(doc.getInputIfName()).isEmpty();
+        assertThat(doc.getOutputIfName()).isEmpty();
+    }
 }
