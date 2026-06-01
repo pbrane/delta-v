@@ -170,7 +170,6 @@ Run integration tests:
 - REST endpoints use **CXF/JAX-RS** annotations
 - OSGi services registered via **Karaf blueprint** or **SCR annotations**
 - The Maven Enforcer Plugin bans certain dependencies (e.g., `commons-logging` — use `slf4j-api` instead). Fix violations by adding `<exclusions>` and using the approved alternative
-- License validation: `./mvnw -DskipTests -Denable.license=true -Passemblies -Psmoke install`
 - Commit messages should reference JIRA issues: `NMS-XXXXX: description`
 
 ## CI/CD
