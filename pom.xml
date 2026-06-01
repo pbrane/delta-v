@@ -13,7 +13,7 @@
 
   <groupId>org.deltav</groupId>
   <artifactId>delta-v-parent</artifactId>
-  <version>1.3.0-rc6</version>
+  <version>1.3.0-rc7</version>
   <packaging>pom</packaging>
   <name>Delta-V Parent</name>
   <description>Delta-V microservice decomposition of OpenNMS Horizon</description>
