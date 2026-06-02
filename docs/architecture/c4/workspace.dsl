@@ -40,9 +40,19 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
             }
             group "Edge / IPC" {
                 kafka = container "Kafka" "Event + RPC spine and sink transport." "Apache Kafka" "messaging"
-                minionGateway = container "minion-gateway" "Bridges Kafka (cloud) to gRPC (Minion)." "Spring Boot / Java 21" "edge"
+                minionGateway = container "minion-gateway" "Bridges Kafka (cloud) to gRPC (Minion)." "Spring Boot / Java 21" "edge" {
+                    gwKafka = component "Kafka Bridge" "Consumes RPC requests + produces responses; relays sink/telemetry." "Kafka client" "component"
+                    gwGrpc = component "gRPC Ingress" "Bidirectional streaming endpoint for Minions." "gRPC server" "component"
+                    gwRouter = component "RPC Router" "Correlates RPC requests/responses by location and module." "Java" "component"
+                    gwSink = component "Sink Relay" "Forwards Minion sink/telemetry to Kafka topics." "Java" "component"
+                }
                 envoy = container "Envoy" "TLS-terminating gRPC proxy in front of the gateway." "Envoy Proxy" "edge"
-                minion = container "Minion" "Edge agent; performs all device I/O." "Karaf / Java" "edge"
+                minion = container "Minion" "Edge agent; performs all device I/O." "Karaf / Java" "edge" {
+                    mnGrpc = component "gRPC Client" "Maintains streaming connection to the gateway via Envoy." "gRPC client" "component"
+                    mnRpc = component "RPC Module Dispatcher" "Executes monitor/detector/collector requests." "Java" "component"
+                    mnListeners = component "Telemetry Listeners" "SNMP traps, syslog, NetFlow/IPFIX/sFlow receivers." "Java" "component"
+                    mnSink = component "Sink Producer" "Streams collected telemetry back to the gateway." "Java" "component"
+                }
             }
             group "Data Stores" {
                 postgres = container "PostgreSQL" "Nodes, events, alarms, outages." "PostgreSQL 15" "database"
@@ -121,6 +131,21 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         rpcClient -> kafka "RPC request/response" "Kafka" "critical"
         pollerLogic -> daoLayer "Persists outages/state"
         daoLayer -> postgres "SQL" "JDBC"
+
+        # --- L3: Minion IPC ---
+        kafka -> gwKafka "RPC requests + sink" "Kafka" "critical"
+        gwKafka -> gwRouter "Hands off requests"
+        gwRouter -> gwGrpc "Streams to Minion"
+        gwGrpc -> envoy "gRPC" "gRPC" "critical"
+        envoy -> mnGrpc "gRPC (mTLS)" "gRPC" "critical"
+        mnGrpc -> mnRpc "Dispatches RPC"
+        mnRpc -> network "SNMP/ICMP/etc." "SNMP/ICMP" "critical"
+        mnListeners -> network "Receives traps/syslog/flows" "UDP"
+        mnListeners -> mnSink "Telemetry"
+        mnSink -> mnGrpc "Streams back"
+        mnGrpc -> gwGrpc "Responses + sink"
+        gwGrpc -> gwSink "Sink frames"
+        gwSink -> kafka "Sink topics" "Kafka"
     }
 
     views {
@@ -136,6 +161,12 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
 
         component pollerd "DaemonArchetype" "The shared Spring Boot daemon pattern (pollerd shown): event consume -> expand -> logic -> DAO + Minion RPC." {
             include *
+            autolayout lr
+        }
+
+        component minionGateway "MinionIpc" "The Kafka <-> gRPC IPC bridge: gateway, Envoy and the Minion edge agent." {
+            include *
+            include mnGrpc mnRpc mnListeners mnSink envoy
             autolayout lr
         }
 
