@@ -45,7 +45,6 @@ ui/src/menu/node_modules/
 ui/node_modules/
 ui/package-lock.json
 ui/devConfig.ts
-.circleci/main.yml
 built_dependencies
 
 # jansi downloads a native lib on osx sometimes
