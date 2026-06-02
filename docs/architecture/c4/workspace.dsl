@@ -284,7 +284,7 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
                 color "#FDFCF7"
             }
             relationship "Relationship" {
-                color "#08313F"
+                color "#A9C7D1"
                 thickness 2
             }
             relationship "critical" {
