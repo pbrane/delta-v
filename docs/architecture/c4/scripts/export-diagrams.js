@@ -34,7 +34,11 @@ const wantPng = format === 'png' || format === 'both';
     await page.waitForFunction('structurizr.scripting.isDiagramRendered() === true', { timeout: 60000 });
 
     if (wantSvg) {
-      const svg = await page.evaluate(() => structurizr.scripting.exportCurrentDiagramToSVG({ includeMetadata: true }));
+      // includeMetadata:false hides only the diagram-level metadata footer
+      // (date/timestamp, view title, view description). Per-element type/tech
+      // sub-labels (e.g. "[Container: Apache Kafka]") live on the element nodes,
+      // NOT in the .structurizrMetadata group, so they are unaffected and survive.
+      const svg = await page.evaluate(() => structurizr.scripting.exportCurrentDiagramToSVG({ includeMetadata: false }));
       fs.writeFileSync(path.join(svgDir, key + '.svg'), svg);
       console.log('SVG  ' + key);
     }
@@ -42,7 +46,7 @@ const wantPng = format === 'png' || format === 'both';
       // exportCurrentDiagramToPNG is asynchronous: it delivers the PNG data URI
       // via a callback (options, callback) rather than a return value.
       const png = await page.evaluate(() => new Promise((resolve) => {
-        structurizr.scripting.exportCurrentDiagramToPNG({ includeMetadata: true, crop: false }, (data) => resolve(data));
+        structurizr.scripting.exportCurrentDiagramToPNG({ includeMetadata: false, crop: false }, (data) => resolve(data));
       }));
       const base64 = png.replace(/^data:image\/png;base64,/, '');
       fs.writeFileSync(path.join(pngDir, key + '.png'), Buffer.from(base64, 'base64'));

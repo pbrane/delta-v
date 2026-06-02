@@ -201,6 +201,21 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
             autolayout lr
         }
 
+        container deltav "ContainersPolling" "L2 (polling): availability/performance/topology daemons, the Kafka spine and Minion device I/O." {
+            include operator pollerd collectd perspectivepollerd discovery enlinkd bsmd kafka minionGateway envoy minion network postgres
+            autolayout lr
+        }
+
+        container deltav "ContainersEvents" "L2 (events): trap/syslog/translation/alarm daemons, alarm publishing/materialization and notification." {
+            include noc trapd syslogd eventtranslator alarmd alarmsPublisher alarmsMaterializer alertsForwarder kafka postgres alertmanager oncall
+            autolayout lr
+        }
+
+        container deltav "ContainersStreaming" "L2 (streaming): telemetry/flow enrichment and the metrics path to VictoriaMetrics and Grafana." {
+            include operator telemetryd flowEnricher prometheusWriter kafka clickhouse victoriametrics grafana postgres
+            autolayout lr
+        }
+
         component pollerd "DaemonArchetype" "The shared Spring Boot daemon pattern (pollerd shown): event consume -> expand -> logic -> DAO + Minion RPC." {
             include *
             autolayout lr
