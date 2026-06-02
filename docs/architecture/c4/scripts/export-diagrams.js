@@ -39,7 +39,11 @@ const wantPng = format === 'png' || format === 'both';
       console.log('SVG  ' + key);
     }
     if (wantPng) {
-      const png = await page.evaluate(() => structurizr.scripting.exportCurrentDiagramToPNG({ includeMetadata: true, crop: false }));
+      // exportCurrentDiagramToPNG is asynchronous: it delivers the PNG data URI
+      // via a callback (options, callback) rather than a return value.
+      const png = await page.evaluate(() => new Promise((resolve) => {
+        structurizr.scripting.exportCurrentDiagramToPNG({ includeMetadata: true, crop: false }, (data) => resolve(data));
+      }));
       const base64 = png.replace(/^data:image\/png;base64,/, '');
       fs.writeFileSync(path.join(pngDir, key + '.png'), Buffer.from(base64, 'base64'));
       console.log('PNG  ' + key);

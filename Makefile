@@ -125,14 +125,17 @@ doctor: ## Preflight: verify the environment can build & run
 # --- C4 architecture diagrams ---
 C4_DIR  := docs/architecture/c4
 C4_PORT ?= 8080
+# structurizr/lite:latest is now a deprecation stub that exits immediately;
+# 2025.11.08 is the last release that actually serves the Lite web app.
+C4_LITE_IMAGE := structurizr/lite:2025.11.08
 
 c4-edit: ## Serve Structurizr Lite for live editing (C4_PORT, default 8080)
-	docker run -it --rm -p $(C4_PORT):8080 -v "$(PWD)/$(C4_DIR)":/usr/local/structurizr structurizr/lite
+	docker run -it --rm -p $(C4_PORT):8080 -v "$(PWD)/$(C4_DIR)":/usr/local/structurizr $(C4_LITE_IMAGE)
 
 c4-export: ## Render all C4 views to SVG + PNG in $(C4_DIR)/exports
 	@echo "Starting Structurizr Lite..."
 	@docker run -d --rm --name deltav-c4-lite -p $(C4_PORT):8080 \
-		-v "$(PWD)/$(C4_DIR)":/usr/local/structurizr structurizr/lite
+		-v "$(PWD)/$(C4_DIR)":/usr/local/structurizr $(C4_LITE_IMAGE)
 	@echo "Waiting for Lite to come up..."
 	@until curl -sf http://localhost:$(C4_PORT)/workspace/diagrams >/dev/null 2>&1; do sleep 2; done
 	@cd $(C4_DIR)/scripts && npm install --silent && \

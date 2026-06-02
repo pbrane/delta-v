@@ -116,3 +116,6 @@ opennms-container/delta-v/provisiond-overlay/etc/imports/*
 
 # C4 diagram export tooling (npm deps)
 docs/architecture/c4/scripts/node_modules/
+# Structurizr Lite regenerable artifacts (layout cache + compiled workspace)
+docs/architecture/c4/.structurizr/
+docs/architecture/c4/workspace.json
