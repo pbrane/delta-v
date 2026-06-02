@@ -166,7 +166,7 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         gwSink -> kafka "Sink topics" "Kafka"
 
         # --- L3: flow pipeline ---
-        telemetryd -> kafka "Flow sink messages" "Kafka"
+        # (telemetryd -> kafka already declared at L2; reused here)
         kafka -> feDeser "Flow sink messages" "Kafka"
         feDeser -> feProtocol "Raw protocol payloads"
         feProtocol -> feEnrich "Decoded flows"
@@ -187,7 +187,7 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         kafka -> pwConsumer "Time-series samples" "Kafka"
         pwConsumer -> pwRemoteWrite "Samples"
         pwRemoteWrite -> victoriametrics "Remote-write" "HTTP"
-        victoriametrics -> grafana "Queried by" "PromQL"
+        # (grafana -> victoriametrics "Queries" already declared at L2; reused here)
     }
 
     views {
