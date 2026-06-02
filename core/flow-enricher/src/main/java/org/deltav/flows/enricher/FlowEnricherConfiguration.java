@@ -235,8 +235,12 @@ public class FlowEnricherConfiguration {
 
     /**
      * No-op {@link DnsResolver} used by horizon parsers for reverse-DNS
-     * enrichment. The flow-enricher does its own node lookup via JDBC; we
-     * do not want the parsers to issue async DNS queries.
+     * enrichment. Node context lookups are handled by the shared
+     * {@link NodeContextCache} (populated by the node-context-consumer
+     * module); the {@link javax.sql.DataSource} and {@link JdbcTemplate}
+     * beans in this configuration exist solely for the hasflows WRITE
+     * performed by {@link InterfaceMarkingCache}. We do not want the
+     * parsers to issue async DNS queries.
      */
     @Bean
     DnsResolver flowParserDnsResolver() {

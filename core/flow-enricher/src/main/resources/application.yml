@@ -60,8 +60,6 @@ deltav:
     interface-marking:
       cache-ttl: ${DELTAV_FLOWS_INTERFACE_MARKING_CACHE_TTL:24h}
       clean-interval-ms: ${DELTAV_FLOWS_INTERFACE_MARKING_CLEAN_INTERVAL_MS:3600000}
-    node-lookup:
-      cache-ttl: ${DELTAV_FLOWS_NODE_LOOKUP_CACHE_TTL:5m}
     parser:
       system-id: flow-enricher
       location: Default

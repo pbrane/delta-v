@@ -115,6 +115,11 @@ import io.netty.buffer.ByteBuf;
                 // classpath. Without this, SCS will try to instantiate the Kafka
                 // binder and fail because there's no broker.
                 "spring.cloud.stream.defaultBinder=integration",
+                // Exclude the shared NodeContextConsumerAutoConfiguration so
+                // NodeContextKafkaBootstrap never starts a real consumer thread
+                // trying to reach kafka:9092. The NodeContextCache bean this IT
+                // needs is supplied by the @MockitoBean below.
+                "spring.autoconfigure.exclude=org.deltav.nodecontext.NodeContextConsumerAutoConfiguration",
                 // The function returns List<byte[]>. Without useNativeEncoding,
                 // Spring Cloud Function JSON-serializes the entire list into a
                 // single "[]"-shaped payload; with it, the binder honors the
