@@ -2,7 +2,7 @@
 package org.deltav.prometheus.writer.startup;
 
 import org.deltav.prometheus.writer.config.PrometheusWriterProperties;
-import org.deltav.prometheus.writer.nodecontext.NodeContextCacheReadyEvent;
+import org.deltav.nodecontext.NodeContextCacheReadyEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.stream.binding.BindingsLifecycleController;
