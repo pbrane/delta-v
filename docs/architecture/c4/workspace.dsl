@@ -32,7 +32,13 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
             }
             group "Streaming & Enrichment" {
                 telemetryd = container "telemetryd" "Flow/telemetry ingestion bridge." "Spring Boot / Java 21" "daemon"
-                flowEnricher = container "flow-enricher" "Enriches flows with node context, writes ClickHouse." "Spring Boot / Java 21" "daemon"
+                flowEnricher = container "flow-enricher" "Enriches flows with node context, writes ClickHouse." "Spring Boot / Java 21" "daemon" {
+                    feDeser = component "Sink Message Deserializer" "Decodes Kafka sink messages into flow records." "SinkMessageDeserializer" "component"
+                    feProtocol = component "Protocol Decoders" "Decodes NetFlow v5/v9, IPFIX and sFlow." "Netflow5/9, Ipfix, SFlow MessageProcessor" "component"
+                    feEnrich = component "Flow Enrichment" "Adds node, interface and application context." "FlowEnrichmentFunction, JdbcSnmpInterfaceLookup" "component"
+                    feClassify = component "Application Classifier" "Classifies flows by application (port-based)." "PortBasedApplicationClassifier" "component"
+                    feMapper = component "Flow Document Mapper" "Maps enriched flows to ClickHouse documents." "FlowToDocumentMapper" "component"
+                }
                 alarmsPublisher = container "alarms-kafka-publisher" "Publishes alarm state to Kafka." "Spring Boot / Java 21" "daemon"
                 alarmsMaterializer = container "alarms-materializer" "Projects alarm state into PostgreSQL." "Spring Boot / Java 21" "daemon"
                 prometheusWriter = container "prometheus-writer" "Consumes time-series, remote-writes to VictoriaMetrics." "Spring Boot / Java 21" "daemon"
@@ -146,6 +152,16 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         mnGrpc -> gwGrpc "Responses + sink"
         gwGrpc -> gwSink "Sink frames"
         gwSink -> kafka "Sink topics" "Kafka"
+
+        # --- L3: flow pipeline ---
+        telemetryd -> kafka "Flow sink messages" "Kafka"
+        kafka -> feDeser "Flow sink messages" "Kafka"
+        feDeser -> feProtocol "Raw protocol payloads"
+        feProtocol -> feEnrich "Decoded flows"
+        feEnrich -> feClassify "Adds application"
+        feEnrich -> postgres "Node/interface lookup" "JDBC"
+        feClassify -> feMapper "Enriched flows"
+        feMapper -> clickhouse "Writes documents" "HTTP"
     }
 
     views {
@@ -167,6 +183,12 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         component minionGateway "MinionIpc" "The Kafka <-> gRPC IPC bridge: gateway, Envoy and the Minion edge agent." {
             include *
             include mnGrpc mnRpc mnListeners mnSink envoy
+            autolayout lr
+        }
+
+        component flowEnricher "FlowPipeline" "Flow/telemetry path: telemetryd -> Kafka -> flow-enricher (decode, enrich, classify, map) -> ClickHouse." {
+            include *
+            include telemetryd
             autolayout lr
         }
 
