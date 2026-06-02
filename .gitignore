@@ -113,3 +113,6 @@ auth.json
 # here is runtime drift and must not be committed.
 opennms-container/delta-v/provisiond-overlay/etc/imports/*
 !opennms-container/delta-v/provisiond-overlay/etc/imports/.gitkeep
+
+# C4 diagram export tooling (npm deps)
+docs/architecture/c4/scripts/node_modules/

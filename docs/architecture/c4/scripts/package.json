@@ -1,0 +1,9 @@
+{
+  "name": "deltav-c4-export",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Headless SVG/PNG export of Structurizr Lite diagrams.",
+  "dependencies": {
+    "puppeteer": "^23.0.0"
+  }
+}

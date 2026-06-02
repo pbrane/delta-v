@@ -49,12 +49,12 @@ DELTAV := opennms-container/delta-v
 
 export MAVEN_OPTS
 
-.PHONY: help build test test-class daemon clean images daemon-image up down reset status logs verify dev doctor
+.PHONY: help build test test-class daemon clean images daemon-image up down reset status logs verify dev doctor c4-edit c4-export
 
 .DEFAULT_GOAL := help
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) \
+	@grep -E '^[a-zA-Z0-9_-]+:.*##' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN {FS = ":.*##"}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "Variables (override on command line):"
@@ -121,3 +121,21 @@ dev: ## Build all images, then bring the stack up (sequential; safe under make -
 
 doctor: ## Preflight: verify the environment can build & run
 	cd $(DELTAV) && ./doctor.sh
+
+# --- C4 architecture diagrams ---
+C4_DIR  := docs/architecture/c4
+C4_PORT ?= 8080
+
+c4-edit: ## Serve Structurizr Lite for live editing (C4_PORT, default 8080)
+	docker run -it --rm -p $(C4_PORT):8080 -v "$(PWD)/$(C4_DIR)":/usr/local/structurizr structurizr/lite
+
+c4-export: ## Render all C4 views to SVG + PNG in $(C4_DIR)/exports
+	@echo "Starting Structurizr Lite..."
+	@docker run -d --rm --name deltav-c4-lite -p $(C4_PORT):8080 \
+		-v "$(PWD)/$(C4_DIR)":/usr/local/structurizr structurizr/lite
+	@echo "Waiting for Lite to come up..."
+	@until curl -sf http://localhost:$(C4_PORT)/workspace/diagrams >/dev/null 2>&1; do sleep 2; done
+	@cd $(C4_DIR)/scripts && npm install --silent && \
+		node export-diagrams.js http://localhost:$(C4_PORT)/workspace/diagrams both ../exports
+	@docker stop deltav-c4-lite >/dev/null
+	@echo "Exports written to $(C4_DIR)/exports/{svg,png}"
