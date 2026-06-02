@@ -10,7 +10,13 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         deltav = softwareSystem "Delta-V" "Network monitoring platform: discovery, polling, collection, flows, events, alarms and metrics." {
             # --- Active monitoring daemons ---
             group "Monitoring Daemons" {
-                pollerd = container "pollerd" "Service availability polling." "Spring Boot / Java 21" "daemon"
+                pollerd = container "pollerd" "Service availability polling." "Spring Boot / Java 21" "daemon" {
+                    eventConsumer = component "Kafka Event Transport" "Consumes and produces OpenNMS events over Kafka." "KafkaEventTransportConfiguration" "component"
+                    eventExpander = component "Event Expander / Enrichment" "Expands and enriches events from event-conf (logmsg, descr, severity)." "EventConfEnrichmentService, EventIpcManagerEnrichingWrapper, DaemonEventConfDao" "component"
+                    pollerLogic = component "Pollerd Service Logic" "Schedules pollable services and detects outages." "Pollerd" "component"
+                    rpcClient = component "Kafka RPC Client" "Dispatches device monitor requests to Minion." "KafkaRpcClientConfiguration" "component"
+                    daoLayer = component "JDBC DAO Layer" "Reads/writes nodes, services, outages." "JdbcEventUtil, JdbcDistPollerDao, DaemonDataSourceConfiguration" "component"
+                }
                 collectd = container "collectd" "Performance data collection." "Spring Boot / Java 21" "daemon"
                 discovery = container "discovery" "Network discovery." "Spring Boot / Java 21" "daemon"
                 provisiond = container "provisiond" "Node provisioning and requisitions." "Spring Boot / Java 21" "daemon"
@@ -106,6 +112,15 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         prometheusWriter -> victoriametrics "Remote-write" "HTTP"
         grafana -> victoriametrics "Queries" "PromQL/HTTP"
         grafana -> clickhouse "Queries flows" "HTTP/SQL"
+
+        # --- L3: daemon archetype (pollerd) ---
+        kafka -> eventConsumer "Delivers events" "Kafka"
+        eventConsumer -> eventExpander "Raw events"
+        eventExpander -> pollerLogic "Enriched events"
+        pollerLogic -> rpcClient "Requests device poll"
+        rpcClient -> kafka "RPC request/response" "Kafka" "critical"
+        pollerLogic -> daoLayer "Persists outages/state"
+        daoLayer -> postgres "SQL" "JDBC"
     }
 
     views {
@@ -115,6 +130,11 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         }
 
         container deltav "Containers" "The deployable units of Delta-V and how they communicate." {
+            include *
+            autolayout lr
+        }
+
+        component pollerd "DaemonArchetype" "The shared Spring Boot daemon pattern (pollerd shown): event consume -> expand -> logic -> DAO + Minion RPC." {
             include *
             autolayout lr
         }
