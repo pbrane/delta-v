@@ -43,6 +43,13 @@
             <artifactId>kafka-clients</artifactId>
         </dependency>
 
+        <!-- Shared node-context consumer: NodeContextCache + bootstrap + health. -->
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>node-context-consumer</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Protobuf contracts: AlarmState + NodeContext + prometheus.prompb. -->
         <dependency>
             <groupId>org.deltav.core</groupId>

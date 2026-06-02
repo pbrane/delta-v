@@ -9,7 +9,7 @@ import org.deltav.alarms.proto.AlarmState;
 import org.deltav.alerts.forwarder.enrich.AlarmEnricher;
 import org.deltav.alerts.forwarder.filter.AlarmFilter;
 import org.deltav.alerts.forwarder.lifecycle.ActiveAlertRegistry;
-import org.deltav.alerts.forwarder.nodecontext.NodeContextCache;
+import org.deltav.nodecontext.NodeContextCache;
 import org.deltav.alerts.forwarder.pipeline.AlarmForwardingPipeline.SinkForwardException;
 import org.deltav.alerts.forwarder.pipeline.AlarmForwardingPipeline.SinkForwardException.Classification;
 import org.deltav.alerts.forwarder.sink.AlarmSink;
