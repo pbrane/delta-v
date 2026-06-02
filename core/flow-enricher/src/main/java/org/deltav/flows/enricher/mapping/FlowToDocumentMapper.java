@@ -17,13 +17,13 @@
 package org.deltav.flows.enricher.mapping;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import com.google.protobuf.DoubleValue;
 import com.google.protobuf.UInt32Value;
 import com.google.protobuf.UInt64Value;
 
-import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
 import org.deltav.flows.proto.FlowDocumentProtos;
 import org.opennms.integration.api.v1.flows.Flow.Direction;
 import org.opennms.integration.api.v1.flows.Flow.NetflowVersion;
@@ -31,7 +31,7 @@ import org.opennms.integration.api.v1.flows.Flow.SamplingAlgorithm;
 import org.opennms.netmgt.flows.api.Flow;
 
 /**
- * Converts a horizon {@link Flow} plus enriched {@link JdbcNodeInfoLookup.NodeInfo}
+ * Converts a horizon {@link Flow} plus enriched {@link NodeIdentity}
  * records, an application classification string, and locality enrichment
  * strings into a {@link FlowDocumentProtos.FlowDocument} message ready for
  * publication to the {@code deltav-flows} Kafka topic.
@@ -53,14 +53,31 @@ import org.opennms.netmgt.flows.api.Flow;
 public class FlowToDocumentMapper {
 
     /**
+     * Data-source-agnostic carrier for node identity fields resolved from
+     * either the NodeContext in-memory cache or any other source.
+     *
+     * @param nodeId        OpenNMS node ID
+     * @param foreignSource requisition foreign source, may be {@code null}
+     * @param foreignId     requisition foreign ID, may be {@code null}
+     * @param nodeLabel     human-readable node label, may be empty or {@code null}
+     * @param categories    OpenNMS node categories; empty list when unknown
+     */
+    public record NodeIdentity(
+            int nodeId,
+            String foreignSource,
+            String foreignId,
+            String nodeLabel,
+            List<String> categories) {}
+
+    /**
      * Build a {@link FlowDocumentProtos.FlowDocument} from a horizon {@link Flow}
      * and its enrichment context.
      *
-     * @param flow the parsed horizon flow record
-     * @param exporterNodeInfo resolved node info for the exporter, or {@code null}
+     * @param flow             the parsed horizon flow record
+     * @param exporterNodeInfo resolved node identity for the exporter, or {@code null}
      *                         when no matching node was found
-     * @param srcNodeInfo      resolved node info for the source IP, or {@code null}
-     * @param destNodeInfo     resolved node info for the destination IP, or {@code null}
+     * @param srcNodeInfo      resolved node identity for the source IP, or {@code null}
+     * @param destNodeInfo     resolved node identity for the destination IP, or {@code null}
      * @param application      application classification string (e.g. {@code "HTTPS"}),
      *                         or {@code null} which maps to {@code "unknown"}
      * @param srcLocality      source locality (one of {@code "PRIVATE"} / {@code "PUBLIC"},
@@ -80,9 +97,9 @@ public class FlowToDocumentMapper {
      */
     public FlowDocumentProtos.FlowDocument map(
             Flow flow,
-            JdbcNodeInfoLookup.NodeInfo exporterNodeInfo,
-            JdbcNodeInfoLookup.NodeInfo srcNodeInfo,
-            JdbcNodeInfoLookup.NodeInfo destNodeInfo,
+            NodeIdentity exporterNodeInfo,
+            NodeIdentity srcNodeInfo,
+            NodeIdentity destNodeInfo,
             String application,
             String srcLocality,
             String dstLocality,
@@ -283,14 +300,14 @@ public class FlowToDocumentMapper {
     }
 
     /**
-     * Backwards-compatible overload for callers without resolved exporter
-     * interface names; delegates with empty {@code inputIfName}/{@code outputIfName}.
+     * Overload for callers without resolved exporter interface names; delegates
+     * with {@code null} {@code inputIfName}/{@code outputIfName}.
      */
     public FlowDocumentProtos.FlowDocument map(
             Flow flow,
-            JdbcNodeInfoLookup.NodeInfo exporterNodeInfo,
-            JdbcNodeInfoLookup.NodeInfo srcNodeInfo,
-            JdbcNodeInfoLookup.NodeInfo destNodeInfo,
+            NodeIdentity exporterNodeInfo,
+            NodeIdentity srcNodeInfo,
+            NodeIdentity destNodeInfo,
             String application,
             String srcLocality,
             String dstLocality,
@@ -303,7 +320,7 @@ public class FlowToDocumentMapper {
                 null, null);
     }
 
-    private static FlowDocumentProtos.NodeInfo toProtoNodeInfo(JdbcNodeInfoLookup.NodeInfo info) {
+    private static FlowDocumentProtos.NodeInfo toProtoNodeInfo(NodeIdentity info) {
         FlowDocumentProtos.NodeInfo.Builder b = FlowDocumentProtos.NodeInfo.newBuilder();
         b.setNodeId(info.nodeId());
         if (info.foreignSource() != null) {
@@ -315,9 +332,9 @@ public class FlowToDocumentMapper {
         if (info.nodeLabel() != null && !info.nodeLabel().isEmpty()) {
             b.setNodeLabel(info.nodeLabel());
         }
-        // The JdbcNodeInfoLookup.NodeInfo record does not carry OpenNMS
-        // category data; the proto NodeInfo.categories field is left empty
-        // until category enrichment is added in a later phase.
+        if (info.categories() != null) {
+            b.addAllCategories(info.categories());
+        }
         return b.build();
     }
 

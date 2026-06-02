@@ -23,7 +23,6 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Optional;
 
-import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
 import org.deltav.flows.proto.FlowDocumentProtos;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -120,8 +119,8 @@ class FlowToDocumentMapperTest {
 
     @Test
     void populatesExporterNodeWhenEnrichmentProvidesIt() {
-        JdbcNodeInfoLookup.NodeInfo exporter = new JdbcNodeInfoLookup.NodeInfo(
-                42, "delta-v", "exporter-1", "Default", "exporter-1-label");
+        FlowToDocumentMapper.NodeIdentity exporter = new FlowToDocumentMapper.NodeIdentity(
+                42, "delta-v", "exporter-1", "exporter-1-label", java.util.List.of());
 
         FlowDocumentProtos.FlowDocument doc = mapper.map(
                 flow, exporter, null, null, null, null, null, null, null, null, 0L);
@@ -242,12 +241,12 @@ class FlowToDocumentMapperTest {
 
     @Test
     void mapsSrcAndDstNodeInfoWhenAllProvided() {
-        JdbcNodeInfoLookup.NodeInfo exporter = new JdbcNodeInfoLookup.NodeInfo(
-                1, "fs", "exporter", "Default", "exporter-label");
-        JdbcNodeInfoLookup.NodeInfo src = new JdbcNodeInfoLookup.NodeInfo(
-                2, "fs", "src", "Default", "src-label");
-        JdbcNodeInfoLookup.NodeInfo dst = new JdbcNodeInfoLookup.NodeInfo(
-                3, "fs", "dst", "Default", "dst-label");
+        FlowToDocumentMapper.NodeIdentity exporter = new FlowToDocumentMapper.NodeIdentity(
+                1, "fs", "exporter", "exporter-label", java.util.List.of());
+        FlowToDocumentMapper.NodeIdentity src = new FlowToDocumentMapper.NodeIdentity(
+                2, "fs", "src", "src-label", java.util.List.of());
+        FlowToDocumentMapper.NodeIdentity dst = new FlowToDocumentMapper.NodeIdentity(
+                3, "fs", "dst", "dst-label", java.util.List.of());
 
         FlowDocumentProtos.FlowDocument doc = mapper.map(
                 flow, exporter, src, dst, null, null, null, null, null, null, 0L);
@@ -318,8 +317,8 @@ class FlowToDocumentMapperTest {
 
     @Test
     void setsExporterNodeLabelAndInterfaceNames() {
-        JdbcNodeInfoLookup.NodeInfo exporter =
-                new JdbcNodeInfoLookup.NodeInfo(7, "nl6", "dev-7", "nl6-lab", "cisco-7");
+        FlowToDocumentMapper.NodeIdentity exporter = new FlowToDocumentMapper.NodeIdentity(
+                7, "nl6", "dev-7", "cisco-7", java.util.List.of());
 
         FlowDocumentProtos.FlowDocument doc = mapper.map(
                 flow, exporter, null, null,
@@ -342,5 +341,17 @@ class FlowToDocumentMapperTest {
 
         assertThat(doc.getInputIfName()).isEmpty();
         assertThat(doc.getOutputIfName()).isEmpty();
+    }
+
+    @Test
+    void setsExporterNodeCategories() {
+        FlowToDocumentMapper.NodeIdentity exporter = new FlowToDocumentMapper.NodeIdentity(
+                7, "nl6", "dev-7", "cisco-7", java.util.List.of("Production", "Routers"));
+        FlowDocumentProtos.FlowDocument doc = mapper.map(
+                flow, exporter, null, null,
+                "HTTPS", "PRIVATE", "PUBLIC", "PRIVATE",
+                "10.0.0.7", "nl6-lab", 0L, "Gi0/1", "Gi0/2");
+        assertThat(doc.getExporterNode().getCategoriesList()).containsExactly("Production", "Routers");
+        assertThat(doc.getExporterNode().getNodeLabel()).isEqualTo("cisco-7");
     }
 }

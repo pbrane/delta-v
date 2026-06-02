@@ -33,9 +33,8 @@ import org.deltav.flows.enricher.classification.ApplicationClassifier;
 import org.deltav.flows.enricher.classification.PortBasedApplicationClassifier;
 import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator;
 import org.deltav.flows.enricher.enrichment.InterfaceMarkingCache;
-import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
-import org.deltav.flows.enricher.enrichment.JdbcSnmpInterfaceLookup;
 import org.deltav.flows.enricher.mapping.FlowToDocumentMapper;
+import org.deltav.nodecontext.NodeContextCache;
 import org.deltav.flows.enricher.parser.DropwizardToPrometheusBridge;
 import org.deltav.flows.enricher.parser.LoggingEventForwarder;
 import org.deltav.flows.enricher.parser.NoOpDnsResolver;
@@ -75,20 +74,6 @@ public class FlowEnricherConfiguration {
     @Bean
     JdbcTemplate flowEnricherJdbcTemplate(DataSource dataSource) {
         return new JdbcTemplate(dataSource);
-    }
-
-    @Bean
-    JdbcNodeInfoLookup jdbcNodeInfoLookup(
-            JdbcTemplate flowEnricherJdbcTemplate,
-            @Value("${deltav.flows.node-lookup.cache-ttl:5m}") Duration cacheTtl) {
-        return new JdbcNodeInfoLookup(flowEnricherJdbcTemplate, cacheTtl);
-    }
-
-    @Bean
-    JdbcSnmpInterfaceLookup jdbcSnmpInterfaceLookup(
-            JdbcTemplate flowEnricherJdbcTemplate,
-            @Value("${deltav.flows.interface-lookup.cache-ttl:5m}") Duration cacheTtl) {
-        return new JdbcSnmpInterfaceLookup(flowEnricherJdbcTemplate, cacheTtl);
     }
 
     @Bean
@@ -404,12 +389,11 @@ public class FlowEnricherConfiguration {
     @Bean
     FlowEnrichmentFunction flowEnrichmentFunction(
             SinkMessageDeserializer deserializer,
-            JdbcNodeInfoLookup nodeInfoLookup,
+            NodeContextCache nodeContextCache,
             FlowLocalityCalculator localityCalculator,
             InterfaceMarkingCache interfaceMarkingCache,
             ApplicationClassifier applicationClassifier,
             FlowToDocumentMapper flowToDocumentMapper,
-            JdbcSnmpInterfaceLookup snmpInterfaceLookup,
             Netflow5MessageProcessor netflow5Processor,
             Netflow9MessageProcessor netflow9Processor,
             IpfixMessageProcessor ipfixProcessor,
@@ -423,12 +407,11 @@ public class FlowEnricherConfiguration {
 
         return new FlowEnrichmentFunction(
                 deserializer,
-                nodeInfoLookup,
+                nodeContextCache,
                 localityCalculator,
                 interfaceMarkingCache,
                 applicationClassifier,
                 flowToDocumentMapper,
-                snmpInterfaceLookup,
                 dispatchMap);
     }
 

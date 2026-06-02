@@ -39,9 +39,9 @@ import org.deltav.flows.enricher.classification.ApplicationClassifier;
 import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator;
 import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator.Locality;
 import org.deltav.flows.enricher.enrichment.InterfaceMarkingCache;
-import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
-import org.deltav.flows.enricher.enrichment.JdbcSnmpInterfaceLookup;
 import org.deltav.flows.enricher.mapping.FlowToDocumentMapper;
+import org.deltav.nodecontext.NodeContextCache;
+import org.deltav.timeseries.proto.NodeContext;
 import org.deltav.flows.enricher.protocol.ProtocolMessageProcessor;
 import org.deltav.flows.proto.FlowDocumentProtos;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,12 +62,11 @@ class FlowEnrichmentFunctionTest {
     private static final String NF5_MODULE_ID = "Telemetry-Netflow-5";
 
     private SinkMessageDeserializer deserializer;
-    private JdbcNodeInfoLookup nodeInfoLookup;
+    private NodeContextCache nodeContextCache;
     private FlowLocalityCalculator localityCalculator;
     private InterfaceMarkingCache interfaceMarkingCache;
     private ApplicationClassifier applicationClassifier;
     private FlowToDocumentMapper flowToDocumentMapper;
-    private JdbcSnmpInterfaceLookup snmpInterfaceLookup;
     private ProtocolMessageProcessor nf5Processor;
 
     private FlowEnrichmentFunction function;
@@ -75,28 +74,28 @@ class FlowEnrichmentFunctionTest {
     @BeforeEach
     void setUp() {
         deserializer = new SinkMessageDeserializer();
-        nodeInfoLookup = mock(JdbcNodeInfoLookup.class);
+        nodeContextCache = mock(NodeContextCache.class);
         localityCalculator = mock(FlowLocalityCalculator.class);
         interfaceMarkingCache = mock(InterfaceMarkingCache.class);
         applicationClassifier = mock(ApplicationClassifier.class);
         flowToDocumentMapper = new FlowToDocumentMapper();
-        snmpInterfaceLookup = mock(JdbcSnmpInterfaceLookup.class);
         nf5Processor = mock(ProtocolMessageProcessor.class);
 
         // Default mock behavior: unknown locality for unknown addresses,
-        // null node lookups, "unknown" application classification.
+        // empty cache lookups, "unknown" application classification.
         when(localityCalculator.classify(anyString())).thenReturn(Locality.UNKNOWN);
         when(localityCalculator.flowLocality(anyString(), anyString())).thenReturn(Locality.UNKNOWN);
         when(applicationClassifier.classify(anyInt(), anyInt(), anyInt())).thenReturn("unknown");
+        when(nodeContextCache.getByIp(anyString())).thenReturn(Optional.empty());
+        when(nodeContextCache.ifName(anyInt(), anyInt())).thenReturn(Optional.empty());
 
         function = new FlowEnrichmentFunction(
                 deserializer,
-                nodeInfoLookup,
+                nodeContextCache,
                 localityCalculator,
                 interfaceMarkingCache,
                 applicationClassifier,
                 flowToDocumentMapper,
-                snmpInterfaceLookup,
                 Map.of(NF5_MODULE_ID, nf5Processor));
     }
 
@@ -210,7 +209,7 @@ class FlowEnrichmentFunctionTest {
 
         assertThat(result).hasSize(3);
         // Exporter looked up exactly once regardless of how many flows we had.
-        verify(nodeInfoLookup, times(1)).lookupByIpAddress(EXPORTER_ADDRESS);
+        verify(nodeContextCache, times(1)).getByIp(EXPORTER_ADDRESS);
     }
 
     @Test
@@ -222,18 +221,19 @@ class FlowEnrichmentFunctionTest {
 
         function.processMessage(messageWithTopic(NF5_TOPIC, kafkaBytes));
 
-        verify(nodeInfoLookup).lookupByIpAddress("10.0.0.1");
-        verify(nodeInfoLookup).lookupByIpAddress("10.0.0.2");
-        verify(nodeInfoLookup).lookupByIpAddress("10.0.0.3");
-        verify(nodeInfoLookup).lookupByIpAddress("10.0.0.4");
+        verify(nodeContextCache).getByIp("10.0.0.1");
+        verify(nodeContextCache).getByIp("10.0.0.2");
+        verify(nodeContextCache).getByIp("10.0.0.3");
+        verify(nodeContextCache).getByIp("10.0.0.4");
     }
 
     @Test
     void callsInterfaceMarkingForInputAndOutputIfindex() {
         // Exporter node resolves, flow has non-zero input/output ifindex.
-        JdbcNodeInfoLookup.NodeInfo exporterInfo =
-                new JdbcNodeInfoLookup.NodeInfo(42, "Minions", "exporter-1", MINION_LOCATION, "exporter-1-label");
-        when(nodeInfoLookup.lookupByIpAddress(EXPORTER_ADDRESS)).thenReturn(exporterInfo);
+        NodeContext exporterCtx = NodeContext.newBuilder()
+                .setNodeId(42).setForeignSource("Minions").setForeignId("exporter-1")
+                .setNodeLabel("exporter-1-label").build();
+        when(nodeContextCache.getByIp(EXPORTER_ADDRESS)).thenReturn(Optional.of(exporterCtx));
         Flow flow = buildFlow("10.0.0.1", "10.0.0.2", 111, 222, 6, 7, 11);
         when(nf5Processor.process(any())).thenReturn(List.of(flow));
         byte[] kafkaBytes = buildValidSinkMessageBytes();
@@ -246,8 +246,8 @@ class FlowEnrichmentFunctionTest {
 
     @Test
     void skipsInterfaceMarkingWhenExporterUnknown() {
-        // Exporter lookup returns null — no node ID available.
-        when(nodeInfoLookup.lookupByIpAddress(EXPORTER_ADDRESS)).thenReturn(null);
+        // Exporter cache returns empty — no node ID available.
+        when(nodeContextCache.getByIp(EXPORTER_ADDRESS)).thenReturn(Optional.empty());
         Flow flow = buildFlow("10.0.0.1", "10.0.0.2", 111, 222, 6, 7, 11);
         when(nf5Processor.process(any())).thenReturn(List.of(flow));
         byte[] kafkaBytes = buildValidSinkMessageBytes();
@@ -259,9 +259,10 @@ class FlowEnrichmentFunctionTest {
 
     @Test
     void skipsInterfaceMarkingWhenIfindexIsZeroOrNull() {
-        JdbcNodeInfoLookup.NodeInfo exporterInfo =
-                new JdbcNodeInfoLookup.NodeInfo(99, "Minions", "exporter-9", MINION_LOCATION, "exporter-9-label");
-        when(nodeInfoLookup.lookupByIpAddress(EXPORTER_ADDRESS)).thenReturn(exporterInfo);
+        NodeContext exporterCtx = NodeContext.newBuilder()
+                .setNodeId(99).setForeignSource("Minions").setForeignId("exporter-9")
+                .setNodeLabel("exporter-9-label").build();
+        when(nodeContextCache.getByIp(EXPORTER_ADDRESS)).thenReturn(Optional.of(exporterCtx));
         // Ifindex 0 for both directions: "unknown" per Netflow spec.
         Flow flow = buildFlow("10.0.0.1", "10.0.0.2", 111, 222, 6, 0, 0);
         when(nf5Processor.process(any())).thenReturn(List.of(flow));
@@ -349,10 +350,13 @@ class FlowEnrichmentFunctionTest {
     }
 
     @Test
-    void populatesExporterNodeInfoFromLookup() throws InvalidProtocolBufferException {
-        JdbcNodeInfoLookup.NodeInfo exporterInfo =
-                new JdbcNodeInfoLookup.NodeInfo(77, "Minions", "exporter-77", MINION_LOCATION, "exporter-77-label");
-        when(nodeInfoLookup.lookupByIpAddress(EXPORTER_ADDRESS)).thenReturn(exporterInfo);
+    void populatesExporterNodeInfoFromCache() throws InvalidProtocolBufferException {
+        NodeContext exporterCtx = NodeContext.newBuilder()
+                .setNodeId(77).setForeignSource("Minions").setForeignId("exporter-77")
+                .setNodeLabel("exporter-77-label")
+                .addAllCategories(List.of("Production", "Routers"))
+                .build();
+        when(nodeContextCache.getByIp(EXPORTER_ADDRESS)).thenReturn(Optional.of(exporterCtx));
         Flow flow = buildFlow("10.0.0.1", "10.0.0.2", 111, 222, 6, 1, 2);
         when(nf5Processor.process(any())).thenReturn(List.of(flow));
         byte[] kafkaBytes = buildValidSinkMessageBytes();
@@ -365,6 +369,7 @@ class FlowEnrichmentFunctionTest {
         assertThat(doc.getExporterNode().getNodeId()).isEqualTo(77);
         assertThat(doc.getExporterNode().getForeignSource()).isEqualTo("Minions");
         assertThat(doc.getExporterNode().getForeignId()).isEqualTo("exporter-77");
+        assertThat(doc.getExporterNode().getCategoriesList()).containsExactly("Production", "Routers");
     }
 
     // ---- Helpers ----

@@ -63,7 +63,14 @@
             <version>${protoc.version}</version>
         </dependency>
 
-        <!-- Caffeine cache (for JdbcNodeInfoLookup) -->
+        <!-- NodeContext in-memory cache (replaces JDBC node/interface lookups) -->
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>node-context-consumer</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Caffeine cache (for InterfaceMarkingCache) -->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
