@@ -101,6 +101,7 @@
     <module>core/prometheus-writer</module>
     <module>core/alerts-forwarder</module>
     <module>core/alarms-materializer</module>
+    <module>core/node-context-consumer</module>
   </modules>
 
   <!-- ============================================================ -->
