@@ -39,9 +39,21 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
                     feClassify = component "Application Classifier" "Classifies flows by application (port-based)." "PortBasedApplicationClassifier" "component"
                     feMapper = component "Flow Document Mapper" "Maps enriched flows to ClickHouse documents." "FlowToDocumentMapper" "component"
                 }
-                alarmsPublisher = container "alarms-kafka-publisher" "Publishes alarm state to Kafka." "Spring Boot / Java 21" "daemon"
-                alarmsMaterializer = container "alarms-materializer" "Projects alarm state into PostgreSQL." "Spring Boot / Java 21" "daemon"
-                prometheusWriter = container "prometheus-writer" "Consumes time-series, remote-writes to VictoriaMetrics." "Spring Boot / Java 21" "daemon"
+                alarmsPublisher = container "alarms-kafka-publisher" "Publishes alarm state to Kafka." "Spring Boot / Java 21" "daemon" {
+                    apMapper = component "Alarm State Mapper" "Maps alarm rows to wire records." "AlarmStateMapper" "component"
+                    apPublisher = component "Kafka Alarm Publisher" "Publishes compacted alarm-state records." "KafkaAlarmPublisher" "component"
+                    apTopic = component "Topic Initializer" "Ensures the alarm-state topic exists." "AlarmsTopicInitializer" "component"
+                }
+                alarmsMaterializer = container "alarms-materializer" "Projects alarm state into PostgreSQL." "Spring Boot / Java 21" "daemon" {
+                    amConsumer = component "Alarm State Consumer" "Consumes alarm-state records." "AlarmStateKafkaConsumer" "component"
+                    amProjector = component "Alarm State Projector" "Projects records into alarm entities." "AlarmStateProjector" "component"
+                    amWriter = component "Alarm Upsert Writer" "Upserts alarms into PostgreSQL." "AlarmUpsertWriter" "component"
+                    amRetention = component "Retention Engine" "Evaluates retention rules and deletes." "RetentionEngine, AlarmDeleter" "component"
+                }
+                prometheusWriter = container "prometheus-writer" "Consumes time-series, remote-writes to VictoriaMetrics." "Spring Boot / Java 21" "daemon" {
+                    pwConsumer = component "Time-Series Consumer" "Consumes time-series samples from Kafka." "Kafka client" "component"
+                    pwRemoteWrite = component "Remote-Write Client" "Sends Prometheus remote-write to VictoriaMetrics." "HTTP" "component"
+                }
                 alertsForwarder = container "alerts-forwarder" "Forwards alarm/alert state to Alertmanager." "Spring Boot / Java 21" "daemon"
             }
             group "Edge / IPC" {
@@ -162,6 +174,20 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         feEnrich -> postgres "Node/interface lookup" "JDBC"
         feClassify -> feMapper "Enriched flows"
         feMapper -> clickhouse "Writes documents" "HTTP"
+
+        # --- L3: metrics & alarm pipeline ---
+        alarmd -> apMapper "Alarm rows"
+        apMapper -> apPublisher "Wire records"
+        apPublisher -> kafka "Alarm-state topic" "Kafka"
+        kafka -> amConsumer "Alarm-state records" "Kafka"
+        amConsumer -> amProjector "Records"
+        amProjector -> amWriter "Alarm entities"
+        amWriter -> postgres "Upserts" "JDBC"
+        amRetention -> postgres "Deletes expired" "JDBC"
+        kafka -> pwConsumer "Time-series samples" "Kafka"
+        pwConsumer -> pwRemoteWrite "Samples"
+        pwRemoteWrite -> victoriametrics "Remote-write" "HTTP"
+        victoriametrics -> grafana "Queried by" "PromQL"
     }
 
     views {
@@ -189,6 +215,12 @@ workspace "Delta-V" "Cloud-native network monitoring platform (OpenNMS Horizon f
         component flowEnricher "FlowPipeline" "Flow/telemetry path: telemetryd -> Kafka -> flow-enricher (decode, enrich, classify, map) -> ClickHouse." {
             include *
             include telemetryd
+            autolayout lr
+        }
+
+        component alarmsMaterializer "MetricsAlarms" "Alarm path (alarmd -> publisher -> Kafka -> materializer -> Postgres) and metrics path (Kafka -> prometheus-writer -> VictoriaMetrics -> Grafana)." {
+            include *
+            include apMapper apPublisher apTopic pwConsumer pwRemoteWrite alarmd victoriametrics grafana
             autolayout lr
         }
 
