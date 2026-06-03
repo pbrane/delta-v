@@ -45,7 +45,7 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "clickhouse"
         },
-        "query": "SELECT DISTINCT concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}')",
+        "query": "SELECT DISTINCT concat(if(exporter_node_label != '', concat(exporter_node_label, ' '), ''), '(', exporter_node_foreign_source, '/', exporter_node_foreign_id, ')') AS __text, concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) AS __value FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND exporter_node_foreign_id != '' ORDER BY __text",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
@@ -69,6 +69,29 @@
           "uid": "clickhouse"
         },
         "query": "SELECT DISTINCT application FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}')",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "category",
+        "label": "Node category",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "clickhouse"
+        },
+        "query": "SELECT DISTINCT arrayJoin(exporter_node_categories) AS category FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') ORDER BY category",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
@@ -116,7 +139,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT $__timeInterval(timestamp) AS time, location, sum(num_bytes) * 8 / ($__interval_ms / 1000) AS bps FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY time, location ORDER BY time",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS time, location, sum(num_bytes) * 8 / ($__interval_ms / 1000) AS bps FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY time, location ORDER BY time",
           "format": 1
         }
       ],
@@ -215,7 +238,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT application, sum(num_bytes) AS bytes FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') GROUP BY application ORDER BY bytes DESC LIMIT 10",
+          "rawSql": "SELECT application, sum(num_bytes) AS bytes FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) AND match(location, '${monitoring_location:regex}') GROUP BY application ORDER BY bytes DESC LIMIT 10",
           "format": 0
         }
       ]
@@ -286,7 +309,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT IPv6NumToString(src_address) AS \"Source\", IPv6NumToString(dst_address) AS \"Destination\", application AS \"Application\", sum(num_bytes) AS \"Bytes\", sum(num_packets) AS \"Packets\", count() AS \"Flow records\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY src_address, dst_address, application ORDER BY \"Bytes\" DESC LIMIT 20",
+          "rawSql": "SELECT IPv6NumToString(src_address) AS \"Source\", IPv6NumToString(dst_address) AS \"Destination\", application AS \"Application\", sum(num_bytes) AS \"Bytes\", sum(num_packets) AS \"Packets\", count() AS \"Flow records\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY src_address, dst_address, application ORDER BY \"Bytes\" DESC LIMIT 20",
           "format": 0
         }
       ]
@@ -321,7 +344,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT $__timeInterval(timestamp) AS time, concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) AS exporter, count() / ($__interval_ms / 1000) AS flows_per_sec FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(concat(exporter_node_foreign_source, '/', exporter_node_foreign_id), '${exporter_instance:regex}') GROUP BY time, exporter ORDER BY time",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS time, concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) AS exporter, count() / ($__interval_ms / 1000) AS flows_per_sec FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(concat(exporter_node_foreign_source, '/', exporter_node_foreign_id), '${exporter_instance:regex}') AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) GROUP BY time, exporter ORDER BY time",
           "format": 1
         }
       ]
@@ -354,7 +377,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT countIf(netflow_version = 'Netflow5') + countIf(netflow_version = 'V5') AS \"NetFlow v5\", countIf(netflow_version = 'Netflow9') + countIf(netflow_version = 'V9') AS \"NetFlow v9\", countIf(netflow_version = 'IPFIX') AS \"IPFIX\", countIf(netflow_version = 'SFlow') + countIf(netflow_version = 'Sflow') AS \"sFlow\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}')",
+          "rawSql": "SELECT countIf(netflow_version = 'Netflow5') + countIf(netflow_version = 'V5') AS \"NetFlow v5\", countIf(netflow_version = 'Netflow9') + countIf(netflow_version = 'V9') AS \"NetFlow v9\", countIf(netflow_version = 'IPFIX') AS \"IPFIX\", countIf(netflow_version = 'SFlow') + countIf(netflow_version = 'Sflow') AS \"sFlow\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) AND match(location, '${monitoring_location:regex}')",
           "format": 0
         }
       ]
@@ -416,7 +439,73 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT exporter_node_foreign_source, exporter_node_foreign_id, location, host, formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS last_seen, count() AS flow_count FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') GROUP BY exporter_node_foreign_source, exporter_node_foreign_id, location, host ORDER BY flow_count DESC",
+          "rawSql": "SELECT exporter_node_foreign_source, exporter_node_foreign_id, location, host, formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS last_seen, count() AS flow_count FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) AND match(location, '${monitoring_location:regex}') GROUP BY exporter_node_foreign_source, exporter_node_foreign_id, location, host ORDER BY flow_count DESC",
+          "format": 0
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top interfaces by traffic",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bytes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "bytes",
+            "desc": true
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawSql": "SELECT concat(if(exporter_node_label != '', concat(exporter_node_label, ' '), ''), '(', exporter_node_foreign_source, '/', exporter_node_foreign_id, ')') AS \"Exporter\", if(input_if_name != '', input_if_name, toString(input_snmp_ifindex)) AS \"Interface\", sum(num_bytes) AS \"bytes\", sum(num_packets) AS \"Packets\", count() AS \"Flow records\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(concat(exporter_node_foreign_source, '/', exporter_node_foreign_id), '${exporter_instance:regex}') AND match(application, '${application:regex}') AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) GROUP BY \"Exporter\", \"Interface\" ORDER BY sum(num_bytes) DESC LIMIT 20",
           "format": 0
         }
       ]
