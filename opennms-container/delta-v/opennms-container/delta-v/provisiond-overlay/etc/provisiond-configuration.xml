@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<provisiond-configuration xmlns="http://xmlns.opennms.org/xsd/config/provisiond-configuration"
-                          import-threads="2"
-                          scan-threads="4"
-                          write-threads="2"
-                          rescan-threads="2"
-                          requisition-dir="/opt/deltav/etc/imports"
-                          foreign-source-dir="/opt/deltav/etc/foreign-sources">
-</provisiond-configuration>
