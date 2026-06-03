@@ -23,7 +23,7 @@ import org.deltav.alerts.forwarder.config.AlertsForwarderProperties;
 import org.deltav.alerts.forwarder.dlq.DlqPublisher;
 import org.deltav.alerts.forwarder.lifecycle.ActiveAlertRegistry;
 import org.deltav.alerts.forwarder.metrics.AlertsForwarderMetrics;
-import org.deltav.alerts.forwarder.nodecontext.NodeContextCacheReadyEvent;
+import org.deltav.nodecontext.NodeContextCacheReadyEvent;
 import org.deltav.alerts.forwarder.pipeline.AlarmForwardingPipeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

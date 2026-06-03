@@ -25,9 +25,9 @@ import org.deltav.flows.enricher.classification.ApplicationClassifier;
 import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator;
 import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator.Locality;
 import org.deltav.flows.enricher.enrichment.InterfaceMarkingCache;
-import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
-import org.deltav.flows.enricher.enrichment.JdbcSnmpInterfaceLookup;
 import org.deltav.flows.enricher.mapping.FlowToDocumentMapper;
+import org.deltav.nodecontext.NodeContextCache;
+import org.deltav.timeseries.proto.NodeContext;
 import org.deltav.flows.enricher.protocol.ProtocolMessageProcessor;
 import org.deltav.flows.proto.FlowDocumentProtos;
 import org.opennms.netmgt.flows.api.Flow;
@@ -100,31 +100,34 @@ public class FlowEnrichmentFunction {
     private static final String DELTAV_SINK_PREFIX = "DeltaV.Sink.";
 
     private final SinkMessageDeserializer deserializer;
-    private final JdbcNodeInfoLookup nodeInfoLookup;
+    private final NodeContextCache nodeContextCache;
     private final FlowLocalityCalculator localityCalculator;
     private final InterfaceMarkingCache interfaceMarkingCache;
     private final ApplicationClassifier applicationClassifier;
     private final FlowToDocumentMapper flowToDocumentMapper;
-    private final JdbcSnmpInterfaceLookup snmpInterfaceLookup;
     private final Map<String, ProtocolMessageProcessor> processorsByModuleId;
 
     public FlowEnrichmentFunction(
             SinkMessageDeserializer deserializer,
-            JdbcNodeInfoLookup nodeInfoLookup,
+            NodeContextCache nodeContextCache,
             FlowLocalityCalculator localityCalculator,
             InterfaceMarkingCache interfaceMarkingCache,
             ApplicationClassifier applicationClassifier,
             FlowToDocumentMapper flowToDocumentMapper,
-            JdbcSnmpInterfaceLookup snmpInterfaceLookup,
             Map<String, ProtocolMessageProcessor> processorsByModuleId) {
         this.deserializer = deserializer;
-        this.nodeInfoLookup = nodeInfoLookup;
+        this.nodeContextCache = nodeContextCache;
         this.localityCalculator = localityCalculator;
         this.interfaceMarkingCache = interfaceMarkingCache;
         this.applicationClassifier = applicationClassifier;
         this.flowToDocumentMapper = flowToDocumentMapper;
-        this.snmpInterfaceLookup = snmpInterfaceLookup;
         this.processorsByModuleId = Map.copyOf(processorsByModuleId);
+    }
+
+    private static FlowToDocumentMapper.NodeIdentity identity(NodeContext n) {
+        return new FlowToDocumentMapper.NodeIdentity(
+                n.getNodeId(), n.getForeignSource(), n.getForeignId(),
+                n.getNodeLabel(), n.getCategoriesList());
     }
 
     /**
@@ -171,14 +174,14 @@ public class FlowEnrichmentFunction {
             return Collections.emptyList();
         }
 
-        // Look up the exporter node info once per message log. The reported
-        // source address is the UDP sender on the Minion side, so it maps
-        // directly to an ipinterface row in the OpenNMS database.
+        // Resolve the exporter node once per message log from the in-memory
+        // NodeContext cache. The source address is the UDP sender on the Minion
+        // side, mapping directly to an interface entry in the cache.
         String exporterAddress = messageLog.getSourceAddress();
         String location = messageLog.getLocation();
-        JdbcNodeInfoLookup.NodeInfo exporterNodeInfo =
+        FlowToDocumentMapper.NodeIdentity exporterNodeInfo =
                 exporterAddress != null && !exporterAddress.isEmpty()
-                        ? nodeInfoLookup.lookupByIpAddress(exporterAddress)
+                        ? nodeContextCache.getByIp(exporterAddress).map(FlowEnrichmentFunction::identity).orElse(null)
                         : null;
 
         List<byte[]> results = new ArrayList<>(flows.size());
@@ -197,20 +200,20 @@ public class FlowEnrichmentFunction {
 
     private byte[] enrichAndSerialize(
             Flow flow,
-            JdbcNodeInfoLookup.NodeInfo exporterNodeInfo,
+            FlowToDocumentMapper.NodeIdentity exporterNodeInfo,
             String exporterAddress,
             String location) {
 
         String srcAddr = flow.getSrcAddr();
         String dstAddr = flow.getDstAddr();
 
-        JdbcNodeInfoLookup.NodeInfo srcNodeInfo =
+        FlowToDocumentMapper.NodeIdentity srcNodeInfo =
                 (srcAddr != null && !srcAddr.isEmpty())
-                        ? nodeInfoLookup.lookupByIpAddress(srcAddr)
+                        ? nodeContextCache.getByIp(srcAddr).map(FlowEnrichmentFunction::identity).orElse(null)
                         : null;
-        JdbcNodeInfoLookup.NodeInfo dstNodeInfo =
+        FlowToDocumentMapper.NodeIdentity dstNodeInfo =
                 (dstAddr != null && !dstAddr.isEmpty())
-                        ? nodeInfoLookup.lookupByIpAddress(dstAddr)
+                        ? nodeContextCache.getByIp(dstAddr).map(FlowEnrichmentFunction::identity).orElse(null)
                         : null;
 
         Locality srcLocalityEnum = localityCalculator.classify(srcAddr);
@@ -220,19 +223,20 @@ public class FlowEnrichmentFunction {
         // Mark interfaces on the exporter as flow-enabled. Only run this when
         // the exporter node is known (otherwise nodeId is meaningless) and
         // when the ifindex is present and strictly positive (0 is "unknown"
-        // per the Netflow spec).
+        // per the Netflow spec). Interface names come from the NodeContext cache.
         String inputIfName = null;
         String outputIfName = null;
         if (exporterNodeInfo != null) {
+            int exporterNodeId = exporterNodeInfo.nodeId();
             Integer inputIfIndex = flow.getInputSnmp();
             if (inputIfIndex != null && inputIfIndex > 0) {
-                interfaceMarkingCache.markIfNeeded(exporterNodeInfo.nodeId(), inputIfIndex);
-                inputIfName = snmpInterfaceLookup.lookupIfName(exporterNodeInfo.nodeId(), inputIfIndex);
+                interfaceMarkingCache.markIfNeeded(exporterNodeId, inputIfIndex);
+                inputIfName = nodeContextCache.ifName(exporterNodeId, inputIfIndex).orElse(null);
             }
             Integer outputIfIndex = flow.getOutputSnmp();
             if (outputIfIndex != null && outputIfIndex > 0) {
-                interfaceMarkingCache.markIfNeeded(exporterNodeInfo.nodeId(), outputIfIndex);
-                outputIfName = snmpInterfaceLookup.lookupIfName(exporterNodeInfo.nodeId(), outputIfIndex);
+                interfaceMarkingCache.markIfNeeded(exporterNodeId, outputIfIndex);
+                outputIfName = nodeContextCache.ifName(exporterNodeId, outputIfIndex).orElse(null);
             }
         }
 

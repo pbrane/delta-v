@@ -18,6 +18,7 @@ package org.deltav.flows.enricher.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
@@ -32,8 +33,8 @@ import com.google.protobuf.UInt64Value;
 
 import org.deltav.flows.enricher.FlowEnricherApplication;
 import org.deltav.flows.enricher.enrichment.InterfaceMarkingCache;
-import org.deltav.flows.enricher.enrichment.JdbcNodeInfoLookup;
 import org.deltav.flows.enricher.parser.ThreadLocalDispatcher;
+import org.deltav.nodecontext.NodeContextCache;
 import org.deltav.flows.proto.FlowDocumentProtos;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,12 +69,12 @@ import io.netty.buffer.ByteBuf;
  * {@link FlowDocumentProtos.FlowDocument} records are emitted on the
  * {@code deltav-flows} output destination.
  *
- * <p>The {@link JdbcNodeInfoLookup} and {@link InterfaceMarkingCache} beans
+ * <p>The {@link NodeContextCache} and {@link InterfaceMarkingCache} beans
  * are replaced with Mockito mocks via {@link MockitoBean} (Spring Boot 4.0's
  * successor to {@code @MockBean}). This sidesteps the
  * {@link javax.sql.DataSource} dependency chain in
- * {@code FlowEnricherConfiguration}: with those two beans mocked, Spring never
- * needs to instantiate {@code flowEnricherJdbcTemplate}, so no
+ * {@code FlowEnricherConfiguration}: with {@code InterfaceMarkingCache} mocked,
+ * Spring never needs to instantiate {@code flowEnricherJdbcTemplate}, so no
  * {@code DataSource} bean is ever requested. We still explicitly exclude
  * {@code DataSourceAutoConfiguration} for defense in depth.
  *
@@ -95,13 +96,13 @@ import io.netty.buffer.ByteBuf;
  * using a {@code FakeUdpParser}. Live sFlow verification via a real
  * wire-format exporter is a separate followup.
  *
- * <p>Because {@link JdbcNodeInfoLookup#lookupByIpAddress(String)} always
- * returns {@code null} in this test, the enricher's per-flow logic runs but
- * cannot populate the {@code exporter_node}/{@code src_node}/{@code dest_node}
- * fields. We therefore assert on the scalar fields the enricher populates
- * regardless of node lookup success: {@code src_address}, {@code dst_address},
- * {@code netflow_version}, {@code host}, {@code location}, and
- * {@code application}.
+ * <p>Because {@link NodeContextCache#getByIp(String)} always returns
+ * {@link java.util.Optional#empty()} in this test, the enricher's per-flow
+ * logic runs but cannot populate the {@code exporter_node}/{@code src_node}/
+ * {@code dest_node} fields. We therefore assert on the scalar fields the
+ * enricher populates regardless of node lookup success: {@code src_address},
+ * {@code dst_address}, {@code netflow_version}, {@code host}, {@code location},
+ * and {@code application}.
  */
 @SpringBootTest(
         classes = { FlowEnricherApplication.class },
@@ -114,6 +115,11 @@ import io.netty.buffer.ByteBuf;
                 // classpath. Without this, SCS will try to instantiate the Kafka
                 // binder and fail because there's no broker.
                 "spring.cloud.stream.defaultBinder=integration",
+                // Exclude the shared NodeContextConsumerAutoConfiguration so
+                // NodeContextKafkaBootstrap never starts a real consumer thread
+                // trying to reach kafka:9092. The NodeContextCache bean this IT
+                // needs is supplied by the @MockitoBean below.
+                "spring.autoconfigure.exclude=org.deltav.nodecontext.NodeContextConsumerAutoConfiguration",
                 // The function returns List<byte[]>. Without useNativeEncoding,
                 // Spring Cloud Function JSON-serializes the entire list into a
                 // single "[]"-shaped payload; with it, the binder honors the
@@ -151,7 +157,7 @@ class FlowEnrichmentStreamBinderIT {
     private ThreadLocalDispatcher threadLocalDispatcher;
 
     @MockitoBean
-    private JdbcNodeInfoLookup jdbcNodeInfoLookup;
+    private NodeContextCache nodeContextCache;
 
     @MockitoBean
     private InterfaceMarkingCache interfaceMarkingCache;
@@ -174,9 +180,9 @@ class FlowEnrichmentStreamBinderIT {
 
     @BeforeEach
     void setUp() throws Exception {
-        // All node lookups return null so the enricher runs without touching
-        // the database.
-        when(jdbcNodeInfoLookup.lookupByIpAddress(anyString())).thenReturn(null);
+        // All cache lookups return empty so the enricher runs without node info.
+        when(nodeContextCache.getByIp(anyString())).thenReturn(java.util.Optional.empty());
+        when(nodeContextCache.ifName(anyInt(), anyInt())).thenReturn(java.util.Optional.empty());
 
         // Wire each mock parser to act as a passthrough: dispatch the received
         // ByteBuf's bytes directly to the ThreadLocalDispatcher so that Stage 2

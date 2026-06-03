@@ -18,9 +18,6 @@ public final class PrometheusWriterMetrics {
     public static final String ENRICHMENT_HIT          = "deltav.prometheus.writer.enrichment.hit";
     public static final String ENRICHMENT_MISSING      = "deltav.prometheus.writer.enrichment.missing";
     public static final String ENRICHMENT_LOOKUP_FALLBACK = "deltav.prometheus.writer.enrichment.lookup.fallback";
-    public static final String NC_CACHE_SIZE           = "deltav.prometheus.writer.node.context.cache.size";
-    public static final String NC_CACHE_READY          = "deltav.prometheus.writer.node.context.cache.ready";
-    public static final String NC_BOOTSTRAP_DURATION   = "deltav.prometheus.writer.node.context.bootstrap.duration";
 
     // sample dropouts
     public static final String SAMPLES_DROPPED         = "deltav.prometheus.writer.samples.dropped";

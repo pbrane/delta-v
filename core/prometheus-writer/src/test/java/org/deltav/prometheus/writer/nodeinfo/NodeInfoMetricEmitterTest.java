@@ -1,7 +1,7 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
 package org.deltav.prometheus.writer.nodeinfo;
 
-import org.deltav.prometheus.writer.nodecontext.NodeContextCache;
+import org.deltav.nodecontext.NodeContextCache;
 import org.deltav.prometheus.writer.translate.PromSample;
 import org.deltav.timeseries.proto.NodeContext;
 import org.deltav.timeseries.proto.SnmpInterfaceContext;
@@ -26,7 +26,7 @@ class NodeInfoMetricEmitterTest {
                         .setIfAlias("uplink").setIfSpeed(1_000_000_000L).setIfType(6)
                         .setPhysicalAddress("00:11:22:33:44:55").build())
                 .build();
-        cache.put("Default@1042", nc);
+        cache.applyUpdate("Default@1042", nc);
         cache.markReady();
 
         List<PromSample> emitted = new ArrayList<>();
@@ -69,7 +69,7 @@ class NodeInfoMetricEmitterTest {
         NodeContextCache cache = new NodeContextCache();
         // populated but markReady() NOT called — the production "bootstrap replay
         // still draining" window — the guard must short-circuit.
-        cache.put("Default@1", NodeContext.newBuilder().setNodeId(1).setLocation("Default").build());
+        cache.applyUpdate("Default@1", NodeContext.newBuilder().setNodeId(1).setLocation("Default").build());
 
         List<PromSample> emitted = new ArrayList<>();
         new NodeInfoMetricEmitter(cache, emitted::add).sweep();
@@ -92,7 +92,7 @@ class NodeInfoMetricEmitterTest {
                         .setIfAlias("uplink-b").setIfSpeed(1_000_000_000L).setIfType(6)
                         .setPhysicalAddress("AA:BB:CC:DD:EE:04").build())
                 .build();
-        cache.put("Core@2001", nc);
+        cache.applyUpdate("Core@2001", nc);
         cache.markReady();
 
         List<PromSample> emitted = new ArrayList<>();

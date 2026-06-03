@@ -1,6 +1,8 @@
 spring:
   application:
     name: flow-enricher
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}  # bootstrap consumer needs this; binder brokers alone do NOT satisfy a plain spring.kafka property — #170 lesson
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/opennms}
     username: ${SPRING_DATASOURCE_USERNAME:opennms}
@@ -20,6 +22,8 @@ spring:
         enrichFlows-in-0:
           destination: ${DELTAV_FLOWS_SINK_TOPICS:DeltaV.Sink.Telemetry-Netflow-5,DeltaV.Sink.Telemetry-Netflow-9,DeltaV.Sink.Telemetry-IPFIX,DeltaV.Sink.Telemetry-SFlow}
           group: deltav-flow-enricher
+          consumer:
+            auto-startup: false
         enrichFlows-out-0:
           destination: ${DELTAV_FLOWS_OUTPUT_TOPIC:deltav-flows}
           # The function returns a List<byte[]> where each element is an
@@ -56,8 +60,6 @@ deltav:
     interface-marking:
       cache-ttl: ${DELTAV_FLOWS_INTERFACE_MARKING_CACHE_TTL:24h}
       clean-interval-ms: ${DELTAV_FLOWS_INTERFACE_MARKING_CLEAN_INTERVAL_MS:3600000}
-    node-lookup:
-      cache-ttl: ${DELTAV_FLOWS_NODE_LOOKUP_CACHE_TTL:5m}
     parser:
       system-id: flow-enricher
       location: Default

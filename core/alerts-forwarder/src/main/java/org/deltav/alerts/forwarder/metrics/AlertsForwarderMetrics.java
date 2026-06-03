@@ -11,8 +11,5 @@ public final class AlertsForwarderMetrics {
     public static final String ENRICHMENT = "deltav_alerts_forwarder_enrichment_total";     // tag: result
     public static final String SINK_ERRORS = "deltav_alerts_forwarder_sink_errors_total";   // tag: sink
     public static final String DLQ_RECORDS = "deltav_alerts_forwarder_dlq_total";
-    public static final String NC_CACHE_SIZE = "deltav_alerts_forwarder_node_context_cache_size";
-    public static final String NC_CACHE_READY = "deltav_alerts_forwarder_node_context_cache_ready";
-    public static final String NC_BOOTSTRAP_DURATION = "deltav_alerts_forwarder_node_context_bootstrap_seconds";
     public static final String ACTIVE_ALERTS = "deltav_alerts_forwarder_active_alerts";
 }

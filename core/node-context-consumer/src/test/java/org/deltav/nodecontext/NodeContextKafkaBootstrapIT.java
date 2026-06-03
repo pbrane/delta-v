@@ -1,5 +1,5 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
-package org.deltav.prometheus.writer.nodecontext;
+package org.deltav.nodecontext;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -62,7 +62,10 @@ class NodeContextKafkaBootstrapIT {
                 cache, publisher, new SimpleMeterRegistry(), KAFKA.getBootstrapServers());
         boot.start();
         try {
-            await().atMost(Duration.ofSeconds(30)).until(cache::isReady);
+            // Await on the event reference rather than cache.isReady(): markReady() fires
+            // *before* publishEvent() in finishBootstrap(), so polling isReady and then
+            // immediately checking captured races — the event set may not be visible yet.
+            await().atMost(Duration.ofSeconds(30)).until(() -> captured.get() != null);
             assertThat(cache.size()).isEqualTo(50);
             assertThat(captured.get()).isNotNull();
             assertThat(captured.get().getCacheSize()).isEqualTo(50);
@@ -83,11 +86,11 @@ class NodeContextKafkaBootstrapIT {
         boot.start();
         try {
             await().atMost(Duration.ofSeconds(30)).until(cache::isReady);
-            assertThat(cache.get("Default@101")).isPresent();
+            assertThat(cache.getByKey("Default@101")).isPresent();
 
             produce(101, true);   // tombstone (deleted=true)
             await().atMost(Duration.ofSeconds(20))
-                    .until(() -> cache.get("Default@101").isEmpty());
+                    .until(() -> cache.getByKey("Default@101").isEmpty());
         } finally {
             boot.stop();
         }
@@ -127,11 +130,17 @@ class NodeContextKafkaBootstrapIT {
             produce(200, false);
 
             // Cache should become ready within 30s (allows for rebalance + drain).
-            await().atMost(Duration.ofSeconds(30)).until(cache::isReady);
+            // Await on the event reference rather than cache.isReady(): markReady() fires
+            // *before* publishEvent() in finishBootstrap(), so polling isReady and then
+            // immediately checking capturedEvent races — the event set may not be visible yet.
+            await().atMost(Duration.ofSeconds(30)).until(() -> capturedEvent.get() != null);
+            assertThat(cache.isReady())
+                    .as("cache must be ready once the ready event has fired")
+                    .isTrue();
             assertThat(capturedEvent.get())
                     .as("ready event must have fired exactly once after first drain")
                     .isNotNull();
-            assertThat(cache.get("Default@200")).isPresent();
+            assertThat(cache.getByKey("Default@200")).isPresent();
         } finally {
             boot.stop();
             // Tombstone our test record so it doesn't pollute the shared compacted

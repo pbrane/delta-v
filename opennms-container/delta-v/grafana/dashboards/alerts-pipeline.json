@@ -91,7 +91,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "deltav_alerts_forwarder_node_context_cache_ready",
+          "expr": "deltav_node_context_cache_ready{instance=\"alerts-forwarder:8080\"}",
           "instant": false,
           "legendFormat": "ready",
           "refId": "A"
@@ -130,7 +130,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "victoriametrics" },
-          "expr": "deltav_alerts_forwarder_node_context_cache_size",
+          "expr": "deltav_node_context_cache_size{instance=\"alerts-forwarder:8080\"}",
           "instant": false,
           "legendFormat": "size",
           "refId": "A"

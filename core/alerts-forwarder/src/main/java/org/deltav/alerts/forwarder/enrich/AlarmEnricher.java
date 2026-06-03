@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.deltav.alarms.proto.AlarmState;
-import org.deltav.alerts.forwarder.nodecontext.NodeContextCache;
+import org.deltav.nodecontext.NodeContextCache;
 import org.deltav.timeseries.proto.NodeContext;
 import org.deltav.timeseries.proto.SnmpInterfaceContext;
 import org.springframework.stereotype.Component;
@@ -70,9 +70,9 @@ public class AlarmEnricher {
     }
 
     private Optional<NodeContext> lookup(AlarmState alarm) {
-        Optional<NodeContext> nc = cache.get(alarm.getLocation() + "@" + alarm.getNodeId());
+        Optional<NodeContext> nc = cache.getByKey(alarm.getLocation() + "@" + alarm.getNodeId());
         if (nc.isEmpty() && alarm.getNodeId() > 0) {
-            nc = cache.findByNodeId(alarm.getNodeId());
+            nc = cache.getByNodeId(alarm.getNodeId());
         }
         return nc;
     }

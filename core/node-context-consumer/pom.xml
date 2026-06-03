@@ -13,11 +13,9 @@
     </parent>
 
     <groupId>org.deltav.core</groupId>
-    <artifactId>alerts-forwarder</artifactId>
-    <name>Delta-V :: Core :: Prometheus Alerts Forwarder</name>
-    <description>Consumes deltav-alarms-state-change, enriches each alarm against a
-        local materialization of deltav-node-context, and forwards firing/resolved
-        alerts to Alertmanager and/or VictoriaMetrics through a pluggable AlarmSink.</description>
+    <artifactId>node-context-consumer</artifactId>
+    <name>Delta-V :: Core :: Node Context Consumer</name>
+    <packaging>jar</packaging>
 
     <properties>
         <java.version>21</java.version>
@@ -30,27 +28,16 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
-
-        <!-- Raw Kafka client — bootstrap-replay consumers (no Spring Cloud Stream). -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
         </dependency>
-
-        <!-- Shared node-context consumer: NodeContextCache + bootstrap + health. -->
-        <dependency>
-            <groupId>org.deltav.core</groupId>
-            <artifactId>node-context-consumer</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <!-- Protobuf contracts: AlarmState + NodeContext + prometheus.prompb. -->
         <dependency>
             <groupId>org.deltav.core</groupId>
             <artifactId>org.opennms.core.deltav-kafka-contracts</artifactId>
@@ -60,22 +47,20 @@
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
         </dependency>
-
-        <!-- Snappy: VictoriaMetrics remote-write compression. -->
-        <dependency>
-            <groupId>org.xerial.snappy</groupId>
-            <artifactId>snappy-java</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
+            <artifactId>micrometer-core</artifactId>
         </dependency>
-
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- surefire 3.5.4 needs this explicitly for Boot 4 modules. -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -88,7 +73,11 @@
             <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- commons-io >= 2.16: Testcontainers transitive commons-compress needs it. -->
+        <!-- commons-io >= 2.16 required because commons-compress 1.28.0 (transitive
+             via testcontainers) calls FileTimes.toUnixTime, added in 2.16.
+             Default transitive resolves to 2.15.0 → NoSuchMethodError when
+             Testcontainers tries to copy the starter script into the Kafka
+             container. -->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
@@ -100,31 +89,5 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>mockwebserver</artifactId>
-            <version>4.12.0</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- surefire 3.5.4 needs this explicitly for Boot 4 modules. -->
-        <dependency>
-            <groupId>org.junit.platform</groupId>
-            <artifactId>junit-platform-launcher</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
-
-    <build>
-        <finalName>alerts-forwarder</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>org.deltav.alerts.forwarder.AlertsForwarderApplication</mainClass>
-                    <executable>true</executable>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>

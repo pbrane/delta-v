@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 /**
  * Pauses the {@code timeseriesConsumer-in-0} Kafka listener container at factory time
  * so that the binding does not start consuming until {@link
- * org.deltav.prometheus.writer.nodecontext.NodeContextCacheReadyEvent} fires.
+ * org.deltav.nodecontext.NodeContextCacheReadyEvent} fires.
  *
  * <p>Gated by {@code prometheus-writer.startup-gate.enabled} (default {@code true}).
  * When disabled the container starts unpaused — useful for unit tests that don't run

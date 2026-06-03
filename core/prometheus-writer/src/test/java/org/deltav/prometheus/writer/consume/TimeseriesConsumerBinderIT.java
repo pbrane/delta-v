@@ -3,7 +3,7 @@ package org.deltav.prometheus.writer.consume;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.deltav.prometheus.writer.nodecontext.NodeContextCache;
+import org.deltav.nodecontext.NodeContextCache;
 import org.deltav.prometheus.writer.rw.BatchingRwWriter;
 import org.deltav.prometheus.writer.translate.TimeseriesToPromTranslator;
 import org.deltav.timeseries.proto.NodeContext;
@@ -80,7 +80,7 @@ class TimeseriesConsumerBinderIT {
 
     @Test
     void consumes_batch_invokes_translator_and_writer() {
-        when(cache.get("Default@5")).thenReturn(java.util.Optional.of(
+        when(cache.getByKey("Default@5")).thenReturn(java.util.Optional.of(
                 NodeContext.newBuilder()
                         .setNodeId(5)
                         .setLocation("Default")

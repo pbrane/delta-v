@@ -1,5 +1,5 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
-package org.deltav.prometheus.writer.nodecontext;
+package org.deltav.nodecontext;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -13,7 +13,6 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.deltav.prometheus.writer.metrics.PrometheusWriterMetrics;
 import org.deltav.timeseries.proto.NodeContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +20,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -39,7 +37,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * records until every partition's offset catches the recorded HWM, and marks
  * the cache ready. Then transitions to a live-tail loop.
  */
-@Component
 public class NodeContextKafkaBootstrap implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(NodeContextKafkaBootstrap.class);
@@ -64,9 +61,9 @@ public class NodeContextKafkaBootstrap implements Runnable {
         this.meterRegistry = meterRegistry;
         this.bootstrapServers = bootstrapServers;
 
-        Gauge.builder(PrometheusWriterMetrics.NC_CACHE_READY, cache, c -> c.isReady() ? 1.0 : 0.0)
+        Gauge.builder(NodeContextConsumerMetrics.NC_CACHE_READY, cache, c -> c.isReady() ? 1.0 : 0.0)
                 .register(meterRegistry);
-        Gauge.builder(PrometheusWriterMetrics.NC_CACHE_SIZE, cache, c -> (double) c.size())
+        Gauge.builder(NodeContextConsumerMetrics.NC_CACHE_SIZE, cache, c -> (double) c.size())
                 .register(meterRegistry);
     }
 
@@ -162,7 +159,7 @@ public class NodeContextKafkaBootstrap implements Runnable {
     private void applyRecord(ConsumerRecord<String, byte[]> r) {
         if (r.value() == null) {
             // Kafka log-compaction tombstone (null value). Treat as delete.
-            cache.remove(r.key());
+            cache.applyUpdate(r.key(), NodeContext.newBuilder().setDeleted(true).build());
             return;
         }
         try {
@@ -176,7 +173,7 @@ public class NodeContextKafkaBootstrap implements Runnable {
     private void finishBootstrap() {
         cache.markReady();
         long durationNs = bootstrapSample.stop(
-                meterRegistry.timer(PrometheusWriterMetrics.NC_BOOTSTRAP_DURATION));
+                meterRegistry.timer(NodeContextConsumerMetrics.NC_BOOTSTRAP_DURATION));
         long durationMillis = durationNs / 1_000_000L;
         LOG.info("NodeContextCache bootstrap complete: {} entries in {} ms", cache.size(), durationMillis);
         eventPublisher.publishEvent(new NodeContextCacheReadyEvent(this, durationMillis, cache.size()));
@@ -185,7 +182,7 @@ public class NodeContextKafkaBootstrap implements Runnable {
     private KafkaConsumer<String, byte[]> buildConsumer() {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "prometheus-writer-node-context-" + UUID.randomUUID());
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "node-context-consumer-" + UUID.randomUUID());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");

@@ -74,17 +74,17 @@ echo "==> Step 2: Assert startup gate fired"
 metrics=$(docker compose exec -T prometheus-writer \
         curl -sf http://localhost:8080/actuator/prometheus)
 
-ready=$({ echo "$metrics" | grep -E '^deltav_prometheus_writer_node_context_cache_ready\b' || true; } \
+ready=$({ echo "$metrics" | grep -E '^deltav_node_context_cache_ready\b' || true; } \
         | awk '{print $2}' | head -1)
 if [[ "$ready" != "1.0" && "$ready" != "1" ]]; then
     echo "FAIL: node_context_cache_ready != 1 (got: '$ready')"
     exit 1
 fi
 
-boot_count=$({ echo "$metrics" | grep -E '^deltav_prometheus_writer_node_context_bootstrap_duration_seconds_count\b' || true; } \
+boot_count=$({ echo "$metrics" | grep -E '^deltav_node_context_bootstrap_seconds_count\b' || true; } \
         | awk '{sum+=$2} END {print sum+0}')
 if (( $(echo "$boot_count < 1" | bc -l) )); then
-    echo "FAIL: bootstrap_duration_seconds_count < 1 (got: $boot_count)"
+    echo "FAIL: bootstrap_seconds_count < 1 (got: $boot_count)"
     exit 1
 fi
 echo "==> Startup gate verified: cache_ready=1, bootstrap_count=$boot_count"

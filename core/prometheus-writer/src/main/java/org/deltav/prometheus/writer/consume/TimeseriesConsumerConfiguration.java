@@ -4,7 +4,7 @@ package org.deltav.prometheus.writer.consume;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.deltav.prometheus.writer.metrics.PrometheusWriterMetrics;
-import org.deltav.prometheus.writer.nodecontext.NodeContextCache;
+import org.deltav.nodecontext.NodeContextCache;
 import org.deltav.prometheus.writer.rw.BatchingRwWriter;
 import org.deltav.prometheus.writer.translate.PromSample;
 import org.deltav.prometheus.writer.translate.TimeseriesToPromTranslator;
@@ -38,13 +38,13 @@ public class TimeseriesConsumerConfiguration {
             try {
                 TimeseriesBatch batch = TimeseriesBatch.parseFrom(message.getPayload());
                 String key = batch.getLocation() + "@" + batch.getNodeId();
-                Optional<NodeContext> nc = cache.get(key);
+                Optional<NodeContext> nc = cache.getByKey(key);
                 if (nc.isEmpty()) {
                     // Phase 0 limitation: Collectd publishes with location="" so the
                     // {location}@{node_id} lookup misses against provisiond's
                     // {real-location}@{node_id} keys. Fall back to node_id-only.
                     // See memory project_kafka_timeseries_producer_next_session.
-                    nc = cache.findByNodeId(batch.getNodeId());
+                    nc = cache.getByNodeId(batch.getNodeId());
                     if (nc.isPresent()) {
                         lookupFallback.increment();
                     }

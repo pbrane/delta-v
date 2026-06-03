@@ -1,11 +1,9 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
-package org.deltav.prometheus.writer.nodecontext;
+package org.deltav.nodecontext;
 
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
-import org.springframework.stereotype.Component;
 
-@Component("nodeContextCacheHealthIndicator")
 public class NodeContextCacheHealthIndicator implements HealthIndicator {
     private final NodeContextCache cache;
 

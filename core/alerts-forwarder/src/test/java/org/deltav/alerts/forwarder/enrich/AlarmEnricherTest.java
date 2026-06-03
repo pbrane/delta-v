@@ -2,7 +2,7 @@
 package org.deltav.alerts.forwarder.enrich;
 
 import org.deltav.alarms.proto.AlarmState;
-import org.deltav.alerts.forwarder.nodecontext.NodeContextCache;
+import org.deltav.nodecontext.NodeContextCache;
 import org.deltav.timeseries.proto.NodeContext;
 import org.deltav.timeseries.proto.SnmpInterfaceContext;
 import org.junit.jupiter.api.Test;
@@ -14,7 +14,7 @@ class AlarmEnricherTest {
     @Test
     void enrichesWithNodeIdentityAndDimensions() {
         NodeContextCache cache = new NodeContextCache();
-        cache.put("Default@1042", NodeContext.newBuilder()
+        cache.applyUpdate("Default@1042", NodeContext.newBuilder()
                 .setNodeId(1042).setLocation("Default").setNodeLabel("web01.corp")
                 .setForeignSource("Servers").setForeignId("web-01")
                 .addCategories("Production").build());
@@ -40,7 +40,7 @@ class AlarmEnricherTest {
     @Test
     void addsSnmpInterfaceLabelsWhenIfIndexPresent() {
         NodeContextCache cache = new NodeContextCache();
-        cache.put("Default@1042", NodeContext.newBuilder()
+        cache.applyUpdate("Default@1042", NodeContext.newBuilder()
                 .setNodeId(1042).setLocation("Default")
                 .setForeignSource("Servers").setForeignId("web-01")
                 .putSnmpInterfaceMetadata(3, SnmpInterfaceContext.newBuilder()

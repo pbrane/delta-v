@@ -1,7 +1,7 @@
 /* Copyright (C) 2026 BeaconStrategists, Inc.  AGPL-3.0-or-later */
 package org.deltav.prometheus.writer.nodeinfo;
 
-import org.deltav.prometheus.writer.nodecontext.NodeContextCache;
+import org.deltav.nodecontext.NodeContextCache;
 import org.deltav.prometheus.writer.rw.BatchingRwWriter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

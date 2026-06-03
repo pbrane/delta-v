@@ -59,6 +59,13 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
+        <!-- Shared node-context consumer (auto-configured) -->
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>node-context-consumer</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Protocol Buffers (generated classes from contracts) -->
         <dependency>
             <groupId>org.deltav.core</groupId>
