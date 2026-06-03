@@ -408,7 +408,7 @@ Useful PromQL examples:
 rate(deltav_prometheus_writer_samples_sent_total[5m])
 rate(deltav_prometheus_writer_enrichment_missing_total[5m])
 deltav_prometheus_writer_circuit_state         # 0=closed, 1=half_open, 2=open
-deltav_prometheus_writer_node_context_cache_size
+deltav_node_context_cache_size
 ```
 
 ### Topics
