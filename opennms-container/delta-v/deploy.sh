@@ -97,6 +97,54 @@ do_logs() {
     fi
 }
 
+# Verify the live ClickHouse flows_raw schema is not BEHIND the source DDL.
+# A stale clickhouse-init image (its baked DDL never carried newer columns) or a
+# clickhouse-init that never re-ran leaves flows_raw missing columns that the
+# flows dashboards/queries reference — a silent failure. This converts it into a
+# loud one by diffing the expected columns (parsed from clickhouse/init/02-flows-raw.sql:
+# the CREATE TABLE block + every ADD COLUMN IF NOT EXISTS migration) against the
+# live system.columns. Exit: 0 current, 1 drift/missing, 2 skipped (no clickhouse).
+check_clickhouse_schema() {
+    local ddl="clickhouse/init/02-flows-raw.sql"
+
+    # Skip when clickhouse is not part of this profile/run (e.g. passive).
+    if ! docker compose ps --status running --format '{{.Name}}' 2>/dev/null | grep -qw clickhouse; then
+        return 2
+    fi
+    if [ ! -f "$ddl" ]; then
+        log "  [FAIL] ClickHouse schema check: source DDL $ddl not found"
+        return 1
+    fi
+
+    local expected live missing
+    expected=$(awk '
+        /CREATE TABLE IF NOT EXISTS deltav\.flows_raw/ {inblk=1; next}
+        inblk && /^\)/ {inblk=0}
+        inblk && $1 ~ /^[a-z_][a-z0-9_]*$/ {print $1}
+        /ADD COLUMN IF NOT EXISTS/ && !/^[[:space:]]*--/ {for (i=1;i<=NF;i++) if ($i=="EXISTS") print $(i+1)}
+    ' "$ddl" | sort -u)
+    live=$(docker compose exec -T clickhouse clickhouse-client \
+            --user "${CLICKHOUSE_USER:-deltav}" --password "${CLICKHOUSE_PASSWORD:-deltav}" \
+            -q "SELECT name FROM system.columns WHERE database='deltav' AND table='flows_raw'" 2>/dev/null | sort -u)
+
+    if [ -z "$live" ]; then
+        log "  [FAIL] ClickHouse schema: deltav.flows_raw has no columns (clickhouse-init has not applied DDL yet?)"
+        return 1
+    fi
+
+    missing=$(comm -23 <(printf '%s\n' "$expected") <(printf '%s\n' "$live"))
+    if [ -n "$missing" ]; then
+        log "  [FAIL] ClickHouse schema is BEHIND source DDL — deltav.flows_raw is missing columns:"
+        printf '             %s\n' $missing
+        echo   "         The clickhouse-init image is stale (baked DDL predates these columns)."
+        echo   "         Rebuild it from source and recreate the sidecar:"
+        echo   "           make images && docker compose up -d --force-recreate clickhouse-init"
+        return 1
+    fi
+    log "  [PASS] ClickHouse schema current (deltav.flows_raw matches source DDL)"
+    return 0
+}
+
 do_test() {
     log "Testing Delta-V deployment..."
     local pass=0
@@ -123,7 +171,7 @@ do_test() {
     fi
 
     # Test 3: Kafka topic exists
-    if docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list 2>/dev/null | grep -q "opennms"; then
+    if docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list 2>/dev/null | grep -qiE 'deltav[.-]'; then
         log "  [PASS] Kafka topics created"
         pass=$((pass + 1))
     else
@@ -144,6 +192,17 @@ do_test() {
         log "  [FAIL] db-init status: $db_init_status (expected: exited)"
         fail=$((fail + 1))
     fi
+
+    # Test 5: ClickHouse schema currency (stale clickhouse-init detection).
+    # '|| sc=$?' keeps the non-zero return from aborting under set -e and lets
+    # check_clickhouse_schema print its own [PASS]/[FAIL] line to the terminal.
+    local sc=0
+    check_clickhouse_schema || sc=$?
+    case "$sc" in
+        0) pass=$((pass + 1)) ;;
+        2) log "  [SKIP] ClickHouse schema check (clickhouse not in this profile)" ;;
+        *) fail=$((fail + 1)) ;;
+    esac
 
     log ""
     log "Results: $pass passed, $fail failed"
