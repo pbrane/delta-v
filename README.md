@@ -2,8 +2,6 @@
 
 **Delta-V** is a microservice decomposition of [OpenNMS Horizon][], transforming the monolithic Java application into independently deployable Kafka-connected containers.
 
-> For the original OpenNMS Horizon project description, see [OPENNMS.md](OPENNMS.md).
-
 ## Architectural Direction
 
 Delta-V has removed Apache Karaf/OSGi from the runtime architecture. All 12 service daemons and Minion run as standalone **Spring Boot 4** applications on a **jlink custom JRE** built from `alpine:3.21`, deployed as individually-sized Docker images via layered JAR deduplication.
@@ -257,7 +255,6 @@ See the [v1.2.0 release plan](docs/plans/2026-04-23-v1.2.0-release-plan.md) for 
 
 | Document | Description |
 |----------|-------------|
-| [OPENNMS.md](OPENNMS.md) | Original OpenNMS Horizon project description |
 | [BUILD.md](BUILD.md) | Build instructions |
 | [CLAUDE.md](CLAUDE.md) | AI assistant project context |
 | [SECURITY.md](SECURITY.md) | Security policy |

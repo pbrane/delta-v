@@ -56,7 +56,7 @@ make help                 # list all targets
 ## Running Locally After Build
 
 ```bash
-export ONMS_RELEASE=$(./.circleci/scripts/pom2version.sh pom.xml)
+export ONMS_RELEASE=$(grep -m1 '<version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
 echo "RUNAS=$(id -u -n)" > "target/opennms-${ONMS_RELEASE}/etc/opennms.conf"
 # Configure PostgreSQL in target/opennms-${ONMS_RELEASE}/etc/opennms-datasources.xml
 ./target/opennms-"${ONMS_RELEASE}"/bin/runjava -s
