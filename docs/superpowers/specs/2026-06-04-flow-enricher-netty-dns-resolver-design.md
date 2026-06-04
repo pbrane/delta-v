@@ -85,15 +85,32 @@ is derived from `query-timeout-ms` to preserve Horizon's `queryTimeout+100` rela
 A `@ConfigurationProperties("deltav.flow-enricher.dns")` record/bean (`FlowEnricherDnsProperties`)
 binds these, with `@Validated` bounds (positive timeouts, threshold 1–100).
 
-### 2. `NettyDnsResolver` bean (conditional, lifecycle-managed)
+### 2. Resolver bean (conditional, lifecycle-managed) — delta-v-native
 
-- `@Bean(initMethod = "init", destroyMethod = "destroy")` `@ConditionalOnProperty(name =
-  "deltav.flow-enricher.dns.enabled", havingValue = "true", matchIfMissing = true)` (default-true
-  toggle → bean is created when the property is `true` **or absent**) —
-  constructs `org.opennms.netmgt.dnsresolver.netty.NettyDnsResolver`, applies the curated setters
-  from `FlowEnricherDnsProperties`, leaves the hardcoded knobs at their field defaults.
-- `init()` builds the Netty event-loop contexts + Caffeine cache + Resilience4j breaker/bulkhead;
-  `destroy()` tears them down. Must run on context start/stop.
+> **PIVOT (2026-06-04, after deploy-E2E):** the original plan reused horizon's
+> `org.opennms.netmgt.dnsresolver.netty.NettyDnsResolver:1.0.11`. That artifact was compiled against
+> **resilience4j 1.x** and its `init()` unconditionally calls `CircuitBreakerConfig.Builder
+> .ringBufferSizeInHalfOpenState()/ringBufferSizeInClosedState()` — **removed in resilience4j 2.x**.
+> The flow-enricher's Spring Boot 4 classpath mandates resilience4j **2.3.0**, so the horizon impl
+> throws `NoSuchMethodError` and the application **fails to start** with DNS enabled. All unit tests
+> passed because they mock the resolver and never call `init()`; the deploy E2E caught it.
+> **Resolution:** drop the horizon `dnsresolver.netty` dependency and write a delta-v-native resolver
+> against the current classpath (Boot-native adapter; the horizon impl is an OSGi-era shape).
+
+- New `DeltavNettyDnsResolver implements org.opennms.netmgt.dnsresolver.api.DnsResolver` in
+  `org.deltav.flows.enricher.parser` — built on **Netty `DnsNameResolver`** (`io.netty:netty-resolver-dns`,
+  already on the classpath) for async forward (`resolve`) + reverse (PTR query against the
+  `in-addr.arpa`/`ip6.arpa` name) lookups, bounded by **resilience4j 2.x** `CircuitBreaker`
+  (`slidingWindowSize` / `failureRateThreshold` / `waitDurationInOpenState` /
+  `permittedNumberOfCallsInHalfOpenState`) + `Bulkhead` (`maxConcurrentCalls` / `maxWaitDuration`),
+  with a **Caffeine** cache (positive + negative, bounded size + TTL). Custom `nameservers` supported
+  via the `DnsNameResolverBuilder` name-server provider (blank → platform default / system resolv.conf).
+- `@Bean(initMethod = "init", destroyMethod = "close")` `@ConditionalOnProperty(name =
+  "deltav.flows.dns.enabled", havingValue = "true", matchIfMissing = true)` — `init()` builds the
+  Netty event loop + resolver + breaker + bulkhead + cache; `close()` shuts down the resolver +
+  event loop. Configured entirely from `FlowEnricherDnsProperties`.
+- The `bulkheadMaxWait = queryTimeoutMs + 100` relationship and all curated-knob defaults are
+  preserved; the obscure knobs become sensible constants in the native impl.
 
 ### 3. `LocalityFilteringDnsResolver` decorator (delta-v, new)
 
