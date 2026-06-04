@@ -5,12 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.deltav.flows.enricher.parser.DeltavNettyDnsResolver;
 import org.deltav.flows.enricher.parser.FlowEnricherDnsProperties;
 import org.deltav.flows.enricher.parser.LocalityFilteringDnsResolver;
 import org.deltav.flows.enricher.parser.NoOpDnsResolver;
 import org.junit.jupiter.api.Test;
 import org.opennms.netmgt.dnsresolver.api.DnsResolver;
-import org.opennms.netmgt.dnsresolver.netty.NettyDnsResolver;
 
 class FlowEnricherDnsWiringTest {
 
@@ -25,7 +25,7 @@ class FlowEnricherDnsWiringTest {
     @Test
     void enabledYieldsLocalityFilteringDecorator() {
         DnsResolver r = cfg.flowParserDnsResolver(
-                mock(NettyDnsResolver.class),
+                mock(DeltavNettyDnsResolver.class),
                 props(true, FlowEnricherDnsProperties.Scope.ALL),
                 new SimpleMeterRegistry());
         assertThat(r).isInstanceOf(LocalityFilteringDnsResolver.class);

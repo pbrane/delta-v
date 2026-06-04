@@ -49,8 +49,8 @@ import org.deltav.flows.enricher.protocol.Netflow9MessageProcessor;
 import org.deltav.flows.enricher.protocol.ProtocolMessageProcessor;
 import org.deltav.flows.enricher.protocol.SFlowMessageProcessor;
 import org.deltav.flows.enricher.protocol.SimpleAdapterDefinition;
+import org.deltav.flows.enricher.parser.DeltavNettyDnsResolver;
 import org.opennms.netmgt.dnsresolver.api.DnsResolver;
-import org.opennms.netmgt.dnsresolver.netty.NettyDnsResolver;
 import org.opennms.netmgt.events.api.EventForwarder;
 import org.opennms.netmgt.telemetry.listeners.UdpParser;
 import org.opennms.netmgt.telemetry.protocols.netflow.parser.IpfixUdpParser;
@@ -241,35 +241,20 @@ public class FlowEnricherConfiguration {
     }
 
     /**
-     * Lifecycle-managed horizon {@link NettyDnsResolver}, built only when
-     * reverse-DNS is enabled. Configured from {@link FlowEnricherDnsProperties};
-     * obscure knobs stay at horizon defaults. {@code init()}/{@code destroy()}
-     * build and tear down the Netty event loops + Caffeine cache + breaker.
+     * Lifecycle-managed delta-v-native {@link DeltavNettyDnsResolver}, built only
+     * when reverse-DNS is enabled. Configured from {@link FlowEnricherDnsProperties}.
+     * {@code init()} builds the Netty event loop, DNS resolver, resilience4j guards,
+     * and Caffeine cache; {@code close()} tears them down.
      */
-    @Bean(initMethod = "init", destroyMethod = "destroy")
+    @Bean(initMethod = "init", destroyMethod = "close")
     @ConditionalOnProperty(name = "deltav.flows.dns.enabled", havingValue = "true", matchIfMissing = true)
-    NettyDnsResolver nettyDnsResolver(
-            EventForwarder flowParserEventForwarder,
-            MetricRegistry flowEnricherMetricRegistry,
-            FlowEnricherDnsProperties dnsProperties) {
-        final NettyDnsResolver resolver = new NettyDnsResolver(flowParserEventForwarder, flowEnricherMetricRegistry);
-        if (!dnsProperties.nameservers().isBlank()) {
-            resolver.setNameservers(dnsProperties.nameservers());
-        }
-        resolver.setQueryTimeoutMillis(dnsProperties.queryTimeoutMs());
-        resolver.setBulkheadMaxConcurrentCalls(dnsProperties.maxConcurrent());
-        resolver.setBulkheadMaxWaitDurationMillis(dnsProperties.queryTimeoutMs() + 100);
-        resolver.setMinTtlSeconds(dnsProperties.cache().minTtlS());
-        resolver.setMaxTtlSeconds(dnsProperties.cache().maxTtlS());
-        resolver.setNegativeTtlSeconds(dnsProperties.cache().negativeTtlS());
-        resolver.setBreakerEnabled(dnsProperties.circuitBreaker().enabled());
-        resolver.setBreakerFailureRateThreshold(dnsProperties.circuitBreaker().failureRateThreshold());
-        return resolver;
+    DeltavNettyDnsResolver deltavNettyDnsResolver(FlowEnricherDnsProperties dnsProperties) {
+        return new DeltavNettyDnsResolver(dnsProperties);
     }
 
     /**
      * The {@link DnsResolver} injected into all four flow parsers. When DNS is
-     * enabled (default), it is the {@link NettyDnsResolver} wrapped in a
+     * enabled (default), it is the {@link DeltavNettyDnsResolver} wrapped in a
      * {@link LocalityFilteringDnsResolver} (scope gate). Both conditional beans
      * below are named {@code flowParserDnsResolver}; the conditions are mutually
      * exclusive, so exactly one exists and the parsers' by-name injection works
@@ -278,11 +263,11 @@ public class FlowEnricherConfiguration {
     @Bean("flowParserDnsResolver")
     @ConditionalOnProperty(name = "deltav.flows.dns.enabled", havingValue = "true", matchIfMissing = true)
     DnsResolver flowParserDnsResolver(
-            NettyDnsResolver nettyDnsResolver,
+            DeltavNettyDnsResolver deltavNettyDnsResolver,
             FlowEnricherDnsProperties dnsProperties,
             MeterRegistry meterRegistry) {
         final boolean privateOnly = dnsProperties.scope() == FlowEnricherDnsProperties.Scope.PRIVATE;
-        return new LocalityFilteringDnsResolver(nettyDnsResolver, privateOnly, meterRegistry);
+        return new LocalityFilteringDnsResolver(deltavNettyDnsResolver, privateOnly, meterRegistry);
     }
 
     /** No-op resolver used only when reverse-DNS is explicitly disabled. */
