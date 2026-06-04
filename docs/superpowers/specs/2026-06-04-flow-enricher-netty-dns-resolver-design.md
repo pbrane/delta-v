@@ -104,12 +104,22 @@ delegate (`NettyDnsResolver`):
   `filtered` counter).
 - `lookup(String)`: pass through to the delegate unchanged (Horizon's `RecordEnricher` only calls
   `reverseLookup`; forward lookups are out of the hot path).
-- **Private/local set** (`scope: private`): IPv4 `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`,
-  `127.0.0.0/8` (loopback), `169.254.0.0/16` (link-local); IPv6 `fc00::/7` (ULA), `::1` (loopback),
-  `fe80::/10` (link-local). Implemented with `InetAddress.isSiteLocalAddress() ||
-  isLoopbackAddress() || isLinkLocalAddress()` plus an explicit `fc00::/7` check (Java's
-  `isSiteLocalAddress()` does not cover IPv6 ULA). Pure in-memory IP check; no allocation per call
-  beyond the boolean.
+- **IPv4-mapped IPv6 normalization (load-bearing).** Flow addresses arrive as IPv6 (the
+  `flows_raw.src_address`/`dst_address` columns are `IPv6`), so a private IPv4 such as `10.0.0.1`
+  can reach the decorator as an `Inet6Address` holding `::ffff:10.0.0.1`. `Inet6Address`'s
+  `isSiteLocalAddress()` checks the **IPv6** site-local prefix and returns `false` for an
+  IPv4-mapped private address — which would wrongly classify it as public and skip it under
+  `scope: private`. So **before** classifying, normalize: if the address is a 16-byte IPv4-mapped
+  form (`bytes[0..9]==0 && bytes[10]==bytes[11]==(byte)0xff`), reconstruct the embedded IPv4 via
+  `InetAddress.getByAddress(Arrays.copyOfRange(bytes,12,16))` (yields an `Inet4Address`) and run the
+  predicate on that. (Same IPv4-mapped-IPv6 gotcha the node-context migration's `IpNormalizer`
+  handles.)
+- **Private/local set** (`scope: private`, applied to the normalized address): IPv4 `10.0.0.0/8`,
+  `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8` (loopback), `169.254.0.0/16` (link-local); IPv6
+  `fc00::/7` (ULA), `::1` (loopback), `fe80::/10` (link-local). Implemented with
+  `isSiteLocalAddress() || isLoopbackAddress() || isLinkLocalAddress()` plus an explicit `fc00::/7`
+  check (Java's `isSiteLocalAddress()` does not cover IPv6 ULA). Pure in-memory check; no allocation
+  per call beyond the normalization copy for the mapped-IPv6 case.
 
 This is an **additive** delta-v capability (Horizon has no equivalent) → delta-v adapter is the
 correct layer (per the horizon-parallel-vs-additive rule), not a horizon source change.
@@ -158,6 +168,13 @@ The decorator owns the `filtered` increment; the rest wrap the delegate's `rever
   ULA (`fc00::/7`) + loopback + link-local → delegate called; public (`8.8.8.8`, `2001:4860::`) →
   empty, delegate NOT called, `filtered` counter bumped; `scope: all` → delegate always called;
   `lookup()` always delegates.
+- **IPv4-mapped IPv6 edge cases (bulletproofing the normalization)** — construct the inputs as
+  16-byte `Inet6Address` instances (via `InetAddress.getByAddress(byte[16])`, NOT
+  `getByName("::ffff:…")` which Java may collapse to `Inet4Address`, hiding the bug):
+  `::ffff:10.0.0.1`, `::ffff:172.16.0.1`, `::ffff:192.168.1.1`, `::ffff:127.0.0.1` → classified
+  **private** (delegate called) under `scope: private`; `::ffff:8.8.8.8` → classified **public**
+  (skipped). Assert that without the normalization step these private-mapped addresses would
+  otherwise be mis-skipped — i.e. the test fails if the unwrap is removed.
 - **Conditional wiring** (Spring slice / `ApplicationContextRunner`): `enabled=true` →
   `DnsResolver` bean is `LocalityFilteringDnsResolver` wrapping `NettyDnsResolver`; `enabled=false`
   → `NoOpDnsResolver`; sFlow `dnsLookupsEnabled` tracks `enabled`.
