@@ -35,7 +35,10 @@ import org.deltav.flows.enricher.enrichment.FlowLocalityCalculator;
 import org.deltav.flows.enricher.enrichment.InterfaceMarkingCache;
 import org.deltav.flows.enricher.mapping.FlowToDocumentMapper;
 import org.deltav.nodecontext.NodeContextCache;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.deltav.flows.enricher.parser.DropwizardToPrometheusBridge;
+import org.deltav.flows.enricher.parser.FlowEnricherDnsProperties;
+import org.deltav.flows.enricher.parser.LocalityFilteringDnsResolver;
 import org.deltav.flows.enricher.parser.LoggingEventForwarder;
 import org.deltav.flows.enricher.parser.NoOpDnsResolver;
 import org.deltav.flows.enricher.parser.StaticIdentity;
@@ -47,6 +50,7 @@ import org.deltav.flows.enricher.protocol.ProtocolMessageProcessor;
 import org.deltav.flows.enricher.protocol.SFlowMessageProcessor;
 import org.deltav.flows.enricher.protocol.SimpleAdapterDefinition;
 import org.opennms.netmgt.dnsresolver.api.DnsResolver;
+import org.opennms.netmgt.dnsresolver.netty.NettyDnsResolver;
 import org.opennms.netmgt.events.api.EventForwarder;
 import org.opennms.netmgt.telemetry.listeners.UdpParser;
 import org.opennms.netmgt.telemetry.protocols.netflow.parser.IpfixUdpParser;
@@ -57,6 +61,8 @@ import org.opennms.netmgt.telemetry.protocols.sflow.parser.SFlowUdpParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -69,6 +75,7 @@ import org.springframework.scheduling.annotation.Scheduled;
  * delta-v project convention.
  */
 @Configuration
+@EnableConfigurationProperties(FlowEnricherDnsProperties.class)
 public class FlowEnricherConfiguration {
 
     @Bean
@@ -234,16 +241,54 @@ public class FlowEnricherConfiguration {
     }
 
     /**
-     * No-op {@link DnsResolver} used by horizon parsers for reverse-DNS
-     * enrichment. Node context lookups are handled by the shared
-     * {@link NodeContextCache} (populated by the node-context-consumer
-     * module); the {@link javax.sql.DataSource} and {@link JdbcTemplate}
-     * beans in this configuration exist solely for the hasflows WRITE
-     * performed by {@link InterfaceMarkingCache}. We do not want the
-     * parsers to issue async DNS queries.
+     * Lifecycle-managed horizon {@link NettyDnsResolver}, built only when
+     * reverse-DNS is enabled. Configured from {@link FlowEnricherDnsProperties};
+     * obscure knobs stay at horizon defaults. {@code init()}/{@code destroy()}
+     * build and tear down the Netty event loops + Caffeine cache + breaker.
      */
-    @Bean
-    DnsResolver flowParserDnsResolver() {
+    @Bean(initMethod = "init", destroyMethod = "destroy")
+    @ConditionalOnProperty(name = "deltav.flows.dns.enabled", havingValue = "true", matchIfMissing = true)
+    NettyDnsResolver nettyDnsResolver(
+            EventForwarder flowParserEventForwarder,
+            MetricRegistry flowEnricherMetricRegistry,
+            FlowEnricherDnsProperties dnsProperties) {
+        final NettyDnsResolver resolver = new NettyDnsResolver(flowParserEventForwarder, flowEnricherMetricRegistry);
+        if (!dnsProperties.nameservers().isBlank()) {
+            resolver.setNameservers(dnsProperties.nameservers());
+        }
+        resolver.setQueryTimeoutMillis(dnsProperties.queryTimeoutMs());
+        resolver.setBulkheadMaxConcurrentCalls(dnsProperties.maxConcurrent());
+        resolver.setBulkheadMaxWaitDurationMillis(dnsProperties.queryTimeoutMs() + 100);
+        resolver.setMinTtlSeconds(dnsProperties.cache().minTtlS());
+        resolver.setMaxTtlSeconds(dnsProperties.cache().maxTtlS());
+        resolver.setNegativeTtlSeconds(dnsProperties.cache().negativeTtlS());
+        resolver.setBreakerEnabled(dnsProperties.circuitBreaker().enabled());
+        resolver.setBreakerFailureRateThreshold(dnsProperties.circuitBreaker().failureRateThreshold());
+        return resolver;
+    }
+
+    /**
+     * The {@link DnsResolver} injected into all four flow parsers. When DNS is
+     * enabled (default), it is the {@link NettyDnsResolver} wrapped in a
+     * {@link LocalityFilteringDnsResolver} (scope gate). Both conditional beans
+     * below are named {@code flowParserDnsResolver}; the conditions are mutually
+     * exclusive, so exactly one exists and the parsers' by-name injection works
+     * unchanged.
+     */
+    @Bean("flowParserDnsResolver")
+    @ConditionalOnProperty(name = "deltav.flows.dns.enabled", havingValue = "true", matchIfMissing = true)
+    DnsResolver flowParserDnsResolver(
+            NettyDnsResolver nettyDnsResolver,
+            FlowEnricherDnsProperties dnsProperties,
+            MeterRegistry meterRegistry) {
+        final boolean privateOnly = dnsProperties.scope() == FlowEnricherDnsProperties.Scope.PRIVATE;
+        return new LocalityFilteringDnsResolver(nettyDnsResolver, privateOnly, meterRegistry);
+    }
+
+    /** No-op resolver used only when reverse-DNS is explicitly disabled. */
+    @Bean("flowParserDnsResolver")
+    @ConditionalOnProperty(name = "deltav.flows.dns.enabled", havingValue = "false")
+    DnsResolver noOpFlowParserDnsResolver() {
         return new NoOpDnsResolver();
     }
 
@@ -329,16 +374,16 @@ public class FlowEnricherConfiguration {
     @Bean
     SFlowUdpParser sflowUdpParser(
             ThreadLocalDispatcher threadLocalDispatcher,
-            DnsResolver flowParserDnsResolver) {
+            DnsResolver flowParserDnsResolver,
+            FlowEnricherDnsProperties dnsProperties) {
         final SFlowUdpParser parser = new SFlowUdpParser(
                 "SFlow",
                 threadLocalDispatcher,
                 flowParserDnsResolver);
-        // Defensive: disable reverse-DNS lookups on the sFlow parser.
-        // PR #156 fixed a horizon SFlowUdpParser NPE where unresolvable
-        // Docker-bridge IPs tripped a DNS code path inside the parser; the
-        // short-circuit here keeps that latent path unreachable.
-        parser.setDnsLookupsEnabled(false);
+        // Mirror the global DNS toggle on the sFlow parser. When DNS is disabled
+        // the NoOp resolver is injected and this flag ensures the parser itself
+        // also short-circuits any internal DNS code path (PR #156 defence).
+        parser.setDnsLookupsEnabled(dnsProperties.enabled());
         return parser;
     }
 
