@@ -63,6 +63,23 @@ deltav:
     parser:
       system-id: flow-enricher
       location: Default
+    # Reverse-DNS enrichment of flow IPs (src/dst/etc -> *_hostname). ON by default
+    # (Horizon parity). Backed by horizon's NettyDnsResolver (circuit breaker +
+    # bulkhead + TTL cache + timeout). For high-cardinality internet-facing flows,
+    # set scope=private or lower query-timeout-ms, or disable entirely.
+    dns:
+      enabled: ${DELTAV_FLOWS_DNS_ENABLED:true}
+      scope: ${DELTAV_FLOWS_DNS_SCOPE:all}            # all | private
+      nameservers: ${DELTAV_FLOWS_DNS_NAMESERVERS:}   # blank = system resolv.conf
+      query-timeout-ms: ${DELTAV_FLOWS_DNS_QUERY_TIMEOUT_MS:5000}
+      max-concurrent: ${DELTAV_FLOWS_DNS_MAX_CONCURRENT:1000}
+      cache:
+        min-ttl-s: ${DELTAV_FLOWS_DNS_CACHE_MIN_TTL_S:-1}
+        max-ttl-s: ${DELTAV_FLOWS_DNS_CACHE_MAX_TTL_S:-1}
+        negative-ttl-s: ${DELTAV_FLOWS_DNS_CACHE_NEGATIVE_TTL_S:-1}
+      circuit-breaker:
+        enabled: ${DELTAV_FLOWS_DNS_BREAKER_ENABLED:true}
+        failure-rate-threshold: ${DELTAV_FLOWS_DNS_BREAKER_FAILURE_RATE:80}
 
 logging:
   level:
