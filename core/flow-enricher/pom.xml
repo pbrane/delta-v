@@ -245,6 +245,11 @@
         <dependency>
             <groupId>org.opennms.features.dnsresolver</groupId>
             <artifactId>org.opennms.features.dnsresolver.netty</artifactId>
+            <!-- Deliberate pin: the delta-v-horizon NETTY module is only published up to
+                 1.0.11 (the dnsresolver.api module continued to 1.0.18, but its DnsResolver
+                 interface is byte-identical, so 1.0.11 impl + 1.0.18 api is safe). Do NOT
+                 change this to ${deltav.horizon.version} / 1.0.18 — that artifact is not in
+                 delta-v-horizon GH Packages and CI will fail to resolve it. -->
             <version>1.0.11</version>
             <exclusions>
                 <!-- opennms-model transitively pulls spring-dependencies (ServiceMix Spring 4.2.9)
