@@ -919,6 +919,18 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       DELTAV_FLOWS_SINK_TOPICS: "DeltaV.Sink.Telemetry-Netflow-5,DeltaV.Sink.Telemetry-Netflow-9,DeltaV.Sink.Telemetry-IPFIX,DeltaV.Sink.Telemetry-SFlow"
       DELTAV_FLOWS_OUTPUT_TOPIC: deltav-flows
+      # Reverse-DNS enrichment (deltav.flows.dns.*). Pass the shell env through so
+      # operators (and the flows E2E) can override per-deploy; defaults = Horizon parity.
+      DELTAV_FLOWS_DNS_ENABLED: ${DELTAV_FLOWS_DNS_ENABLED:-true}
+      DELTAV_FLOWS_DNS_SCOPE: ${DELTAV_FLOWS_DNS_SCOPE:-all}
+      DELTAV_FLOWS_DNS_NAMESERVERS: ${DELTAV_FLOWS_DNS_NAMESERVERS:-}
+      DELTAV_FLOWS_DNS_QUERY_TIMEOUT_MS: ${DELTAV_FLOWS_DNS_QUERY_TIMEOUT_MS:-5000}
+      DELTAV_FLOWS_DNS_MAX_CONCURRENT: ${DELTAV_FLOWS_DNS_MAX_CONCURRENT:-1000}
+      DELTAV_FLOWS_DNS_CACHE_MIN_TTL_S: ${DELTAV_FLOWS_DNS_CACHE_MIN_TTL_S:--1}
+      DELTAV_FLOWS_DNS_CACHE_MAX_TTL_S: ${DELTAV_FLOWS_DNS_CACHE_MAX_TTL_S:--1}
+      DELTAV_FLOWS_DNS_CACHE_NEGATIVE_TTL_S: ${DELTAV_FLOWS_DNS_CACHE_NEGATIVE_TTL_S:--1}
+      DELTAV_FLOWS_DNS_BREAKER_ENABLED: ${DELTAV_FLOWS_DNS_BREAKER_ENABLED:-true}
+      DELTAV_FLOWS_DNS_BREAKER_FAILURE_RATE: ${DELTAV_FLOWS_DNS_BREAKER_FAILURE_RATE:-80}
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
       interval: 10s

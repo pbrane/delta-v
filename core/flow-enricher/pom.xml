@@ -241,6 +241,22 @@
             </exclusions>
         </dependency>
 
+        <!-- Native reverse-DNS: Netty async DNS client + resilience4j 2.x guards (Caffeine already present). -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-resolver-dns</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-bulkhead</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
         <!-- Horizon: Events API (EventForwarder interface required by Netflow parsers). -->
         <dependency>
             <groupId>org.opennms.features.events</groupId>

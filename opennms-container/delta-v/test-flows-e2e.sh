@@ -274,6 +274,114 @@ else
   log "  [INFO] No application-classified flows yet — classification may be pending (non-fatal)"
 fi
 
+# ══════════════════════════════════════════════════════════════════
+# Phase 5: Reverse-DNS enrichment (deltav.flows.dns.*)
+# ══════════════════════════════════════════════════════════════════
+log ""
+log "Phase 5: Reverse-DNS enrichment checks..."
+
+KIWI_IP="76.223.105.230"        # deltav.kiwi (AWS Global Accelerator) — stable PTR record
+KIWI_CH="::ffff:${KIWI_IP}"
+
+# deltav_dns_reverse_lookups_total{result=$1} from the flow-enricher actuator;
+# empty $1 → grand total. Values are floats (e.g. 30359.0); callers integer-truncate.
+fe_dns_metric() {
+  local tag="$1" out
+  out=$(docker compose exec -T flow-enricher sh -c \
+    'wget -qO- http://localhost:8080/actuator/prometheus 2>/dev/null | grep "^deltav_dns_reverse_lookups_total"' 2>/dev/null)
+  if [ -n "$tag" ]; then
+    echo "$out" | awk -v t="result=\"$tag\"" 'index($0,t){print $2}' | head -1
+  else
+    echo "$out" | awk '{s+=$2} END {printf "%d", s+0}'
+  fi
+}
+fe_wait_ready() {
+  local i
+  for i in $(seq 1 20); do
+    docker compose exec -T flow-enricher sh -c \
+      'wget -qO- http://localhost:8080/actuator/health 2>/dev/null | grep -q UP' 2>/dev/null && return 0
+    sleep 10
+  done
+  return 1
+}
+# Inject $2 Netflow-v5 packets with dst IPv4 $1 to the Minion flow port (4729).
+inject_netflow5() {
+  python3 - "$1" "${2:-8}" <<'PYINJECT'
+import socket, struct, sys, time
+dst = bytes(int(x) for x in sys.argv[1].split('.')); count = int(sys.argv[2])
+up = 100000; now = int(time.time())
+hdr = struct.pack('!HHIIIIBBH', 5, 1, up, now, 0, 1, 0, 0, 0)
+rec = (bytes([10,99,99,99]) + dst + bytes(4) + struct.pack('!HH',1,2)
+       + struct.pack('!II',10,1500) + struct.pack('!II',up-1000,up)
+       + struct.pack('!HH',40000,443) + struct.pack('!BBBB',0,0x10,6,0)
+       + struct.pack('!HH',0,0) + struct.pack('!BBH',24,24,0))
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+for _ in range(count): s.sendto(hdr+rec, ('127.0.0.1', 4729)); time.sleep(0.3)
+s.close()
+PYINJECT
+}
+
+if ! docker compose exec -T flow-enricher sh -c \
+     'wget -qO- http://localhost:8080/actuator/prometheus 2>/dev/null | grep -q deltav_dns'; then
+  log "  [SKIP] flow-enricher image predates reverse-DNS (no deltav_dns metric) — skipping Phase 5"
+else
+  # 5A — resolver is active (has attempted reverse lookups on real flows)
+  DNS_TOTAL=$(fe_dns_metric "")
+  if [ "${DNS_TOTAL:-0}" -gt 0 ]; then
+    ok "Reverse-DNS resolver active: ${DNS_TOTAL} reverse lookups attempted"
+  else
+    fail "Reverse-DNS resolver inactive: deltav_dns_reverse_lookups_total is 0 despite DNS enabled"
+  fi
+
+  # 5C — a public PTR-resolvable dst gets dst_hostname populated end-to-end (scope=all default).
+  log "  Injecting a flow to ${KIWI_IP} (deltav.kiwi) and waiting for reverse-DNS..."
+  inject_netflow5 "$KIWI_IP" 8
+  KIWI_HOST=""
+  for _i in $(seq 1 9); do
+    KIWI_HOST=$(ch_query "SELECT dst_hostname FROM deltav.flows_raw WHERE dst_address = toIPv6('${KIWI_CH}') AND dst_hostname != '' ORDER BY timestamp DESC LIMIT 1")
+    [ -n "$KIWI_HOST" ] && break
+    sleep 10
+  done
+  if [ -n "$KIWI_HOST" ]; then
+    ok "Public dst reverse-resolved: ${KIWI_IP} → dst_hostname='${KIWI_HOST}'"
+  else
+    fail "Public dst ${KIWI_IP} got no dst_hostname — Netty reverse-PTR path may be broken"
+  fi
+
+  # 5B — scope=private filters public IPs (cardinality guard) while STILL resolving the
+  #      IPv4-mapped private nl6 IPs (::ffff:10.x). Toggle, observe, restore.
+  log "  Toggling flow-enricher to DNS scope=private (CIDR gate + IPv4-mapped classification)..."
+  DELTAV_FLOWS_DNS_SCOPE=private docker compose --profile demo up -d --force-recreate --no-deps flow-enricher >/dev/null 2>&1
+  if fe_wait_ready; then
+    # Metrics reset on recreate; wait for the fresh container to RESUME processing flows
+    # (the enrichFlows binding only starts after the node-context cache re-bootstraps),
+    # then take the fresh baselines.
+    for _w in $(seq 1 18); do [ "$(fe_dns_metric '')" -gt 0 ] 2>/dev/null && break; sleep 10; done
+    F0=$(fe_dns_metric filtered); F0=${F0%.*}; F0=${F0:-0}
+    M0=$(fe_dns_metric miss); M0=${M0%.*}; M0=${M0:-0}
+    inject_netflow5 "$KIWI_IP" 8     # public → must be filtered under scope=private
+    sleep 30
+    F1=$(fe_dns_metric filtered); F1=${F1%.*}; F1=${F1:-0}
+    M1=$(fe_dns_metric miss); M1=${M1%.*}; M1=${M1:-0}
+    KIWI_PRIV=$(ch_query "SELECT dst_hostname FROM deltav.flows_raw WHERE dst_address = toIPv6('${KIWI_CH}') AND dst_hostname != '' AND timestamp > now() - INTERVAL 1 MINUTE LIMIT 1")
+    if [ "$F1" -gt "$F0" ] && [ -z "$KIWI_PRIV" ]; then
+      ok "scope=private filters public IPs: filtered ${F0}→${F1}, deltav.kiwi left unresolved"
+    else
+      fail "scope=private did not filter the public IP (filtered ${F0}→${F1}, kiwi host='${KIWI_PRIV}')"
+    fi
+    if [ "$M1" -gt "$M0" ]; then
+      ok "scope=private still resolves IPv4-mapped private nl6 IPs: miss ${M0}→${M1} (not mis-filtered)"
+    else
+      fail "scope=private appears to mis-filter IPv4-mapped private IPs (miss stalled: ${M0}→${M1})"
+    fi
+  else
+    fail "flow-enricher did not become ready after scope=private recreate"
+  fi
+  log "  Restoring flow-enricher DNS scope=all..."
+  DELTAV_FLOWS_DNS_SCOPE=all docker compose --profile demo up -d --force-recreate --no-deps flow-enricher >/dev/null 2>&1
+  fe_wait_ready || log "  [WARN] flow-enricher slow to return after restore (check 'make status')"
+fi
+
 show_diagnostics
 
 # ══════════════════════════════════════════════════════════════════
@@ -290,4 +398,5 @@ echo "  Phase 2: flows_raw receiving data (Minion → flow-enricher → ClickHou
 echo "  Phase 2: Per-protocol rows (Netflow v9 from softflowd, sFlow from hsflowd)"
 echo "  Phase 3: All 4 dimension MVs populated (application, source_ip, conversation, dscp)"
 echo "  Phase 4: Enrichment integrity (exporter_node_id, src_address)"
+echo "  Phase 5: Reverse-DNS (resolver active, public dst→hostname, scope=private CIDR gate)"
 [[ $FAIL -eq 0 ]] || exit 1

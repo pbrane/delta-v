@@ -180,6 +180,30 @@ All scripts support:
 - `--pre-clean` — delete all nodes and alarms from DB before running
 - `--post-cleanup` — delete test data after run
 
+## Flow Enricher
+
+### Flow reverse-DNS enrichment (`deltav.flows.dns.*`)
+
+**Behaviour change (v1.3.0-rc9+):** reverse-DNS enrichment is **ON by default**
+(Horizon parity). The flow-enricher now reverse-resolves flow IPs to hostnames
+(`src_hostname`/`dst_hostname`/…) via horizon's `NettyDnsResolver`. Previously
+delta-v shipped a no-op resolver (no lookups). Disable with
+`DELTAV_FLOWS_DNS_ENABLED=false`.
+
+| Env var | Default | Meaning |
+|---|---|---|
+| `DELTAV_FLOWS_DNS_ENABLED` | `true` | master on/off |
+| `DELTAV_FLOWS_DNS_SCOPE` | `all` | `all` (resolve every IP) or `private` (only RFC1918/ULA/loopback/link-local — bounds cardinality to your address space) |
+| `DELTAV_FLOWS_DNS_NAMESERVERS` | _(blank)_ | DNS server(s); blank = system resolv.conf |
+| `DELTAV_FLOWS_DNS_QUERY_TIMEOUT_MS` | `5000` | per-lookup timeout |
+| `DELTAV_FLOWS_DNS_MAX_CONCURRENT` | `1000` | bulkhead: max in-flight lookups |
+| `DELTAV_FLOWS_DNS_CACHE_*_TTL_S` | `-1` | cache min/max/negative TTL (`-1` = NettyDnsResolver default) |
+| `DELTAV_FLOWS_DNS_BREAKER_ENABLED` / `_FAILURE_RATE` | `true` / `80` | circuit breaker on unhealthy DNS |
+
+For high-cardinality internet-facing flows, prefer `DELTAV_FLOWS_DNS_SCOPE=private`
+and/or a lower `DELTAV_FLOWS_DNS_QUERY_TIMEOUT_MS` to protect flow throughput.
+Metrics: `deltav_dns_reverse_lookups_total{result=hit|miss|error|filtered}`.
+
 ## Build Script Reference
 
 ```bash
