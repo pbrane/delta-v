@@ -246,6 +246,14 @@
             <groupId>org.opennms.features.dnsresolver</groupId>
             <artifactId>org.opennms.features.dnsresolver.netty</artifactId>
             <version>1.0.11</version>
+            <exclusions>
+                <!-- opennms-model transitively pulls spring-dependencies (ServiceMix Spring 4.2.9)
+                     which shadows Spring 7 on the classpath and breaks Spring Boot 4 binder. -->
+                <exclusion><groupId>org.opennms</groupId><artifactId>opennms-model</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Horizon: Events API (EventForwarder interface required by Netflow parsers). -->
