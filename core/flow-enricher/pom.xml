@@ -241,6 +241,13 @@
             </exclusions>
         </dependency>
 
+        <!-- Horizon: Netty DNS resolver (configurable async reverse-DNS enrichment) -->
+        <dependency>
+            <groupId>org.opennms.features.dnsresolver</groupId>
+            <artifactId>org.opennms.features.dnsresolver.netty</artifactId>
+            <version>1.0.11</version>
+        </dependency>
+
         <!-- Horizon: Events API (EventForwarder interface required by Netflow parsers). -->
         <dependency>
             <groupId>org.opennms.features.events</groupId>
