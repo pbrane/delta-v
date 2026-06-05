@@ -4,8 +4,8 @@ set -euo pipefail
 # 1. Safety check — verify the proto file is actually mounted.
 if [[ ! -f /delta-v/proto/deltav-flows.proto ]]; then
     echo "ERROR: deltav-flows.proto not found at /delta-v/proto/deltav-flows.proto" >&2
-    echo "       Check that docker compose is being run from opennms-container/delta-v/" >&2
-    echo "       (the volume mount '../../core/flow-enricher/src/main/proto' resolves" >&2
+    echo "       Check that docker compose is being run from deploy/" >&2
+    echo "       (the volume mount '../core/flow-enricher/src/main/proto' resolves" >&2
     echo "        relative to the compose file's directory)." >&2
     exit 1
 fi

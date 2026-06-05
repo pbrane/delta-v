@@ -26,7 +26,7 @@ mkdir -p ~/delta-v-smoke && cd ~/delta-v-smoke
 GIT_REF=v1.3.0-rc9
 IMG_TAG=1.3.0-rc9
 
-BASE=https://raw.githubusercontent.com/pbrane/delta-v/$GIT_REF/opennms-container/delta-v
+BASE=https://raw.githubusercontent.com/pbrane/delta-v/$GIT_REF/deploy
 
 curl -OL $BASE/docker-compose.yml
 curl -OL $BASE/docker-compose.dev.yml

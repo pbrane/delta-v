@@ -55,11 +55,6 @@ built_dependencies
 # Ignore Docker/OCI temporary files
 .docker_temp*
 *.oci
-opennms-container/*/rpms/*.repo
-opennms-container/*/rpms/*.rpm
-opennms-container/*/tarball/*.tar.gz
-opennms-container/*/tarball-root/
-opennms-container/**/tarball-root/
 
 # Python
 *.pyc
@@ -110,5 +105,5 @@ auth.json
 # directory itself must exist on the host (Docker cannot create a mountpoint
 # under an RO bind mount), hence the .gitkeep; anything else that appears
 # here is runtime drift and must not be committed.
-opennms-container/delta-v/provisiond-overlay/etc/imports/*
-!opennms-container/delta-v/provisiond-overlay/etc/imports/.gitkeep
+deploy/provisiond-overlay/etc/imports/*
+!deploy/provisiond-overlay/etc/imports/.gitkeep

@@ -42,14 +42,14 @@
 #     - ghcr.io/<owner>/mock-snmp-agent:<version>          Mock SNMP agent (test infra)
 #
 # Usage after build:
-#   1. Set IMAGE_PREFIX in opennms-container/delta-v/.env:
+#   1. Set IMAGE_PREFIX in deploy/.env:
 #        IMAGE_PREFIX=ghcr.io/<owner>
 #
 #   2. Authenticate to GHCR (one-time):
 #        echo $GITHUB_TOKEN | docker login ghcr.io -u <username> --password-stdin
 #
 #   3. Pull and deploy:
-#        cd opennms-container/delta-v
+#        cd deploy
 #        docker compose pull
 #        ./deploy.sh up lite    # or passive, full
 #
@@ -173,11 +173,11 @@ jobs:
           echo ""
           echo "### Quick Start"
           echo ""
-          echo "1. Set IMAGE_PREFIX in opennms-container/delta-v/.env:"
+          echo "1. Set IMAGE_PREFIX in deploy/.env:"
           echo "     IMAGE_PREFIX=${{ env.IMAGE_PREFIX }}"
           echo ""
           echo "2. Pull and deploy:"
-          echo "     cd opennms-container/delta-v"
+          echo "     cd deploy"
           echo "     docker compose pull"
           echo "     ./deploy.sh up lite"
           echo ""

@@ -19,7 +19,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKIP_TESTS="${SKIP_TESTS:-true}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-docker.io}"
 DOCKER_ORG="${DOCKER_ORG:-deltav}"
@@ -249,7 +249,7 @@ do_alerts_forwarder_image() {
 
 do_clickhouse_image() {
     log "Building ${IMAGE_PREFIX}/clickhouse:$VERSION..."
-    # Repo-root context: Dockerfile.clickhouse COPYs from opennms-container/delta-v/clickhouse/
+    # Repo-root context: Dockerfile.clickhouse COPYs from deploy/clickhouse/
     # and core/flow-enricher/src/main/proto/ (paths relative to the build context).
     build_image clickhouse -f "$SCRIPT_DIR/Dockerfile.clickhouse" "$REPO_ROOT"
 }

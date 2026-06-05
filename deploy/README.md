@@ -93,19 +93,19 @@ cd delta-v
 # Copy the example environment file (sets VERSION + KAFKA_EXTERNAL_HOST).
 # `.env` is gitignored so local overrides (e.g., a bumped VERSION for smoke
 # testing) don't pollute git status.
-cp opennms-container/delta-v/.env.example opennms-container/delta-v/.env
+cp deploy/.env.example deploy/.env
 
 # Full build: compile + assemble + Docker images
-opennms-container/delta-v/build.sh
+deploy/build.sh
 
 # Or build just the images (if Maven artifacts exist)
-opennms-container/delta-v/build.sh images
+deploy/build.sh images
 ```
 
 ### Deploy
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 
 # Start with a profile
 ./deploy.sh up active     # Core daemons + flow stack
@@ -162,7 +162,7 @@ docker compose exec flow-enricher wget -qO- http://localhost:8080/actuator/prome
 Nine end-to-end test suites validate the full pipeline:
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 
 bash test-e2e.sh                 # Full alarm create/clear via SNMP traps
 bash test-minion-e2e.sh          # Trap → Minion → Kafka → Alarmd lifecycle
@@ -475,4 +475,4 @@ To log in as admin (e.g. to create custom dashboards):
 
 ## License
 
-AGPL v3 — see [LICENSE.md](../../LICENSE.md)
+AGPL v3 — see [LICENSE.md](../LICENSE.md)
