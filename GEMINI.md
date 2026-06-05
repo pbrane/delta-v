@@ -19,7 +19,7 @@ This project is **Delta-V**, a microservice decomposition of [OpenNMS Horizon](h
 *   `core/db-init`: One-shot Liquibase schema migration service (~312 MB).
 *   `core/daemon-common`: Shared infrastructure for Spring Boot daemons (Kafka transport, RPC, enrichment).
 *   `opennms-model-jakarta`: Modern Jakarta Persistence entities and DAOs for Hibernate 7.
-*   `opennms-container/delta-v`: Main directory for Docker-based deployment and orchestration.
+*   `deploy`: Main directory for Docker-based deployment and orchestration.
 *   `bin/`: Perl wrapper scripts for the build system.
 *   `docs/plans/`: Detailed architectural design and migration documents.
 
@@ -36,29 +36,29 @@ Builds are managed via Perl wrappers and a main shell script:
 
 ```bash
 # Full build (compile, assemble, images)
-cd opennms-container/delta-v
+cd deploy
 ./build.sh
 
 # Compile individual module (example)
 ./compile.pl -DskipTests --projects :org.opennms.core.daemon-boot-alarmd -am install
 
 # Build Docker images only
-cd opennms-container/delta-v
+cd deploy
 ./build.sh images
 ```
 
 ### Running Locally
-Use Docker Compose with profiles in `opennms-container/delta-v`:
+Use Docker Compose with profiles in `deploy`:
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 COMPOSE_PROFILES=lite docker compose up -d    # Minimal monitoring
 COMPOSE_PROFILES=full docker compose up -d    # All 15+ services
 ```
 
 ### Testing
 ```bash
-cd opennms-container/delta-v
+cd deploy
 ./test-e2e.sh           # Trap -> Provision -> Alarm lifecycle
 ./test-minion-e2e.sh    # Minion-to-Core pipeline
 ./test-syslog-e2e.sh    # Syslog pipeline

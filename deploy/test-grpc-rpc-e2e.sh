@@ -72,7 +72,7 @@ for ((i=1; i<=$#; i++)); do
 done
 
 # -- Read gate from pre-work findings (Heartbeat-proxy baseline) -----------
-FINDINGS="${SCRIPT_DIR}/../../docs/plans/2026-04-26-v1.2.0-rc2-pr1-pre-work-findings.md"
+FINDINGS="${SCRIPT_DIR}/../docs/plans/2026-04-26-v1.2.0-rc2-pr1-pre-work-findings.md"
 if [ ! -f "$FINDINGS" ]; then
     err "Pre-work findings not found at $FINDINGS"
 fi

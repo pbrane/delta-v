@@ -45,7 +45,7 @@ MAVEN_OPTS  ?= -Xmx3g \
                -Dmaven.wagon.http.retryHandler.count=3
 
 MVN    := ./mvnw
-DELTAV := opennms-container/delta-v
+DELTAV := deploy
 
 export MAVEN_OPTS
 

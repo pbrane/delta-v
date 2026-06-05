@@ -51,7 +51,7 @@ make doctor               # JDK 21, Docker, GitHub Packages auth, image complete
 make help                 # list all targets
 ```
 
-`build.sh`, `deploy.sh`, and `doctor.sh` (under `opennms-container/delta-v/`) are internal engines invoked by `make`; you normally don't call them directly. The legacy `compile.pl`/`assemble.pl` Perl wrappers from upstream Horizon do NOT exist in delta-v.
+`build.sh`, `deploy.sh`, and `doctor.sh` (under `deploy/`) are internal engines invoked by `make`; you normally don't call them directly. The legacy `compile.pl`/`assemble.pl` Perl wrappers from upstream Horizon do NOT exist in delta-v.
 
 ## Running Locally After Build
 

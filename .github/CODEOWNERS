@@ -14,5 +14,5 @@ Makefile    @pbrane
 mvnw        @pbrane
 
 # Deployment and Orchestration
-opennms-container/  @pbrane
+deploy/             @pbrane
 container/          @pbrane
