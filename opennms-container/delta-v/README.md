@@ -186,7 +186,8 @@ All scripts support:
 
 **Behaviour change (v1.3.0-rc9+):** reverse-DNS enrichment is **ON by default**
 (Horizon parity). The flow-enricher now reverse-resolves flow IPs to hostnames
-(`src_hostname`/`dst_hostname`/…) via horizon's `NettyDnsResolver`. Previously
+(`src_hostname`/`dst_hostname`/…) via a delta-v-native Netty `DnsNameResolver`
+(resilience4j 2.x circuit breaker + bulkhead + Caffeine cache). Previously
 delta-v shipped a no-op resolver (no lookups). Disable with
 `DELTAV_FLOWS_DNS_ENABLED=false`.
 
@@ -203,6 +204,25 @@ delta-v shipped a no-op resolver (no lookups). Disable with
 For high-cardinality internet-facing flows, prefer `DELTAV_FLOWS_DNS_SCOPE=private`
 and/or a lower `DELTAV_FLOWS_DNS_QUERY_TIMEOUT_MS` to protect flow throughput.
 Metrics: `deltav_dns_reverse_lookups_total{result=hit|miss|error|filtered}`.
+
+#### Testing reverse-DNS against nl6 traffic (`dns-lab` profile)
+
+The nl6 simulator's flow records carry **random `10.x` src/dst** addresses with no
+PTR records, so reverse-DNS against them is all `miss`. The optional **`dns-lab`**
+profile adds a CoreDNS sidecar (static IP `172.18.0.53`) that **synthesizes** a PTR
+for any `10.in-addr.arpa` query (`10.168.74.188` → `nl6-host-10-168-74-188.lab`) and
+forwards everything else (public IPs, etc.) upstream — so the resolver's hit path is
+exercised end-to-end at realistic, high-cardinality volume while public resolution
+still works. Activate by enabling the profile **and** pointing the flow-enricher at it:
+
+```bash
+DELTAV_FLOWS_DNS_NAMESERVERS=172.18.0.53 \
+  docker compose --profile demo --profile dns-lab up -d
+```
+
+Then nl6 flows populate `dst_hostname` with `nl6-host-10-*` names. This works in the
+smoke VM too (the `deltav/dns-lab` image bakes the Corefile — no bind mount needed).
+Test-only; production uses the system/real resolver (blank `DELTAV_FLOWS_DNS_NAMESERVERS`).
 
 ## Build Script Reference
 
