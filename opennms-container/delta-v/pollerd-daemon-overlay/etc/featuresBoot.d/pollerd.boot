@@ -1,1 +1,0 @@
-opennms-health-rest-service
