@@ -13,7 +13,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEPLOY_DIR="$REPO_ROOT/deploy"
+cd "$DEPLOY_DIR"
 
 # Source .env so IMAGE_PREFIX and VERSION are available to both this script
 # and every `docker compose` child invocation below.
@@ -254,7 +256,7 @@ main() {
         status)  do_status ;;
         logs)    shift; do_logs "$@" ;;
         test)    do_test ;;
-        test-e2e) shift; "$SCRIPT_DIR/test-e2e.sh" "$@" ;;
+        test-e2e) shift; "$DEPLOY_DIR/test-e2e.sh" "$@" ;;
         help|-h|--help) usage ;;
         *)       err "Unknown command: $1 (run './deploy.sh help')" ;;
     esac

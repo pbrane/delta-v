@@ -2,7 +2,7 @@
 # Uses jlink to create a custom JRE with only the modules needed by
 # Spring Boot 4 + Hibernate 7 + Kafka + PostgreSQL JDBC.
 #
-# Build with: ./build.sh jre
+# Build with: make images
 # Rebuild only when upgrading JDK version or changing diagnostic tools.
 
 FROM eclipse-temurin:21-jdk-alpine AS jre-builder

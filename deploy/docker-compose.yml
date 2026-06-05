@@ -6,7 +6,7 @@
 # + Provisiond + Bsmd + PerspectivePollerd + Telemetryd
 #
 # Images: Each daemon has its own image (${IMAGE_PREFIX}/<daemon>:${VERSION})
-# built from a shared daemon-base layer. Build with: ./build.sh deltav
+# built from a shared daemon-base layer. Build with: make images
 # Per-service config overlays remain as local bind mounts.
 #
 # To use GHCR images, set in .env:

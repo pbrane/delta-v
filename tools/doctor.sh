@@ -4,6 +4,8 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEPLOY_DIR="$REPO_ROOT/deploy"
 fail=0
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 bad()  { printf '  \033[31m✗\033[0m %s\n' "$1"; fail=1; }
@@ -39,7 +41,7 @@ else
 fi
 
 # 4. .env present with a non-empty VERSION
-ENV_FILE="$SCRIPT_DIR/.env"
+ENV_FILE="$DEPLOY_DIR/.env"
 V=""
 if [ -f "$ENV_FILE" ]; then
     V=$(grep -m1 '^VERSION=' "$ENV_FILE" | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d ' \t\r')
@@ -51,7 +53,7 @@ fi
 # 5. Pre-up image completeness (only meaningful if VERSION known)
 if [ -n "$V" ]; then
     P=$(grep -m1 '^IMAGE_PREFIX=' "$ENV_FILE" | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d ' \t\r'); P="${P:-deltav}"
-    COMPOSE="$SCRIPT_DIR/docker-compose.yml"
+    COMPOSE="$DEPLOY_DIR/docker-compose.yml"
     if [ ! -f "$COMPOSE" ]; then
         warn "docker-compose.yml not found at $COMPOSE; skipping image check"
     else

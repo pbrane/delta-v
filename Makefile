@@ -45,7 +45,7 @@ MAVEN_OPTS  ?= -Xmx3g \
                -Dmaven.wagon.http.retryHandler.count=3
 
 MVN    := ./mvnw
-DELTAV := deploy
+TOOLS := tools
 
 export MAVEN_OPTS
 
@@ -91,33 +91,33 @@ clean: ## Remove all build artifacts
 	$(MVN) -B clean
 
 images: ## Build ALL Docker images (daemons + auxiliaries)
-	cd $(DELTAV) && PUSH=$(PUSH) PLATFORMS=$(PLATFORMS) IMAGE_PREFIX=$(IMAGE_PREFIX) ./build.sh deltav
+	PUSH=$(PUSH) PLATFORMS=$(PLATFORMS) IMAGE_PREFIX=$(IMAGE_PREFIX) $(TOOLS)/build.sh deltav
 
 daemon-image: ## Build one daemon image (DAEMON=); reuses cached base
 	@test -n "$(DAEMON)" || (echo "ERROR: DAEMON is required, e.g.: make daemon-image DAEMON=alarmd" && exit 1)
-	cd $(DELTAV) && ./build.sh daemon $(DAEMON)
+	$(TOOLS)/build.sh daemon $(DAEMON)
 
 up: ## Start the stack (PROFILE=active|passive|full|demo)
-	cd $(DELTAV) && ./deploy.sh up $(PROFILE)
+	$(TOOLS)/deploy.sh up $(PROFILE)
 
 down: ## Stop the stack (preserve data)
-	cd $(DELTAV) && ./deploy.sh down
+	$(TOOLS)/deploy.sh down
 
 reset: ## Stop and remove all data volumes
-	cd $(DELTAV) && ./deploy.sh reset
+	$(TOOLS)/deploy.sh reset
 
 status: ## Show service status
-	cd $(DELTAV) && ./deploy.sh status
+	$(TOOLS)/deploy.sh status
 
 logs: ## Tail logs (SVC=<service>)
-	cd $(DELTAV) && ./deploy.sh logs $(SVC)
+	$(TOOLS)/deploy.sh logs $(SVC)
 
 verify: ## Run deploy health checks
-	cd $(DELTAV) && ./deploy.sh test
+	$(TOOLS)/deploy.sh test
 
 dev: ## Build all images, then bring the stack up (sequential; safe under make -j)
-	cd $(DELTAV) && PUSH=$(PUSH) PLATFORMS=$(PLATFORMS) IMAGE_PREFIX=$(IMAGE_PREFIX) ./build.sh deltav
-	cd $(DELTAV) && ./deploy.sh up $(PROFILE)
+	PUSH=$(PUSH) PLATFORMS=$(PLATFORMS) IMAGE_PREFIX=$(IMAGE_PREFIX) $(TOOLS)/build.sh deltav
+	$(TOOLS)/deploy.sh up $(PROFILE)
 
 doctor: ## Preflight: verify the environment can build & run
-	cd $(DELTAV) && ./doctor.sh
+	$(TOOLS)/doctor.sh
