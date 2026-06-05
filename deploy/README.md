@@ -95,29 +95,27 @@ cd delta-v
 # testing) don't pollute git status.
 cp deploy/.env.example deploy/.env
 
-# Full build: compile + assemble + Docker images
-deploy/build.sh
+# Full build: compile all modules, then build the Docker images
+make build && make images
 
 # Or build just the images (if Maven artifacts exist)
-deploy/build.sh images
+make images
 ```
 
 ### Deploy
 
 ```bash
-cd deploy
-
 # Start with a profile
-./deploy.sh up active     # Core daemons + flow stack
-./deploy.sh up passive    # Active + trapd/syslogd/eventtranslator
-./deploy.sh up full       # All daemons
-./deploy.sh up demo       # Everything + metrics/dashboards/alerting
+make up PROFILE=active     # Core daemons + flow stack
+make up PROFILE=passive    # Active + trapd/syslogd/eventtranslator
+make up PROFILE=full       # All daemons
+make up PROFILE=demo       # Everything + metrics/dashboards/alerting
 
 # Check status
-./deploy.sh status
+make status
 
 # Verify deployment
-./deploy.sh test
+make verify
 ```
 
 #### Dev/test deployments — lean JVM overrides
@@ -147,14 +145,14 @@ docker compose exec flow-enricher wget -qO- http://localhost:8080/actuator/prome
 
 ```bash
 # View logs
-./deploy.sh logs              # All services
-./deploy.sh logs alarmd       # Single service
+make logs                     # All services
+make logs SVC=alarmd          # Single service
 
 # Stop (preserve data)
-./deploy.sh down
+make down
 
 # Reset (destroy all data)
-./deploy.sh reset
+make reset
 ```
 
 ## E2E Tests
@@ -226,17 +224,19 @@ Test-only; production uses the system/real resolver (blank `DELTAV_FLOWS_DNS_NAM
 
 ## Build Script Reference
 
+`make` is the front door (`make build`, `make images`); the underlying engine is
+`tools/build.sh`, run from the repo root for granular control:
+
 ```bash
-./build.sh              # Full build (compile + assemble + images)
-./build.sh compile      # Maven compile only
-./build.sh assemble     # Build distribution tarballs
-./build.sh images       # Build Docker images (requires prior assembly)
-./build.sh deltav       # Build Delta-V layered images
-./build.sh push         # Build and push to registry
-./build.sh clean        # Remove Docker volumes
+tools/build.sh              # Full build (compile + images)
+tools/build.sh compile      # Maven compile only
+tools/build.sh images       # Build base Docker images
+tools/build.sh deltav       # Build Delta-V layered images
+tools/build.sh push         # Build and push to registry
+tools/build.sh clean        # Remove Docker volumes
 
 # Push to custom registry
-DOCKER_ORG=pbranestrategy ./build.sh push
+DOCKER_ORG=pbranestrategy tools/build.sh push
 ```
 
 ## Architecture
@@ -483,15 +483,15 @@ To log in as admin (e.g. to create custom dashboards):
 
 ## Troubleshooting
 
-**Images not found:** Run `./build.sh` to build all images. Verify with `docker images | grep opennms`.
+**Images not found:** Run `make images` to build all images. Verify with `docker images | grep opennms`.
 
 **OOM kills (exit 137):** Increase Docker Desktop memory or use `make up PROFILE=active`.
 
-**Service won't start:** Check logs: `./deploy.sh logs <service>`. Spring Boot daemons log to stdout. Check `/actuator/health` for health status.
+**Service won't start:** Check logs: `make logs SVC=<service>`. Spring Boot daemons log to stdout. Check `/actuator/health` for health status.
 
 **Database connection errors:** Ensure postgres is healthy before other services start. The compose healthchecks handle this, but initial schema creation takes time.
 
-**Stale data after rebuild:** Run `./deploy.sh reset` to remove all volumes, then `./deploy.sh up`.
+**Stale data after rebuild:** Run `make reset` to remove all volumes, then `make up PROFILE=full`.
 
 ## License
 

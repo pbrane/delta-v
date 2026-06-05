@@ -32,19 +32,17 @@ This project is **Delta-V**, a microservice decomposition of [OpenNMS Horizon](h
 *   **Perl**: Required for wrapper scripts.
 
 ### Build Commands
-Builds are managed via Perl wrappers and a main shell script:
+Builds are managed through the `make` front door:
 
 ```bash
-# Full build (compile, assemble, images)
-cd deploy
-./build.sh
+# Full build (compile all modules, then build images)
+make build && make images
 
-# Compile individual module (example)
-./compile.pl -DskipTests --projects :org.opennms.core.daemon-boot-alarmd -am install
+# Compile an individual module (example)
+mvn -DskipTests --projects :org.opennms.core.daemon-boot-alarmd -am install
 
 # Build Docker images only
-cd deploy
-./build.sh images
+make images
 ```
 
 ### Running Locally

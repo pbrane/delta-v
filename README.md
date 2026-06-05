@@ -168,18 +168,17 @@ Minion → Kafka Sink → Trapd/Syslogd
 ## Quick Start
 
 ```bash
-cd deploy
+# Start everything (all daemons + full observability stack)
+make up PROFILE=full
 
-# Start everything (all daemons + webapp + full observability stack)
-./deploy.sh up full
-
-# Or for a lighter-weight demo (core daemons + flows + metrics stack):
-docker compose --profile lite --profile metrics up -d
+# Or a lighter-weight demo (core daemons + flows + metrics stack):
+make up PROFILE=demo
 
 # Check service health
-./deploy.sh status
+make status
 
-# Run E2E tests
+# Run E2E tests (scripts live in and run from deploy/)
+cd deploy
 ./test-e2e.sh                    # Core: trap → provision → alarm lifecycle
 ./test-minion-e2e.sh             # Minion: trap → Kafka Sink → alarm lifecycle
 ./test-minion-rpc-e2e.sh         # Minion RPC: provision → detect → poll
@@ -205,15 +204,13 @@ docker compose --profile lite --profile metrics up -d
 See [BUILD.md](BUILD.md) for detailed build instructions.
 
 ```bash
-cd deploy
+# Full build: compile all modules, then build the layered daemon images
+make build && make images
 
-# Full build: compile → JRE image → layered daemon images
-./build.sh
-
-# Or individual steps:
-./build.sh compile    # Maven compile (22 modules, ~16s incremental)
-./build.sh jre        # Build jlink custom JRE base image (rarely needed)
-./build.sh deltav     # Build Delta-V layered images (daemon-base + 12 per-daemon + minion-boot)
+# Or individual steps via the underlying engine (run from repo root):
+tools/build.sh compile    # Maven compile (22 modules, ~16s incremental)
+tools/build.sh jre        # Build jlink custom JRE base image (rarely needed)
+tools/build.sh deltav     # Build Delta-V layered images (daemon-base + 12 per-daemon + minion-boot)
 ```
 
 ## Key Design Decisions

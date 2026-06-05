@@ -14,7 +14,6 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <repo-root> <version>"
@@ -23,6 +22,7 @@ if [ $# -ne 2 ]; then
 fi
 
 REPO_ROOT="$1"
+DEPLOY_DIR="${REPO_ROOT}/deploy"
 VERSION="$2"
 
 # The 12 horizon-derived daemons, sorted, space-separated (indexed iteration only).
@@ -67,8 +67,8 @@ if [ "$missing" -ne 0 ]; then
     exit 1
 fi
 
-STAGING="${SCRIPT_DIR}/staging"
-EXTRACT_DIR="${SCRIPT_DIR}/.extract-tmp"
+STAGING="${DEPLOY_DIR}/staging"
+EXTRACT_DIR="${DEPLOY_DIR}/.extract-tmp"
 rm -rf "${STAGING}" "${EXTRACT_DIR}"
 mkdir -p "${STAGING}/shared-external" "${STAGING}/shared-internal" "${STAGING}/priority"
 mkdir -p "${EXTRACT_DIR}"

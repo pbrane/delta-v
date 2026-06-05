@@ -20,6 +20,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEPLOY_DIR="$REPO_ROOT/deploy"
 SKIP_TESTS="${SKIP_TESTS:-true}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-docker.io}"
 DOCKER_ORG="${DOCKER_ORG:-deltav}"
@@ -73,7 +74,7 @@ build_image() {
 # never modifies .env. See feedback_image_tag_version_mismatch.
 apply_env_version_alias() {
     local image_name="$1"   # e.g. "deltav/minion-gateway"
-    local env_file="$SCRIPT_DIR/.env"
+    local env_file="$DEPLOY_DIR/.env"
     [ -f "$env_file" ] || return 0
     local env_version
     env_version=$(grep '^VERSION=' "$env_file" | head -1 | cut -d= -f2 | tr -d '"' | tr -d "'")
@@ -206,7 +207,7 @@ do_minion_gateway_image() {
     # needs the contracts JAR present in ~/.m2 (feedback_spring_boot_repackage_needs_clean).
     ./mvnw -B -pl core/minion-gateway -am -DskipTests install
     build_image minion-gateway \
-        -f "$SCRIPT_DIR/minion-gateway/Dockerfile" \
+        -f "$DEPLOY_DIR/minion-gateway/Dockerfile" \
         --build-arg "JRE_BASE=${IMAGE_PREFIX}/jre-deltav:21" \
         "$REPO_ROOT/core/minion-gateway/"
 }
@@ -215,7 +216,7 @@ do_envoy_image() {
     log "Building envoy image (${IMAGE_PREFIX}/envoy:$VERSION)..."
     # Pure Docker build — Envoy is the upstream image plus envoy.yaml + curl
     # (for the docker-compose healthcheck). No Maven involvement.
-    build_image envoy -f "$SCRIPT_DIR/envoy/Dockerfile" "$SCRIPT_DIR/envoy"
+    build_image envoy -f "$DEPLOY_DIR/envoy/Dockerfile" "$DEPLOY_DIR/envoy"
 }
 
 do_perspective_app_init_image() {
@@ -223,7 +224,7 @@ do_perspective_app_init_image() {
     # Tiny Alpine + psql client + init.sh. Seeds the smoke-baseline
     # perspective application after provisiond imports the perspective-smoke
     # requisition. No Maven involvement.
-    build_image perspective-app-init -f "$SCRIPT_DIR/Dockerfile.perspective-app-init" "$SCRIPT_DIR"
+    build_image perspective-app-init -f "$DEPLOY_DIR/Dockerfile.perspective-app-init" "$DEPLOY_DIR"
 }
 
 do_flow_enricher_image() {
@@ -251,18 +252,18 @@ do_clickhouse_image() {
     log "Building ${IMAGE_PREFIX}/clickhouse:$VERSION..."
     # Repo-root context: Dockerfile.clickhouse COPYs from deploy/clickhouse/
     # and core/flow-enricher/src/main/proto/ (paths relative to the build context).
-    build_image clickhouse -f "$SCRIPT_DIR/Dockerfile.clickhouse" "$REPO_ROOT"
+    build_image clickhouse -f "$DEPLOY_DIR/Dockerfile.clickhouse" "$REPO_ROOT"
 }
 
 do_clickhouse_init_image() {
     log "Building ${IMAGE_PREFIX}/clickhouse-init:$VERSION..."
     # Repo-root context (same reason as clickhouse).
-    build_image clickhouse-init -f "$SCRIPT_DIR/Dockerfile.clickhouse-init" "$REPO_ROOT"
+    build_image clickhouse-init -f "$DEPLOY_DIR/Dockerfile.clickhouse-init" "$REPO_ROOT"
 }
 
 do_grafana_image() {
     log "Building ${IMAGE_PREFIX}/grafana:$VERSION..."
-    cd "$SCRIPT_DIR"
+    cd "$DEPLOY_DIR"
     build_image grafana -f Dockerfile.grafana .
 }
 
@@ -274,19 +275,19 @@ do_dns_lab_image() {
 
 do_provisiond_imports_init_image() {
     log "Building ${IMAGE_PREFIX}/provisiond-imports-init:$VERSION..."
-    cd "$SCRIPT_DIR"
+    cd "$DEPLOY_DIR"
     build_image provisiond-imports-init -f Dockerfile.provisiond-imports-init .
 }
 
 do_nl6_provisioner_image() {
     log "Building ${IMAGE_PREFIX}/nl6-provisioner:$VERSION..."
-    cd "$SCRIPT_DIR"
+    cd "$DEPLOY_DIR"
     build_image nl6-provisioner -f Dockerfile.nl6-provisioner .
 }
 
 do_mock_snmp_agent_image() {
     log "Building ${IMAGE_PREFIX}/mock-snmp-agent:$VERSION..."
-    build_image mock-snmp-agent -f "$SCRIPT_DIR/mock-snmp-agent/Dockerfile" "$SCRIPT_DIR/mock-snmp-agent"
+    build_image mock-snmp-agent -f "$DEPLOY_DIR/mock-snmp-agent/Dockerfile" "$DEPLOY_DIR/mock-snmp-agent"
 }
 
 do_alarms_materializer_image() {
@@ -298,7 +299,7 @@ do_alarms_materializer_image() {
 
 do_jre_image() {
     log "Building ${IMAGE_PREFIX}/jre-deltav:21..."
-    cd "$SCRIPT_DIR"
+    cd "$DEPLOY_DIR"
     local -a args
     args=(buildx build -f Dockerfile.jre -t "${IMAGE_PREFIX}/jre-deltav:21" -t "${IMAGE_PREFIX}/jre-deltav:latest")
     if [ "$PUSH" = "true" ]; then
@@ -338,7 +339,7 @@ do_deltav_images() {
     # Phase 1: Extract and deduplicate
     "$SCRIPT_DIR/compute-shared-libs.sh" "$REPO_ROOT" "$VERSION"
 
-    cd "$SCRIPT_DIR"
+    cd "$DEPLOY_DIR"
 
     # Phase 2: Build daemon-base image
     log "Building ${IMAGE_PREFIX}/daemon-base:$VERSION..."
@@ -363,12 +364,12 @@ do_deltav_images() {
 
     # --- Stage Minion Boot fat JAR ---
     log "Staging Minion Boot fat JAR..."
-    mkdir -p "$SCRIPT_DIR/staging/minion-boot"
+    mkdir -p "$DEPLOY_DIR/staging/minion-boot"
     # Copy only the fat JAR (exclude -sources.jar, -javadoc.jar, .original)
     find "$REPO_ROOT/core/daemon-boot-minion/target" \
         -maxdepth 1 -name "*.jar" \
         ! -name "*-sources.jar" ! -name "*-javadoc.jar" ! -name "*.original" \
-        -exec cp {} "$SCRIPT_DIR/staging/minion-boot/daemon-boot-minion.jar" \;
+        -exec cp {} "$DEPLOY_DIR/staging/minion-boot/daemon-boot-minion.jar" \;
 
     # --- Build Minion Boot image ---
     log "Building ${IMAGE_PREFIX}/minion-boot:$VERSION..."
@@ -379,7 +380,7 @@ do_deltav_images() {
         .
 
     # Clean up staging
-    rm -rf "$SCRIPT_DIR/staging"
+    rm -rf "$DEPLOY_DIR/staging"
 
     # --- Build db-init (one-shot PostgreSQL schema migration) ---
     # db-init is a small standalone image used once at stack startup to
@@ -510,7 +511,7 @@ do_single_daemon_image() {
     ( cd "$REPO_ROOT" && ./mvnw -B $test_flag -pl "core/daemon-boot-$name" -am install ) \
         || err "Failed to build core/daemon-boot-$name"
 
-    cd "$SCRIPT_DIR"
+    cd "$DEPLOY_DIR"
 
     # compute-shared-libs.sh re-derives the shared/unique library split — it
     # needs every daemon's fat JAR present — and repopulates staging/. This is
@@ -528,7 +529,7 @@ do_single_daemon_image() {
         --build-arg "MAIN_CLASS=$main_class" \
         .
 
-    rm -rf "$SCRIPT_DIR/staging"
+    rm -rf "$DEPLOY_DIR/staging"
     log "Built ${IMAGE_PREFIX}/$name:$VERSION (+ :latest). Recreate just that service with: docker compose up -d $name"
 }
 
@@ -570,7 +571,7 @@ USAGE
 
 do_clean() {
     log "Removing Delta-V Docker volumes..."
-    cd "$SCRIPT_DIR"
+    cd "$DEPLOY_DIR"
     docker compose down -v 2>/dev/null || true
     log "Volumes removed. Run 'make up' for a fresh start."
 }
