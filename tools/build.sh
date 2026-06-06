@@ -269,7 +269,7 @@ do_grafana_image() {
 
 do_dns_lab_image() {
     log "Building ${IMAGE_PREFIX}/dns-lab:$VERSION..."
-    cd "$SCRIPT_DIR"
+    cd "$DEPLOY_DIR"
     build_image dns-lab -f Dockerfile.dns-lab .
 }
 
