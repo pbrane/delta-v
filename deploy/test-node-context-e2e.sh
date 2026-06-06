@@ -56,7 +56,12 @@ cleanup() {
     # before mutation in Step 3) so this test never leaves the working tree
     # in a state that breaks other e2e tests that depend on the full set of
     # requisition-defs (rpc-canary, cloud-services, nl6-lab, …).
-    if [ -f "${PROVISIOND_CONFIG_BACKUP}" ]; then
+    # Guard with -s (non-empty), not -f: the backup is an empty mktemp file at
+    # trap-arm time and is only populated by the `cp` in Step 3. An early exit
+    # (e.g. stack bring-up fails before Step 3) would otherwise restore the
+    # empty backup OVER the tracked config, truncating it to 0 bytes and
+    # cascading into requisition-import failures across the whole suite.
+    if [ -s "${PROVISIOND_CONFIG_BACKUP}" ]; then
         cp "${PROVISIOND_CONFIG_BACKUP}" "${PROVISIOND_CONFIG}"
         rm -f "${PROVISIOND_CONFIG_BACKUP}"
     fi
