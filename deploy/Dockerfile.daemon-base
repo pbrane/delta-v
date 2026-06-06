@@ -4,7 +4,7 @@
 # shared by all 12 daemons. Per-daemon images extend this with their
 # unique libs and application classes.
 #
-# Build with: ./build.sh deltav  (built automatically)
+# Build with: make images  (built automatically)
 # Rebuild when: shared dependencies change (Spring Boot, Hibernate, Kafka, etc.)
 
 ARG JRE_IMAGE=deltav/jre-deltav:21

@@ -30,16 +30,15 @@ Or use `jenv` to manage Java versions.
 The fastest path from a clean checkout to a running system:
 
 ```bash
-cd deploy
-
-# Full build: compile + JRE image + layered daemon images
-./build.sh
+# Full build: compile all modules, then the JRE + layered daemon images
+make build
+make images
 
 # Deploy all 16 services
-./deploy.sh up full
+make up PROFILE=full
 
 # Check health (wait ~45s for startup)
-./deploy.sh status
+make status
 ```
 
 ## Build Steps
@@ -49,8 +48,7 @@ cd deploy
 Maven builds all 22 modules (parent + 21 under `core/`):
 
 ```bash
-cd deploy
-./build.sh compile
+make build
 ```
 
 Or directly with Maven:
@@ -67,13 +65,9 @@ the `pbrane/delta-v-horizon` GitHub Packages repository (version managed by
 ### 2. Build Docker Images
 
 ```bash
-cd deploy
-
-# Build JRE base image (only needed once, or after JRE changes)
-./build.sh jre
-
-# Build all Delta-V images (daemon-base + 12 per-daemon + minion-boot + db-init)
-./build.sh deltav
+# Build every Delta-V image: JRE base (if missing) + daemon-base
+# + 12 per-daemon + minion-boot + db-init + auxiliaries
+make images
 ```
 
 The layered image build:
@@ -86,8 +80,7 @@ The layered image build:
 ### 3. Full Build (All Steps)
 
 ```bash
-cd deploy
-./build.sh          # compile + jre (if missing) + deltav
+make build && make images   # compile all modules, then build every image
 ```
 
 ## Deployment
@@ -95,14 +88,12 @@ cd deploy
 ### Deploy Scripts
 
 ```bash
-cd deploy
-
-./deploy.sh up full     # Start all 16 services
-./deploy.sh up lite     # Core monitoring only
-./deploy.sh status      # Check container health
-./deploy.sh down        # Stop (preserve data)
-./deploy.sh reset       # Stop and wipe all data
-./deploy.sh logs trapd  # Tail logs for a specific service
+make up PROFILE=full     # Start all 16 services
+make up PROFILE=active   # Core monitoring only
+make status              # Check container health
+make down                # Stop (preserve data)
+make reset               # Stop and wipe all data
+make logs SVC=trapd      # Tail logs for a specific service
 ```
 
 ### Compose Profiles
@@ -116,7 +107,7 @@ cd deploy
 ### Verifying Health
 
 ```bash
-./deploy.sh status
+make status
 ```
 
 Expected: all containers show `(healthy)` except `db-init` (exits after schema migration).
@@ -130,10 +121,8 @@ After the initial build, you rarely need to rebuild everything.
 Rebuild the module, rebuild the image, and redeploy:
 
 ```bash
-mvn -DskipTests -pl :org.opennms.core.daemon-boot-alarmd install
-cd deploy
-./build.sh deltav
-./deploy.sh down && ./deploy.sh up full
+make daemon-image DAEMON=alarmd          # rebuild just that daemon's JAR + image
+make down && make up PROFILE=full
 ```
 
 ### Changed daemon-common (shared infrastructure)
@@ -141,36 +130,34 @@ cd deploy
 All daemons depend on this — rebuild everything:
 
 ```bash
-mvn -DskipTests install
-cd deploy && ./build.sh deltav
-./deploy.sh down && ./deploy.sh up full
+make build && make images
+make down && make up PROFILE=full
 ```
 
 ### Changed opennms-model-jakarta
 
 ```bash
 mvn -DskipTests -pl :org.opennms.core.model-jakarta install
-cd deploy && ./build.sh deltav
-./deploy.sh down && ./deploy.sh up full
+make images
+make down && make up PROFILE=full
 ```
 
 ### Changed Liquibase schema or db-init
 
 ```bash
 mvn -DskipTests -pl :org.opennms.core.db-init package
-cd deploy
-./build.sh deltav
-./deploy.sh reset    # Must wipe data for schema changes
-./deploy.sh up full
+make images
+make reset    # Must wipe data for schema changes
+make up PROFILE=full
 ```
 
 ## End-to-End Testing
 
 ```bash
-cd deploy
-./deploy.sh up full    # Must be running
+make up PROFILE=full    # Must be running
 
-# Individual suites
+# Individual suites (e2e scripts live in and run from deploy/)
+cd deploy
 ./test-e2e.sh              # Core: trap → provision → alarm lifecycle
 ./test-minion-e2e.sh       # Minion: trap → Kafka Sink → alarm lifecycle
 ./test-minion-rpc-e2e.sh   # Minion RPC: provision → detect → poll

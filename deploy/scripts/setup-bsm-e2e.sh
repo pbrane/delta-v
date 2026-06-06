@@ -8,7 +8,7 @@
 #     └── BSM: Delta-V Passive Monitoring (trapd, syslogd, eventtranslator)
 #
 # Prerequisites:
-#   - Delta-V deployed with full profile: ./deploy.sh up full
+#   - Delta-V deployed with full profile: make up PROFILE=full
 #   - curl and jq installed on the host
 #
 # Usage:
