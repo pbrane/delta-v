@@ -353,12 +353,21 @@ fi
 ALARM_ID=$(psql_query "SELECT alarmid FROM alarms WHERE eventuei = 'uei.opennms.org/translator/traps/SNMP_Link_Down' AND alarmtype = 1 LIMIT 1")
 REDUCTION_KEY=$(psql_query "SELECT reductionkey FROM alarms WHERE alarmid = $ALARM_ID")
 if [ -n "$REDUCTION_KEY" ]; then
-    KAFKA_KEYS=$(docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
-        --bootstrap-server localhost:9092 \
-        --topic deltav-alarms-state-change \
-        --from-beginning --max-messages 200 --timeout-ms 15000 \
-        --property print.key=true --property print.value=false 2>/dev/null || true)
-    if echo "$KAFKA_KEYS" | grep -Fq "$REDUCTION_KEY"; then
+    KEY_FOUND=false
+    # Poll up to ~48s: alarmd->materializer can lag behind the PG insert under
+    # load, and the topic accumulates many keys over a long-lived stack. Re-scan
+    # the whole topic each pass. Bash substring match (no `| grep -q`) so a hit
+    # can never trip SIGPIPE under `set -o pipefail`.
+    for _ in 1 2 3 4 5 6; do
+        KAFKA_KEYS=$(docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
+            --bootstrap-server localhost:9092 \
+            --topic deltav-alarms-state-change \
+            --from-beginning --max-messages 50000 --timeout-ms 6000 \
+            --property print.key=true --property print.value=false 2>/dev/null || true)
+        [[ "$KAFKA_KEYS" == *"$REDUCTION_KEY"* ]] && { KEY_FOUND=true; break; }
+        sleep 2
+    done
+    if $KEY_FOUND; then
         ok "Alarm published to deltav-alarms-state-change (reduction_key=$REDUCTION_KEY)"
     else
         fail "Alarm reduction_key '$REDUCTION_KEY' NOT found on deltav-alarms-state-change topic"
