@@ -22,6 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DEPLOY_DIR="$REPO_ROOT/deploy"
 IMAGES_DIR="$REPO_ROOT/images"
+COMPONENTS_DIR="$REPO_ROOT/components"
 SKIP_TESTS="${SKIP_TESTS:-true}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-docker.io}"
 DOCKER_ORG="${DOCKER_ORG:-deltav}"
@@ -217,7 +218,7 @@ do_envoy_image() {
     log "Building envoy image (${IMAGE_PREFIX}/envoy:$VERSION)..."
     # Pure Docker build — Envoy is the upstream image plus envoy.yaml + curl
     # (for the docker-compose healthcheck). No Maven involvement.
-    build_image envoy -f "$DEPLOY_DIR/envoy/Dockerfile" "$DEPLOY_DIR/envoy"
+    build_image envoy -f "$COMPONENTS_DIR/envoy/Dockerfile" "$COMPONENTS_DIR/envoy"
 }
 
 do_perspective_app_init_image() {
@@ -251,20 +252,20 @@ do_alerts_forwarder_image() {
 
 do_clickhouse_image() {
     log "Building ${IMAGE_PREFIX}/clickhouse:$VERSION..."
-    # Repo-root context: Dockerfile.clickhouse COPYs from deploy/clickhouse/
+    # Repo-root context: Dockerfile.clickhouse COPYs from components/clickhouse/
     # and core/flow-enricher/src/main/proto/ (paths relative to the build context).
-    build_image clickhouse -f "$DEPLOY_DIR/Dockerfile.clickhouse" "$REPO_ROOT"
+    build_image clickhouse -f "$COMPONENTS_DIR/clickhouse/Dockerfile.clickhouse" "$REPO_ROOT"
 }
 
 do_clickhouse_init_image() {
     log "Building ${IMAGE_PREFIX}/clickhouse-init:$VERSION..."
     # Repo-root context (same reason as clickhouse).
-    build_image clickhouse-init -f "$DEPLOY_DIR/Dockerfile.clickhouse-init" "$REPO_ROOT"
+    build_image clickhouse-init -f "$COMPONENTS_DIR/clickhouse/Dockerfile.clickhouse-init" "$REPO_ROOT"
 }
 
 do_grafana_image() {
     log "Building ${IMAGE_PREFIX}/grafana:$VERSION..."
-    cd "$DEPLOY_DIR"
+    cd "$COMPONENTS_DIR/grafana"
     build_image grafana -f Dockerfile.grafana .
 }
 
@@ -288,7 +289,7 @@ do_nl6_provisioner_image() {
 
 do_mock_snmp_agent_image() {
     log "Building ${IMAGE_PREFIX}/mock-snmp-agent:$VERSION..."
-    build_image mock-snmp-agent -f "$DEPLOY_DIR/mock-snmp-agent/Dockerfile" "$DEPLOY_DIR/mock-snmp-agent"
+    build_image mock-snmp-agent -f "$COMPONENTS_DIR/mock-snmp-agent/Dockerfile" "$COMPONENTS_DIR/mock-snmp-agent"
 }
 
 do_alarms_materializer_image() {
