@@ -21,6 +21,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DEPLOY_DIR="$REPO_ROOT/deploy"
+IMAGES_DIR="$REPO_ROOT/images"
 SKIP_TESTS="${SKIP_TESTS:-true}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-docker.io}"
 DOCKER_ORG="${DOCKER_ORG:-deltav}"
@@ -301,7 +302,7 @@ do_jre_image() {
     log "Building ${IMAGE_PREFIX}/jre-deltav:21..."
     cd "$DEPLOY_DIR"
     local -a args
-    args=(buildx build -f Dockerfile.jre -t "${IMAGE_PREFIX}/jre-deltav:21" -t "${IMAGE_PREFIX}/jre-deltav:latest")
+    args=(buildx build -f "$IMAGES_DIR/Dockerfile.jre" -t "${IMAGE_PREFIX}/jre-deltav:21" -t "${IMAGE_PREFIX}/jre-deltav:latest")
     if [ "$PUSH" = "true" ]; then
         [ -n "$PLATFORMS" ] && args+=(--platform "$PLATFORMS")
         args+=(--push)
@@ -344,7 +345,7 @@ do_deltav_images() {
     # Phase 2: Build daemon-base image
     log "Building ${IMAGE_PREFIX}/daemon-base:$VERSION..."
     build_image daemon-base --no-cache \
-        -f Dockerfile.daemon-base \
+        -f "$IMAGES_DIR/Dockerfile.daemon-base" \
         --build-arg "JRE_IMAGE=${IMAGE_PREFIX}/jre-deltav:21" \
         .
 
@@ -354,7 +355,7 @@ do_deltav_images() {
         main_class=$(cat "staging/$name/.main_class")
         log "Building ${IMAGE_PREFIX}/$name:$VERSION (main: $main_class)..."
         build_image "$name" \
-            -f Dockerfile.daemon-per \
+            -f "$IMAGES_DIR/Dockerfile.daemon-per" \
             --build-arg "VERSION=$VERSION" \
             --build-arg "DAEMON_BASE_IMAGE=${IMAGE_PREFIX}/daemon-base" \
             --build-arg "DAEMON_NAME=$name" \
@@ -376,7 +377,7 @@ do_deltav_images() {
     build_image minion-boot \
         --build-arg "VERSION=$VERSION" \
         --build-arg "JRE_IMAGE=${IMAGE_PREFIX}/jre-deltav:21" \
-        -f Dockerfile.minion-boot \
+        -f "$IMAGES_DIR/Dockerfile.minion-boot" \
         .
 
     # Clean up staging
@@ -522,7 +523,7 @@ do_single_daemon_image() {
     main_class=$(cat "staging/$name/.main_class")
     log "Building ${IMAGE_PREFIX}/$name:$VERSION (main: $main_class)..."
     build_image "$name" \
-        -f Dockerfile.daemon-per \
+        -f "$IMAGES_DIR/Dockerfile.daemon-per" \
         --build-arg "VERSION=$VERSION" \
         --build-arg "DAEMON_BASE_IMAGE=${IMAGE_PREFIX}/daemon-base" \
         --build-arg "DAEMON_NAME=$name" \
