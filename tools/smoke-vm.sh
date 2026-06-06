@@ -23,8 +23,8 @@ docker system prune -a --volumes -f
 rm -rf ~/delta-v-smoke
 mkdir -p ~/delta-v-smoke && cd ~/delta-v-smoke
 
-GIT_REF=v1.3.0-rc9
-IMG_TAG=1.3.0-rc9
+GIT_REF=v1.3.0-rc10
+IMG_TAG=1.3.0-rc10
 
 BASE=https://raw.githubusercontent.com/pbrane/delta-v/$GIT_REF/deploy
 
