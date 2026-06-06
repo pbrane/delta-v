@@ -1,13 +1,13 @@
 # .dockerignore — applies to repo-root build contexts only.
 #
 # build.sh builds the `clickhouse` and `clickhouse-init` images with
-# context=$REPO_ROOT (they COPY from both deploy/clickhouse/ and
+# context=$REPO_ROOT (they COPY from both components/clickhouse/ and
 # core/flow-enricher/src/main/proto/). Without this file the entire repo —
 # Maven target/ output, .git history, ui/node_modules — is sent to the Docker
 # daemon on every such build. Subdir-context builds resolve their own
 # .dockerignore (e.g. core/db-init/.dockerignore) and are unaffected.
 #
-# Do NOT ignore deploy/clickhouse/** or core/flow-enricher/src/main/proto/** —
+# Do NOT ignore components/clickhouse/** or core/flow-enricher/src/main/proto/** —
 # those are the COPY sources for the repo-root builds above.
 
 # Version control / CI metadata

@@ -9,9 +9,9 @@ FROM grafana/grafana:11.4.0
 LABEL org.opencontainers.image.title="Delta-V Grafana" \
       org.opencontainers.image.description="Grafana with baked-in delta-v provisioning + dashboards"
 
-COPY grafana/provisioning/ /etc/grafana/provisioning/
+COPY provisioning/ /etc/grafana/provisioning/
 # Dashboards under /etc/grafana/dashboards (not /var/lib/grafana/dashboards)
 # so the grafanadata named volume can't shadow them on restart. The
 # provisioner config (provisioning/dashboards/default.yml) points at this
 # path.
-COPY grafana/dashboards/   /etc/grafana/dashboards/
+COPY dashboards/   /etc/grafana/dashboards/
