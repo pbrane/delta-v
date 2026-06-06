@@ -3,7 +3,7 @@
 # flow-ingest engine.
 #
 # Build context: repo root (Dockerfile references paths from both
-# opennms-container/delta-v/clickhouse/ and core/flow-enricher/src/main/proto/).
+# deploy/clickhouse/ and core/flow-enricher/src/main/proto/).
 #
 # The one-shot DDL bootstrap runs from a separate image
 # (Dockerfile.clickhouse-init); this image is the long-running server.
@@ -14,7 +14,7 @@ LABEL org.opencontainers.image.title="Delta-V ClickHouse" \
 
 # format-schema-path.xml tells clickhouse-server where to find .proto files
 # for the Kafka table engine's Protobuf rows.
-COPY opennms-container/delta-v/clickhouse/config.d/ /etc/clickhouse-server/config.d/
+COPY deploy/clickhouse/config.d/ /etc/clickhouse-server/config.d/
 
 # Protobuf schemas used by the Kafka flow-ingest table. Source of truth lives
 # in core/flow-enricher.

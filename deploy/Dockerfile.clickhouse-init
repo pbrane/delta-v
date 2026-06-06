@@ -6,15 +6,15 @@
 # moving into /docker-entrypoint-initdb.d/ on the main image.
 #
 # Build context: repo root — Dockerfile references paths from both
-# opennms-container/delta-v/clickhouse/ and core/flow-enricher/src/main/proto/.
+# deploy/clickhouse/ and core/flow-enricher/src/main/proto/.
 FROM clickhouse/clickhouse-server:25.8
 
 LABEL org.opencontainers.image.title="Delta-V ClickHouse Init" \
       org.opencontainers.image.description="One-shot DDL bootstrap for delta-v ClickHouse"
 
-COPY opennms-container/delta-v/clickhouse/init/           /delta-v/init/
-COPY opennms-container/delta-v/clickhouse/user-init/      /delta-v/user-init/
-COPY opennms-container/delta-v/clickhouse/init-runner.sh  /usr/local/bin/init-runner.sh
+COPY deploy/clickhouse/init/           /delta-v/init/
+COPY deploy/clickhouse/user-init/      /delta-v/user-init/
+COPY deploy/clickhouse/init-runner.sh  /usr/local/bin/init-runner.sh
 COPY core/flow-enricher/src/main/proto/                   /delta-v/proto/
 
 RUN chmod +x /usr/local/bin/init-runner.sh

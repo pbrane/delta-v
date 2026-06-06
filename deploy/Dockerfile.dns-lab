@@ -6,7 +6,7 @@
 # Test-only. Activate via the `dns-lab` compose profile + point the flow-enricher
 # at it with DELTAV_FLOWS_DNS_NAMESERVERS=172.18.0.53.
 #
-# Build context is opennms-container/delta-v (build.sh do_dns_lab_image).
+# Build context is deploy/ (build.sh do_dns_lab_image).
 FROM coredns/coredns:1.11.3
 
 LABEL org.opencontainers.image.title="delta-v-dns-lab" \

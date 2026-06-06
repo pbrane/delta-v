@@ -168,7 +168,7 @@ Minion → Kafka Sink → Trapd/Syslogd
 ## Quick Start
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 
 # Start everything (all daemons + webapp + full observability stack)
 ./deploy.sh up full
@@ -205,7 +205,7 @@ docker compose --profile lite --profile metrics up -d
 See [BUILD.md](BUILD.md) for detailed build instructions.
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 
 # Full build: compile → JRE image → layered daemon images
 ./build.sh

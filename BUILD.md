@@ -30,7 +30,7 @@ Or use `jenv` to manage Java versions.
 The fastest path from a clean checkout to a running system:
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 
 # Full build: compile + JRE image + layered daemon images
 ./build.sh
@@ -49,7 +49,7 @@ cd opennms-container/delta-v
 Maven builds all 22 modules (parent + 21 under `core/`):
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 ./build.sh compile
 ```
 
@@ -67,7 +67,7 @@ the `pbrane/delta-v-horizon` GitHub Packages repository (version managed by
 ### 2. Build Docker Images
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 
 # Build JRE base image (only needed once, or after JRE changes)
 ./build.sh jre
@@ -86,7 +86,7 @@ The layered image build:
 ### 3. Full Build (All Steps)
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 ./build.sh          # compile + jre (if missing) + deltav
 ```
 
@@ -95,7 +95,7 @@ cd opennms-container/delta-v
 ### Deploy Scripts
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 
 ./deploy.sh up full     # Start all 16 services
 ./deploy.sh up lite     # Core monitoring only
@@ -131,7 +131,7 @@ Rebuild the module, rebuild the image, and redeploy:
 
 ```bash
 mvn -DskipTests -pl :org.opennms.core.daemon-boot-alarmd install
-cd opennms-container/delta-v
+cd deploy
 ./build.sh deltav
 ./deploy.sh down && ./deploy.sh up full
 ```
@@ -142,7 +142,7 @@ All daemons depend on this — rebuild everything:
 
 ```bash
 mvn -DskipTests install
-cd opennms-container/delta-v && ./build.sh deltav
+cd deploy && ./build.sh deltav
 ./deploy.sh down && ./deploy.sh up full
 ```
 
@@ -150,7 +150,7 @@ cd opennms-container/delta-v && ./build.sh deltav
 
 ```bash
 mvn -DskipTests -pl :org.opennms.core.model-jakarta install
-cd opennms-container/delta-v && ./build.sh deltav
+cd deploy && ./build.sh deltav
 ./deploy.sh down && ./deploy.sh up full
 ```
 
@@ -158,7 +158,7 @@ cd opennms-container/delta-v && ./build.sh deltav
 
 ```bash
 mvn -DskipTests -pl :org.opennms.core.db-init package
-cd opennms-container/delta-v
+cd deploy
 ./build.sh deltav
 ./deploy.sh reset    # Must wipe data for schema changes
 ./deploy.sh up full
@@ -167,7 +167,7 @@ cd opennms-container/delta-v
 ## End-to-End Testing
 
 ```bash
-cd opennms-container/delta-v
+cd deploy
 ./deploy.sh up full    # Must be running
 
 # Individual suites
