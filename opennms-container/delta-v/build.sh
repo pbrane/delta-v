@@ -266,6 +266,12 @@ do_grafana_image() {
     build_image grafana -f Dockerfile.grafana .
 }
 
+do_dns_lab_image() {
+    log "Building ${IMAGE_PREFIX}/dns-lab:$VERSION..."
+    cd "$SCRIPT_DIR"
+    build_image dns-lab -f Dockerfile.dns-lab .
+}
+
 do_provisiond_imports_init_image() {
     log "Building ${IMAGE_PREFIX}/provisiond-imports-init:$VERSION..."
     cd "$SCRIPT_DIR"
@@ -435,6 +441,7 @@ do_deltav_images() {
     do_clickhouse_image
     do_clickhouse_init_image
     do_grafana_image
+    do_dns_lab_image
     do_provisiond_imports_init_image
     do_nl6_provisioner_image
     do_mock_snmp_agent_image
@@ -448,7 +455,7 @@ do_deltav_images() {
         log "Delta-V images pushed to ${IMAGE_PREFIX} (multi-arch; not loaded locally)."
     else
         log "Delta-V images built:"
-        docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|alarms-materializer|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|provisiond-imports-init|nl6-provisioner|mock-snmp-agent" | sort | head -60 || true
+        docker images --format "  {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "daemon-base|alarmd|alerts-forwarder|alarms-materializer|bsmd|collectd|discovery|enlinkd|eventtranslator|perspectivepollerd|pollerd|provisiond|syslogd|telemetryd|trapd|minion-boot|flow-enricher|prometheus-writer|minion-gateway|envoy|perspective-app-init|clickhouse|clickhouse-init|grafana|dns-lab|provisiond-imports-init|nl6-provisioner|mock-snmp-agent" | sort | head -60 || true
     fi
 }
 

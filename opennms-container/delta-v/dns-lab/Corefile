@@ -1,0 +1,28 @@
+# Delta-V dns-lab — CoreDNS for exercising the flow-enricher's reverse-DNS
+# enrichment against the nl6 simulator's traffic.
+#
+# The nl6 flow records carry RANDOM src/dst addresses across 10/8 (effectively
+# unbounded cardinality), so we cannot enumerate PTR records for them. Instead we
+# SYNTHESIZE a PTR answer for any 10.in-addr.arpa query, turning every nl6 flow IP
+# into a resolvable hostname (e.g. 10.168.74.188 -> nl6-host-10-168-74-188.lab).
+# Everything else (public IPs like deltav.kiwi, container names) is forwarded to
+# the normal upstream resolver, so non-lab resolution is unaffected.
+#
+# TEST-ONLY. Activate via the `dns-lab` compose profile and point the
+# flow-enricher at it: DELTAV_FLOWS_DNS_NAMESERVERS=172.18.0.53
+
+10.in-addr.arpa:53 {
+    # Reverse name for 10.b.c.d is d.c.b.10.in-addr.arpa — capture the octets and
+    # reconstruct the address in the synthesized name.
+    template IN PTR {
+        match "^(?P<d>[0-9]+)\.(?P<c>[0-9]+)\.(?P<b>[0-9]+)\.10\.in-addr\.arpa\.$"
+        answer "{{ .Name }} 60 IN PTR nl6-host-10-{{ .Group.b }}-{{ .Group.c }}-{{ .Group.d }}.lab."
+    }
+    errors
+}
+
+. {
+    forward . /etc/resolv.conf
+    cache 30
+    errors
+}

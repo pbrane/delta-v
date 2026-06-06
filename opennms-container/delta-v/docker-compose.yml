@@ -193,6 +193,24 @@ services:
       default:
         ipv4_address: 172.18.0.30
 
+  # dns-lab — CoreDNS that synthesizes PTR records for the nl6 simulator's 10/8
+  # flow IPs (and forwards everything else upstream), so the flow-enricher's
+  # reverse-DNS enrichment can be exercised end-to-end against realistic,
+  # high-cardinality flow traffic. TEST-ONLY: activate the `dns-lab` profile AND
+  # point the flow-enricher at it via DELTAV_FLOWS_DNS_NAMESERVERS=172.18.0.53
+  # (the static IP below). Without that env, the flow-enricher uses the normal
+  # system resolver and dns-lab is unused even if running.
+  dns-lab:
+    <<: *no-search-domain
+    profiles: [dns-lab]
+    image: ${IMAGE_PREFIX:-deltav}/dns-lab:${VERSION}
+    container_name: delta-v-dns-lab
+    hostname: dns-lab
+    restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 172.18.0.53   # nameserver IP for DELTAV_FLOWS_DNS_NAMESERVERS
+
   nl6-provisioner:
     <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/nl6-provisioner:${VERSION}
