@@ -134,7 +134,22 @@ assert_zero() {
 }
 
 assert_zero 'deltav_prometheus_writer_batches_failed_total'
-assert_zero 'deltav_prometheus_writer_enrichment_missing_total'
+# enrichment_missing_total is a cumulative counter that also counts samples
+# processed during the NodeContext cache warmup window right after startup (the
+# cache fills asynchronously from the node-context Kafka stream), so a strict
+# ==0 assertion is racy. Assert instead that it has STOPPED growing — enrichment
+# is healthy now that the cache is warm. A cache that never warms keeps
+# incrementing and still fails this check.
+em_name='deltav_prometheus_writer_enrichment_missing_total'
+em_before=$({ echo "$metrics" | grep -E "^${em_name}" || true; } | awk '{sum+=$2} END {print sum+0}')
+sleep 20
+metrics_warm=$(docker compose exec -T prometheus-writer curl -sf http://localhost:8080/actuator/prometheus)
+em_after=$({ echo "$metrics_warm" | grep -E "^${em_name}" || true; } | awk '{sum+=$2} END {print sum+0}')
+if (( $(echo "$em_after > $em_before" | bc -l) )); then
+    echo "FAIL: ${em_name} still growing (${em_before} -> ${em_after} over 20s) — NodeContext enrichment not healthy"
+    exit 1
+fi
+echo "==> ${em_name} stable at ${em_after} (no new misses over 20s; ${em_before} warmup-window misses tolerated) ✓"
 # samples_dropped_total: split by reason. "type_unspecified" must stay zero
 # (indicates a producer bug if it ever fires). "string_attribute" is expected
 # correct behavior when SNMP collection surfaces string OIDs (sysDescr,

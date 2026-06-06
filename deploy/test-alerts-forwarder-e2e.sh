@@ -98,7 +98,7 @@ cleanup() {
     if [ -n "$KAFKA_CONSUMER_PID" ]; then
         kill "$KAFKA_CONSUMER_PID" 2>/dev/null || true
     fi
-    docker exec delta-v-kafka-1 sh -c 'for p in $(ps -eo pid,args 2>/dev/null | grep kafka-console-consumer | grep -v grep | awk "{print \$1}"); do kill "$p" 2>/dev/null; done' 2>/dev/null || true
+    docker compose exec -T kafka sh -c 'for p in $(ps -eo pid,args 2>/dev/null | grep kafka-console-consumer | grep -v grep | awk "{print \$1}"); do kill "$p" 2>/dev/null; done' 2>/dev/null || true
 
     if $VERBOSE; then
         log ""
@@ -197,7 +197,7 @@ wait_for_alertmanager_alert() {
 start_kafka_key_tail() {
     log "Starting Kafka tail consumer on ${ALARMS_TOPIC} (latest only)..."
     : > "$KAFKA_KEYS_LOG"
-    docker exec delta-v-kafka-1 /opt/kafka/bin/kafka-console-consumer.sh \
+    docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
         --bootstrap-server localhost:9092 \
         --topic "$ALARMS_TOPIC" \
         --consumer-property auto.offset.reset=latest \
@@ -216,14 +216,25 @@ start_kafka_key_tail() {
 wait_for_kafka_key() {
     local needle="$1"
     local timeout="$2"
-    log "Waiting for key '${needle}' in ${ALARMS_TOPIC} tail (timeout: ${timeout}s)..."
-    local elapsed=0
+    log "Waiting for key '${needle}' on ${ALARMS_TOPIC} (timeout: ${timeout}s)..."
+    local elapsed=0 keys
     while [ $elapsed -lt "$timeout" ]; do
-        if grep -F -q "$needle" "$KAFKA_KEYS_LOG" 2>/dev/null; then
+        # Deterministic scan: read the whole (compacted, small) topic from the
+        # beginning and match the key, rather than tailing an ephemeral `latest`
+        # consumer that can miss the record if it has not finished joining its
+        # group before the AlarmState is produced (the 5s join was too tight).
+        # Uses --property (not --formatter-property) like the other e2e scripts,
+        # and a bash substring match (no `| grep -q`) so a hit can never trip
+        # SIGPIPE under `set -o pipefail`.
+        keys=$(docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
+            --bootstrap-server localhost:9092 --topic "$ALARMS_TOPIC" \
+            --from-beginning --max-messages 50000 --timeout-ms 5000 \
+            --property print.key=true --property print.value=false 2>/dev/null || true)
+        if [[ "$keys" == *"$needle"* ]]; then
             return 0
         fi
         sleep 2
-        elapsed=$((elapsed + 2))
+        elapsed=$((elapsed + 7))
     done
     return 1
 }
