@@ -219,11 +219,11 @@ log "Phase 1: Provisioning canary node targeting snmp-agent (${SNMP_AGENT_IP}) a
 # Generate the requisition inline with the resolved IP.
 #
 # Write directly into the running provisiond container's named-volume mount at
-# /opt/deltav/etc/imports/. The host bind-mount path provisiond-overlay/etc/imports/
+# /opt/deltav/etc/imports/. The host bind-mount path overlays/provisiond/etc/imports/
 # is NOT mounted into provisiond (per feedback_named_volume_autopopulate +
 # project_provisiond_seed_split_followup): provisiond reads only from the
 # provisiond_imports named volume, which the init sidecar seeds from
-# provisiond-overlay/etc/imports-seed/ at first boot. Writing to the host bind-mount
+# overlays/provisiond/etc/imports-seed/ at first boot. Writing to the host bind-mount
 # path silently does nothing — tests previously "passed" only because the baked
 # seed file's hardcoded IP (172.18.0.2) happens to match dev-env Docker network
 # defaults. Writing into the container makes the dynamic IP injection actually take
@@ -246,8 +246,8 @@ ok "Requisition written into container at ${CANARY_REQ_IN_CONTAINER}"
 # Update provisiond-configuration.xml to auto-import this foreign source.
 # If an existing config has other requisition-defs (e.g., delta-v, mhuot-labs),
 # we need to append ours without destroying theirs.
-PROV_CONFIG="provisiond-overlay/etc/provisiond-configuration.xml"
-mkdir -p provisiond-overlay/etc
+PROV_CONFIG="overlays/provisiond/etc/provisiond-configuration.xml"
+mkdir -p overlays/provisiond/etc
 PROVISIOND_NEEDS_RESTART=false
 if [ ! -f "$PROV_CONFIG" ]; then
     log "  Writing new provisiond-configuration.xml with ${FOREIGN_SOURCE} import"

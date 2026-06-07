@@ -30,7 +30,7 @@
 #     because provisiond has NO host-port mapping in docker-compose.yml.
 #   - Kafka consumer calls go through docker compose exec -T kafka with
 #     bootstrap-server localhost:9092 (internal Docker network address).
-#   - REST provisioning is file-based (write to provisiond-overlay/etc/imports/)
+#   - REST provisioning is file-based (write to overlays/provisiond/etc/imports/)
 #     rather than via horizon-core REST, because horizon-core is not
 #     included in the lite profile.
 #
@@ -44,9 +44,9 @@ STACK_READY_TIMEOUT="${STACK_READY_TIMEOUT:-180}"
 TOPIC_TIMEOUT="${TOPIC_TIMEOUT:-60}"
 METRICS_TIMEOUT="${METRICS_TIMEOUT:-180}"
 E2E_FOREIGN_SOURCE="node-context-e2e"
-E2E_REQUISITION_FILE="provisiond-overlay/etc/imports/${E2E_FOREIGN_SOURCE}.xml"
+E2E_REQUISITION_FILE="overlays/provisiond/etc/imports/${E2E_FOREIGN_SOURCE}.xml"
 
-PROVISIOND_CONFIG="provisiond-overlay/etc/provisiond-configuration.xml"
+PROVISIOND_CONFIG="overlays/provisiond/etc/provisiond-configuration.xml"
 PROVISIOND_CONFIG_BACKUP="$(mktemp -t provisiond-config.XXXXXX.xml)"
 
 cleanup() {
@@ -109,14 +109,14 @@ fi
 echo "==> bootstrap runner executed — lifecycle wiring verified"
 
 # ── Step 3: Inject E2E requisition and assert change records ──────────────────
-# Write a new requisition XML into provisiond-overlay/etc/imports/ so that
+# Write a new requisition XML into overlays/provisiond/etc/imports/ so that
 # provisiond picks it up on the next cron tick (or a manual import trigger).
 # Provisiond is configured to scan that directory; IMPORT_SUCCESSFUL_UEI fires
 # after each successful import and the NodeContextChangeFeedListener fan-out
 # enqueues every node in the foreignSource for a "change" publish.
 
 echo "==> Writing E2E requisition ${E2E_FOREIGN_SOURCE}"
-mkdir -p provisiond-overlay/etc/imports
+mkdir -p overlays/provisiond/etc/imports
 cat > "${E2E_REQUISITION_FILE}" <<'REQEOF'
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import"
               date-stamp="2026-04-16T00:00:00.000-05:00"

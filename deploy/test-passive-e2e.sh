@@ -286,15 +286,15 @@ REQEOF
 
     # Write files to the host directories mounted into the Provisiond container.
     # docker-compose mounts:
-    #   ./provisiond-overlay/etc → /opt/deltav/etc (general config)
+    #   ./overlays/provisiond/etc → /opt/deltav/etc (general config)
     # NOTE: On macOS Docker Desktop, the parent mount shadows the child.
-    # Write to provisiond-overlay/etc/imports/ (the path the container actually sees).
-    mkdir -p provisiond-overlay/etc/foreign-sources provisiond-overlay/etc/imports
-    cp "$TEST_TMPDIR/cloud-services-fs.xml" "provisiond-overlay/etc/foreign-sources/${FOREIGN_SOURCE}.xml"
-    cp "$TEST_TMPDIR/cloud-services-req.xml" "provisiond-overlay/etc/imports/${FOREIGN_SOURCE}.xml"
+    # Write to overlays/provisiond/etc/imports/ (the path the container actually sees).
+    mkdir -p overlays/provisiond/etc/foreign-sources overlays/provisiond/etc/imports
+    cp "$TEST_TMPDIR/cloud-services-fs.xml" "overlays/provisiond/etc/foreign-sources/${FOREIGN_SOURCE}.xml"
+    cp "$TEST_TMPDIR/cloud-services-req.xml" "overlays/provisiond/etc/imports/${FOREIGN_SOURCE}.xml"
 
     # Add a requisition-def so Provisiond auto-imports the requisition on startup
-    cat > provisiond-overlay/etc/provisiond-configuration.xml <<PROVEOF
+    cat > overlays/provisiond/etc/provisiond-configuration.xml <<PROVEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <provisiond-configuration xmlns="http://xmlns.opennms.org/xsd/config/provisiond-configuration"
   foreign-source-dir="/opt/deltav/etc/foreign-sources"

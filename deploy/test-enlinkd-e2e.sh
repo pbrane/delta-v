@@ -83,7 +83,7 @@ ok()   { echo "  [PASS] $*"; PASS=$((PASS + 1)); }
 fail() { echo "  [FAIL] $*"; FAIL=$((FAIL + 1)); }
 err()  { echo "ERROR: $*" >&2; exit 2; }
 
-PROVISIOND_CONFIG="provisiond-overlay/etc/provisiond-configuration.xml"
+PROVISIOND_CONFIG="overlays/provisiond/etc/provisiond-configuration.xml"
 PROVISIOND_CONFIG_BACKUP="$(mktemp -t enlinkd-provisiond-config.XXXXXX.xml)"
 
 cleanup() {
@@ -253,13 +253,13 @@ log "Phase 0: Ensuring provisioning configuration..."
 
 PROVISIOND_NEEDS_RESTART=false
 
-# ── Requisition: provisiond-overlay/etc/imports/mhuot-labs.xml ──
-# NOTE: The container sees provisiond-overlay/etc/imports/ (not etc/imports/).
+# ── Requisition: overlays/provisiond/etc/imports/mhuot-labs.xml ──
+# NOTE: The container sees overlays/provisiond/etc/imports/ (not etc/imports/).
 # On macOS Docker Desktop the parent bind mount shadows the child.
-mkdir -p provisiond-overlay/etc/imports
-if [ ! -f "provisiond-overlay/etc/imports/mhuot-labs.xml" ]; then
-    log "  Creating requisition: provisiond-overlay/etc/imports/mhuot-labs.xml"
-    cat > "provisiond-overlay/etc/imports/mhuot-labs.xml" <<'REQEOF'
+mkdir -p overlays/provisiond/etc/imports
+if [ ! -f "overlays/provisiond/etc/imports/mhuot-labs.xml" ]; then
+    log "  Creating requisition: overlays/provisiond/etc/imports/mhuot-labs.xml"
+    cat > "overlays/provisiond/etc/imports/mhuot-labs.xml" <<'REQEOF'
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import"
               date-stamp="2026-03-23T00:00:00.000-07:00"
               foreign-source="mhuot-labs">
@@ -301,11 +301,11 @@ else
     ok "Requisition already exists"
 fi
 
-# ── Foreign source: provisiond-overlay/etc/foreign-sources/mhuot-labs.xml ──
-mkdir -p provisiond-overlay/etc/foreign-sources
-if [ ! -f "provisiond-overlay/etc/foreign-sources/mhuot-labs.xml" ]; then
+# ── Foreign source: overlays/provisiond/etc/foreign-sources/mhuot-labs.xml ──
+mkdir -p overlays/provisiond/etc/foreign-sources
+if [ ! -f "overlays/provisiond/etc/foreign-sources/mhuot-labs.xml" ]; then
     log "  Creating foreign source: mhuot-labs.xml (ICMP + SNMP detectors only)"
-    cat > "provisiond-overlay/etc/foreign-sources/mhuot-labs.xml" <<'FSEOF'
+    cat > "overlays/provisiond/etc/foreign-sources/mhuot-labs.xml" <<'FSEOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <foreign-source xmlns="http://xmlns.opennms.org/xsd/config/foreign-source" name="mhuot-labs">
     <scan-interval>1d</scan-interval>
@@ -322,7 +322,7 @@ else
     ok "Foreign source already exists"
 fi
 
-# ── Provisiond config: provisiond-overlay/etc/provisiond-configuration.xml ──
+# ── Provisiond config: overlays/provisiond/etc/provisiond-configuration.xml ──
 # Ensure the mhuot-labs requisition-def is an *active* (uncommented) entry.
 # The committed config has mhuot-labs wrapped in an XML comment block because
 # the real lab devices at 172.20.20.x require VPN connectivity that most
