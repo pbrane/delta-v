@@ -26,14 +26,31 @@ mkdir -p ~/delta-v-smoke && cd ~/delta-v-smoke
 GIT_REF=v1.3.0-rc10
 IMG_TAG=1.3.0-rc10
 
+# dns-lab: also start the CoreDNS 'dns-lab' profile and point the flow-enricher at
+# it (DELTAV_FLOWS_DNS_NAMESERVERS=172.18.0.53). It synthesizes a PTR for any 10/8
+# query, so nl6's synthetic 10/8 flow IPs reverse-resolve to nl6-host-*.lab and
+# show as hostnames (not bare IPs) in the flows dashboards. Set to false for a
+# pure release-validation run (the published compose already carries the wiring;
+# this just toggles the profile + nameserver).
+DNS_LAB=true
+
 BASE=https://raw.githubusercontent.com/pbrane/delta-v/$GIT_REF/deploy
 
 curl -OL $BASE/docker-compose.yml
 curl -OL $BASE/docker-compose.dev.yml
 
+# Profile set + the one extra .env line the dns-lab path needs.
+PROFILES="--profile demo"
+DNS_NS_LINE=""
+if [ "$DNS_LAB" = "true" ]; then
+    PROFILES="$PROFILES --profile dns-lab"
+    DNS_NS_LINE="DELTAV_FLOWS_DNS_NAMESERVERS=172.18.0.53"
+fi
+
 cat > .env <<EOF
 IMAGE_PREFIX=ghcr.io/pbrane
 VERSION=$IMG_TAG
+$DNS_NS_LINE
 EOF
 
 # 'demo' profile (rc3+) = full daemon stack + the whole observability pipeline
@@ -41,9 +58,9 @@ EOF
 #  alerts-forwarder) + the Track 3 alarms-materializer — one token replaces the
 # old '--profile full --profile metrics'. docker-compose.dev.yml keeps the lean
 # JVM sizing for the resource-constrained VM (raw compose doesn't auto-layer it
-# the way 'make up PROFILE=demo' does).
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo pull
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile demo up -d
+# the way 'make up PROFILE=demo' does). $PROFILES also adds dns-lab when DNS_LAB=true.
+docker compose -f docker-compose.yml -f docker-compose.dev.yml $PROFILES pull
+docker compose -f docker-compose.yml -f docker-compose.dev.yml $PROFILES up -d
 
 # --- Print all browser-accessible URLs ---
 HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
@@ -82,3 +99,11 @@ cat <<EOF
  Tip: 'docker compose ps' to watch health; Grafana takes ~30-60s to come up.
 ==============================================================
 EOF
+
+if [ "$DNS_LAB" = "true" ]; then
+cat <<EOF
+ dns-lab: ON — flow-enricher resolves nl6's 10/8 flow IPs via CoreDNS @172.18.0.53.
+   In Grafana flows dashboards, src/dst should show nl6-host-10-<b>-<c>-<d>.lab
+   hostnames (give the enricher a minute to warm its cache + the MVs to roll up).
+EOF
+fi
