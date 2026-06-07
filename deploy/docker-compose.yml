@@ -149,7 +149,7 @@ services:
     devices:
       - /dev/net/tun
     # Start with no devices; the provisioner POSTs the 29-device mix from
-    # ./nl6/devices.json after this service is healthy.
+    # components/nl6/devices.json after this service is healthy.
     #
     # NAMESPACE MODE (default; -no-namespace is intentionally NOT set) is
     # required for true per-device flow exporter attribution. nl6 builds an
@@ -165,7 +165,7 @@ services:
     #
     # COLLECTOR = the veth host end 10.254.0.1, where minion-lab (which shares
     # this root netns via network_mode: container:delta-v-nl6) listens on
-    # :4729/:1162/:1514. The per-device collectors in ./nl6/devices.json
+    # :4729/:1162/:1514. The per-device collectors in components/nl6/devices.json
     # (flow 10.254.0.1:4729, trap :1162, syslog :1514) OVERRIDE the CLI
     # -flow-collector below, so devices.json is the source of truth; the CLI
     # value only covers nl6's own auto-start devices (none here) and must

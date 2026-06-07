@@ -10,5 +10,5 @@ LABEL org.opencontainers.image.title="Delta-V nl6 Provisioner" \
 
 RUN apk add --no-cache curl jq
 
-COPY nl6/ /seed/
+COPY devices.json fleet.sh README-flow-exporter-attribution.md /seed/
 RUN chmod +x /seed/fleet.sh

@@ -283,7 +283,7 @@ do_provisiond_imports_init_image() {
 
 do_nl6_provisioner_image() {
     log "Building ${IMAGE_PREFIX}/nl6-provisioner:$VERSION..."
-    cd "$DEPLOY_DIR"
+    cd "$COMPONENTS_DIR/nl6"
     build_image nl6-provisioner -f Dockerfile.nl6-provisioner .
 }
 
