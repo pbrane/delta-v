@@ -27,7 +27,7 @@
 # Port / URL conventions (matched from test-timeseries-e2e.sh and
 # test-collectd-e2e.sh):
 #   - All actuator calls go through docker compose exec -T <service>
-#     because provisiond has NO host-port mapping in docker-compose.yml.
+#     because provisiond has NO host-port mapping in compose.yml.
 #   - Kafka consumer calls go through docker compose exec -T kafka with
 #     bootstrap-server localhost:9092 (internal Docker network address).
 #   - REST provisioning is file-based (write to overlays/provisiond/etc/imports/)

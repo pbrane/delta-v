@@ -36,8 +36,8 @@ DNS_LAB=true
 
 BASE=https://raw.githubusercontent.com/pbrane/delta-v/$GIT_REF/deploy
 
-curl -OL $BASE/docker-compose.yml
-curl -OL $BASE/docker-compose.dev.yml
+curl -OL $BASE/compose.yml
+curl -OL $BASE/compose.override.dev.yml
 
 # Profile set + the one extra .env line the dns-lab path needs.
 PROFILES="--profile demo"
@@ -56,11 +56,11 @@ EOF
 # 'demo' profile (rc3+) = full daemon stack + the whole observability pipeline
 # (victoriametrics, vmagent, prometheus-writer, grafana, alertmanager,
 #  alerts-forwarder) + the Track 3 alarms-materializer — one token replaces the
-# old '--profile full --profile metrics'. docker-compose.dev.yml keeps the lean
+# old '--profile full --profile metrics'. compose.override.dev.yml keeps the lean
 # JVM sizing for the resource-constrained VM (raw compose doesn't auto-layer it
 # the way 'make up PROFILE=demo' does). $PROFILES also adds dns-lab when DNS_LAB=true.
-docker compose -f docker-compose.yml -f docker-compose.dev.yml $PROFILES pull
-docker compose -f docker-compose.yml -f docker-compose.dev.yml $PROFILES up -d
+docker compose -f compose.yml -f compose.override.dev.yml $PROFILES pull
+docker compose -f compose.yml -f compose.override.dev.yml $PROFILES up -d
 
 # --- Print all browser-accessible URLs ---
 HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"

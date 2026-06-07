@@ -1,7 +1,7 @@
 ---
 # Dev/test JVM override for Delta-V.
 #
-# Applied on top of docker-compose.yml for resource-constrained lab VMs.
+# Applied on top of compose.yml for resource-constrained lab VMs.
 # Trims heap/metaspace/thread-stack allocations per daemon based on empirical
 # usage observed in the v1.2.0-alpha2 clean-VM smoke test (28 nodes, lab scale):
 #
@@ -35,11 +35,11 @@
 #   docker compose --profile metrics up -d
 #
 #   # Lean for lab VM:
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile metrics up -d
+#   docker compose -f compose.yml -f compose.override.dev.yml --profile metrics up -d
 #
 # Because docker-compose merges env-var keys by replacement (not concatenation),
 # each daemon's JAVA_OPTS below must restate the -D system properties from
-# docker-compose.yml verbatim. If a new -D property is added to the base file
+# compose.yml verbatim. If a new -D property is added to the base file
 # for an overridden daemon, mirror it here.
 
 services:

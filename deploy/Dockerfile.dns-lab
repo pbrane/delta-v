@@ -1,7 +1,7 @@
 # Delta-V dns-lab image — CoreDNS with a baked Corefile that synthesizes PTR
 # records for the nl6 simulator's 10/8 flow IPs (and forwards everything else
 # upstream). Baked (not bind-mounted) so it works in the no-clone smoke-VM path
-# (curl docker-compose.yml; docker compose up) exactly like clickhouse-init/grafana.
+# (curl compose.yml; docker compose up) exactly like clickhouse-init/grafana.
 #
 # Test-only. Activate via the `dns-lab` compose profile + point the flow-enricher
 # at it with DELTAV_FLOWS_DNS_NAMESERVERS=172.18.0.53.

@@ -2,7 +2,7 @@
 <!--
   Smoke baseline requisition for perspective monitoring. One node pointing
   at nl6's HTTP API at its static Docker network IP (172.18.0.30,
-  pinned in docker-compose.yml). Both Minions can reach this target:
+  pinned in compose.yml). Both Minions can reach this target:
     - Default: routes via Docker bridge to 172.18.0.30
     - nl6-lab: shares netns with nl6, so the IP is local
   Uses the HTTP-8080 service (predefined in poller-configuration.xml) which
