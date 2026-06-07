@@ -140,7 +140,7 @@
         {
           "refId": "A",
           "rawSql": "SELECT $__timeInterval(timestamp) AS time, location, sum(num_bytes) * 8 / ($__interval_ms / 1000) AS bps FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY time, location ORDER BY time",
-          "format": 1
+          "format": 0
         }
       ],
       "transformations": [
@@ -345,7 +345,7 @@
         {
           "refId": "A",
           "rawSql": "SELECT $__timeInterval(timestamp) AS time, concat(exporter_node_foreign_source, '/', exporter_node_foreign_id) AS exporter, count() / ($__interval_ms / 1000) AS flows_per_sec FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND match(location, '${monitoring_location:regex}') AND match(concat(exporter_node_foreign_source, '/', exporter_node_foreign_id), '${exporter_instance:regex}') AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) GROUP BY time, exporter ORDER BY time",
-          "format": 1
+          "format": 0
         }
       ]
     },
