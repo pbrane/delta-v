@@ -337,7 +337,15 @@
               "url": "/d/flows-forensic?var-exporter_instance=${__series.name}&${monitoring_location:queryparam}&var-l4_protocol=$__all&var-src_address=$__all&var-dst_address=$__all&var-src_port=$__all&var-dst_port=$__all&from=${__from}&to=${__to}",
               "targetBlank": false
             }
-          ]
+          ],
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 40,
+            "stacking": {
+              "mode": "normal"
+            },
+            "showPoints": "never"
+          }
         },
         "overrides": []
       },
