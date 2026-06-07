@@ -203,7 +203,7 @@
     {
       "id": 2,
       "type": "table",
-      "title": "Top applications by bandwidth",
+      "title": "Top ${topN} applications by bandwidth",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -288,7 +288,7 @@
     {
       "id": 3,
       "type": "table",
-      "title": "Top conversations",
+      "title": "Top ${topN} conversations",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -497,7 +497,7 @@
     {
       "id": 7,
       "type": "table",
-      "title": "Top interfaces by traffic",
+      "title": "Top ${topN} interfaces by traffic",
       "gridPos": {
         "h": 8,
         "w": 24,
