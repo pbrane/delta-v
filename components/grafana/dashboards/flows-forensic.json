@@ -323,7 +323,7 @@
     {
       "id": 2,
       "type": "table",
-      "title": "Top source IPs",
+      "title": "Top ${topN} source IPs",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -394,7 +394,7 @@
     {
       "id": 3,
       "type": "table",
-      "title": "Top destination IPs",
+      "title": "Top ${topN} destination IPs",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -465,7 +465,7 @@
     {
       "id": 4,
       "type": "table",
-      "title": "Top conversations",
+      "title": "Top ${topN} conversations",
       "gridPos": {
         "h": 8,
         "w": 12,
