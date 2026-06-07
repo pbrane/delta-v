@@ -100,13 +100,13 @@ auth.json
 .superpowers/
 
 # Runtime provisiond imports directory. The committed source of truth lives
-# under provisiond-overlay/etc/imports-seed/ and is copied into a Docker
+# under overlays/provisiond/etc/imports-seed/ and is copied into a Docker
 # named volume on first start by the provisiond-imports-init sidecar. The
 # directory itself must exist on the host (Docker cannot create a mountpoint
 # under an RO bind mount), hence the .gitkeep; anything else that appears
 # here is runtime drift and must not be committed.
-deploy/provisiond-overlay/etc/imports/*
-!deploy/provisiond-overlay/etc/imports/.gitkeep
+deploy/overlays/provisiond/etc/imports/*
+!deploy/overlays/provisiond/etc/imports/.gitkeep
 
 # C4 diagram export tooling (npm deps)
 docs/architecture/c4/scripts/node_modules/

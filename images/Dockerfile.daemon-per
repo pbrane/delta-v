@@ -30,6 +30,6 @@ COPY staging/${DAEMON_NAME}/app/ /opt/app/
 # guarantees mutable subpaths like provisiond's `foreign-sources/pending/`
 # are writable to the runtime user (previously handled by the
 # provisiond-imports-init sidecar with a uid:100:101 host-path chown).
-COPY --chown=opennms:opennms ${DAEMON_NAME}-overlay/etc /opt/deltav/etc
+COPY --chown=opennms:opennms overlays/${DAEMON_NAME}/etc /opt/deltav/etc
 
 ENTRYPOINT ["/opt/entrypoint.sh"]

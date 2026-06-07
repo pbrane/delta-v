@@ -115,7 +115,7 @@ services:
     container_name: delta-v-snmp-agent
     hostname: snmp-agent
     # Pinned IP so the rpc-canary requisition can target a stable address.
-    # The requisition (provisiond-overlay/etc/imports-seed/rpc-canary.xml)
+    # The requisition (overlays/provisiond/etc/imports-seed/rpc-canary.xml)
     # hard-codes 172.18.0.2; before the ip_range was added this service
     # happened to receive .0.2 from the dynamic allocator, but ip_range now
     # confines dynamic allocation to 172.18.1.0/24, so it must be pinned.
@@ -1188,7 +1188,7 @@ volumes:
   clickhouse-data:
   grafanadata:
   # Holds provisiond's requisition XML at /opt/deltav/etc/imports/. The
-  # provisiond-imports-init sidecar copies provisiond-overlay/etc/imports-seed/
+  # provisiond-imports-init sidecar copies overlays/provisiond/etc/imports-seed/
   # into this volume on first start; subsequent mutations (last-import
   # timestamps, runtime edits) persist here across container restarts
   # without touching the host working tree.
