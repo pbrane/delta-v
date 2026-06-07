@@ -7,7 +7,7 @@ LABEL org.opencontainers.image.description="Spring Boot 4 Minion - SNMP/ICMP pro
 # ICMP proxy requires NET_RAW capability. On Alpine/musl, setcap on the Java
 # binary breaks libjli.so resolution (musl ignores LD_LIBRARY_PATH for
 # capability-enhanced binaries). Instead, grant NET_RAW via Docker's
-# --cap-add=NET_RAW in docker-compose.yml.
+# --cap-add=NET_RAW in compose.yml.
 USER root
 
 RUN addgroup -g 10001 minion && \

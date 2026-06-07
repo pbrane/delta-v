@@ -53,9 +53,9 @@ fi
 # 5. Pre-up image completeness (only meaningful if VERSION known)
 if [ -n "$V" ]; then
     P=$(grep -m1 '^IMAGE_PREFIX=' "$ENV_FILE" | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d ' \t\r'); P="${P:-deltav}"
-    COMPOSE="$DEPLOY_DIR/docker-compose.yml"
+    COMPOSE="$DEPLOY_DIR/compose.yml"
     if [ ! -f "$COMPOSE" ]; then
-        warn "docker-compose.yml not found at $COMPOSE; skipping image check"
+        warn "compose.yml not found at $COMPOSE; skipping image check"
     else
         missing=0
         for img in $(grep -oE '/[a-z0-9-]+:\$\{VERSION\}' "$COMPOSE" | sed 's#^/##; s#:.*##' | sort -u); do

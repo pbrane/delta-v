@@ -387,7 +387,7 @@ do_deltav_images() {
     # --- Build db-init (one-shot PostgreSQL schema migration) ---
     # db-init is a small standalone image used once at stack startup to
     # run Liquibase against postgres. Included in `./build.sh deltav`
-    # so a single command produces every image docker-compose.yml
+    # so a single command produces every image compose.yml
     # references. Otherwise a freshly-cloned workspace would fail its
     # first deploy with "pull access denied for deltav/db-init".
     do_db_init_image
@@ -439,7 +439,7 @@ do_deltav_images() {
     do_perspective_app_init_image
 
     # --- Auxiliary images (no Maven; previously only built in CI) ---
-    # These complete the set docker-compose.yml references so a single
+    # These complete the set compose.yml references so a single
     # `make images` yields a deployable stack with no missing-image pulls.
     do_clickhouse_image
     do_clickhouse_init_image

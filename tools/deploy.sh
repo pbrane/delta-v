@@ -44,14 +44,14 @@ do_up() {
     local profile="${1:-}"
 
     # The 'demo' profile mirrors the smoke-VM orchestration: full stack +
-    # observability, with the lean JVM override (docker-compose.dev.yml) layered
+    # observability, with the lean JVM override (compose.override.dev.yml) layered
     # on top — sizing heaps/GC/thread-stacks for resource-constrained lab/demo
     # hosts. Other profiles keep the production-shaped JVM defaults.
     local -a compose_files
-    compose_files=(-f docker-compose.yml)
+    compose_files=(-f compose.yml)
     if [ "$profile" = "demo" ]; then
-        compose_files+=(-f docker-compose.dev.yml)
-        log "Demo: layering lean JVM override (docker-compose.dev.yml)"
+        compose_files+=(-f compose.override.dev.yml)
+        log "Demo: layering lean JVM override (compose.override.dev.yml)"
     fi
 
     if [ -n "$profile" ]; then

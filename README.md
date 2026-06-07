@@ -241,7 +241,7 @@ tools/build.sh deltav     # Build Delta-V layered images (daemon-base + 12 per-d
 
 **Next release: v1.2.0** — "Delta-V runs well on Kubernetes." Four parallel tracks:
 
-- **Container hygiene** — self-contained images (eliminate the remaining bind mounts in `docker-compose.yml` so consumers don't need a git clone). [Design](docs/plans/2026-04-22-v1.2.0-self-contained-images-design.md).
+- **Container hygiene** — self-contained images (eliminate the remaining bind mounts in `compose.yml` so consumers don't need a git clone). [Design](docs/plans/2026-04-22-v1.2.0-self-contained-images-design.md).
 - **Transport modernization** — Minion Kafka IPC → gRPC via Spring Cloud Gateway (lower latency, lighter dependency, same Gateway will front any future static UI). [Design](docs/plans/2026-04-22-v1.2.0-minion-grpc-migration-design.md).
 - **Operational observability** — Micrometer domain metrics across all 12 daemons so a future K8s operator can autoscale on application-aware signals (backlog depth, throughput, operation latency) instead of CPU/memory. [Design](docs/plans/2026-04-23-v1.2.0-app-observability-design.md).
 - **Historical observability** — Pollerd + PerspectivePollerd publish per-poll response-time samples to the `deltav-timeseries` Kafka topic so service latency lands in VictoriaMetrics alongside SNMP metrics (Kafka Time Series Phase 3). [Design](docs/plans/2026-04-23-v1.2.0-pollerd-timeseries-design.md).

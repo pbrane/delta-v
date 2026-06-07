@@ -405,7 +405,7 @@ else
     show_diagnostics
     log ""
     log "Hint: If outages are for SNMP, verify mock-snmp-agent responds on UDP/161"
-    log "      If outages are for ICMP, verify Minion has NET_RAW capability (docker-compose.yml minion.cap_add)"
+    log "      If outages are for ICMP, verify Minion has NET_RAW capability (compose.yml minion.cap_add)"
     log ""
     log "Results: $PASS passed, $FAIL failed"
     exit 1

@@ -5,7 +5,7 @@
 #
 # Environment variables:
 #   MAIN_CLASS           — baked into image at build time (from MANIFEST.MF Start-Class)
-#   JAVA_OPTS            — JVM options (set in docker-compose.yml per daemon)
+#   JAVA_OPTS            — JVM options (set in compose.yml per daemon)
 #   OPENNMS_INSTANCE_ID  — Kafka RPC/Twin topic prefix (default: DeltaV)
 #
 if [ -z "$MAIN_CLASS" ]; then
