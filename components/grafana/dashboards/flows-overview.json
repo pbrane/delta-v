@@ -309,7 +309,7 @@
       "targets": [
         {
           "refId": "A",
-          "rawSql": "SELECT IPv6NumToString(src_address) AS \"Source\", IPv6NumToString(dst_address) AS \"Destination\", application AS \"Application\", sum(num_bytes) AS \"Bytes\", sum(num_packets) AS \"Packets\", count() AS \"Flow records\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY src_address, dst_address, application ORDER BY \"Bytes\" DESC LIMIT 20",
+          "rawSql": "SELECT coalesce(nullIf(max(src_hostname), ''), IPv6NumToString(src_address)) AS \"Source\", coalesce(nullIf(max(dst_hostname), ''), IPv6NumToString(dst_address)) AS \"Destination\", application AS \"Application\", sum(num_bytes) AS \"Bytes\", sum(num_packets) AS \"Packets\", count() AS \"Flow records\" FROM deltav.flows_raw WHERE $__timeFilter(timestamp) AND (match('', '${category:regex}') OR arrayExists(c -> match(c, '${category:regex}'), exporter_node_categories)) AND match(location, '${monitoring_location:regex}') AND match(application, '${application:regex}') GROUP BY src_address, dst_address, application ORDER BY \"Bytes\" DESC LIMIT 20",
           "format": 0
         }
       ]
