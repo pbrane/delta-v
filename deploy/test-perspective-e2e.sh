@@ -145,7 +145,7 @@ show_diagnostics() {
     docker logs delta-v-perspectivepollerd 2>&1 | tail -30 || true
 }
 
-PROVISIOND_CONFIG="${SCRIPT_DIR}/provisiond-overlay/etc/provisiond-configuration.xml"
+PROVISIOND_CONFIG="${SCRIPT_DIR}/overlays/provisiond/etc/provisiond-configuration.xml"
 PROVISIOND_CONFIG_BACKUP="$(mktemp -t perspective-provisiond-config.XXXXXX.xml)"
 
 cleanup() {
@@ -325,8 +325,8 @@ fi
 log ""
 log "Phase 1: Provisioning ${NODE_LABEL} node..."
 
-REQUISITION_FILE="${SCRIPT_DIR}/provisiond-overlay/etc/imports/${FOREIGN_SOURCE}.xml"
-FOREIGN_SOURCE_FILE="${SCRIPT_DIR}/provisiond-overlay/etc/foreign-sources/${FOREIGN_SOURCE}.xml"
+REQUISITION_FILE="${SCRIPT_DIR}/overlays/provisiond/etc/imports/${FOREIGN_SOURCE}.xml"
+FOREIGN_SOURCE_FILE="${SCRIPT_DIR}/overlays/provisiond/etc/foreign-sources/${FOREIGN_SOURCE}.xml"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
 
 # Foreign source with no detectors — node uses only explicitly provisioned services

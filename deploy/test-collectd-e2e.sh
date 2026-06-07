@@ -195,11 +195,11 @@ if [ "${EXISTING_NODES:-0}" -ge "$EXPECTED_NODES" ] && $SKIP_PROVISION; then
 else
     if [ "${EXISTING_NODES:-0}" -lt "$EXPECTED_NODES" ]; then
         # Ensure delta-v requisition config exists
-        # NOTE: Write to provisiond-overlay/etc/imports/ (the path the container sees).
-        mkdir -p provisiond-overlay/etc/imports
-        if [ ! -f "provisiond-overlay/etc/imports/delta-v.xml" ]; then
-            log "  Creating requisition: provisiond-overlay/etc/imports/delta-v.xml"
-            cat > "provisiond-overlay/etc/imports/delta-v.xml" <<'REQEOF'
+        # NOTE: Write to overlays/provisiond/etc/imports/ (the path the container sees).
+        mkdir -p overlays/provisiond/etc/imports
+        if [ ! -f "overlays/provisiond/etc/imports/delta-v.xml" ]; then
+            log "  Creating requisition: overlays/provisiond/etc/imports/delta-v.xml"
+            cat > "overlays/provisiond/etc/imports/delta-v.xml" <<'REQEOF'
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import"
               date-stamp="2026-03-24T00:00:00.000-07:00"
               foreign-source="delta-v">
@@ -214,8 +214,8 @@ REQEOF
         fi
 
         # Add requisition-def so Provisiond auto-imports on startup
-        mkdir -p provisiond-overlay/etc
-        cat > provisiond-overlay/etc/provisiond-configuration.xml <<PROVEOF
+        mkdir -p overlays/provisiond/etc
+        cat > overlays/provisiond/etc/provisiond-configuration.xml <<PROVEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <provisiond-configuration xmlns="http://xmlns.opennms.org/xsd/config/provisiond-configuration"
   foreign-source-dir="/opt/deltav/etc/foreign-sources"
