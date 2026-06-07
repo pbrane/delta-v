@@ -72,7 +72,7 @@ import org.springframework.transaction.PlatformTransactionManager;
                 "deltav.collectd.persister.kafka.fail-fast=true",
                 "spring.main.web-application-type=none",
                 "spring.main.banner-mode=off",
-                // opennms.home wired dynamically to collectd-overlay below
+                // opennms.home wired dynamically to overlays/collectd below
                 "spring.autoconfigure.exclude=" +
                         "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration," +
                         "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration," +
@@ -93,7 +93,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 class CollectdApplicationScanIT {
 
     /**
-     * Point opennms.home at the production collectd-overlay so the
+     * Point opennms.home at the production overlays/collectd so the
      * many filesystem reads in {@link CollectdDaemonConfiguration} (the
      * {@code collectd-configuration.xml}, {@code snmp-config.xml},
      * {@code datacollection-config.xml}, {@code poll-outages.xml} loads plus
@@ -104,9 +104,9 @@ class CollectdApplicationScanIT {
     @DynamicPropertySource
     static void overlayPath(DynamicPropertyRegistry reg) {
         // Module cwd is core/daemon-boot-collectd; overlay is at
-        // deploy/collectd-overlay relative to repo root.
-        Path overlay = Paths.get("..", "..", "deploy",
-                "collectd-overlay").toAbsolutePath().normalize();
+        // deploy/overlays/collectd relative to repo root.
+        Path overlay = Paths.get("..", "..", "deploy", "overlays",
+                "collectd").toAbsolutePath().normalize();
         reg.add("opennms.home", () -> overlay.toString());
     }
 

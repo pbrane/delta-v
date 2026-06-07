@@ -11,4 +11,4 @@ FROM busybox:1.36
 LABEL org.opencontainers.image.title="Delta-V Provisiond Imports Init" \
       org.opencontainers.image.description="Seeds provisiond_imports named volume from baked requisitions"
 
-COPY provisiond-overlay/etc/imports-seed/ /seed/
+COPY overlays/provisiond/etc/imports-seed/ /seed/
