@@ -762,7 +762,9 @@ services:
   # One-shot sidecar that creates the smoke-baseline perspective application
   # (Devices-API-Perspective-App) once provisiond has imported the
   # perspective-smoke requisition. PerspectivePollerd's tracker polls
-  # applications every 5s, so no daemon restart is needed.
+  # applications every 5s, so no daemon restart is needed. This sidecar — and
+  # perspectivepollerd's depends_on gate on it — is demo/smoke-determinism only
+  # (see the note at perspectivepollerd.depends_on); NOT a production/K8s dependency.
   perspective-app-init:
     <<: *no-search-domain
     profiles: [full, demo]
@@ -791,6 +793,12 @@ services:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
+      # DEMO/SMOKE DETERMINISM ONLY — not a runtime requirement. PerspectivePollerd's
+      # PerspectiveServiceTracker polls the applications table every 5s, so it discovers
+      # the seeded Application on its own; this gate just guarantees a known-good
+      # perspective state before the daemon is "up" so smoke results are reproducible.
+      # Do NOT replicate this ordering in K8s/production manifests — start perspectivepollerd
+      # independently and seed the Application out-of-band (operator / REST / a Job).
       perspective-app-init:
         condition: service_completed_successfully
     environment:
