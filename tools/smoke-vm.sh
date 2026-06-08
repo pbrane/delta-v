@@ -23,8 +23,8 @@ docker system prune -a --volumes -f
 rm -rf ~/delta-v-smoke
 mkdir -p ~/delta-v-smoke && cd ~/delta-v-smoke
 
-GIT_REF=v1.3.0-rc10
-IMG_TAG=1.3.0-rc10
+GIT_REF=v1.3.0-rc11
+IMG_TAG=1.3.0-rc11
 
 # dns-lab: also start the CoreDNS 'dns-lab' profile and point the flow-enricher at
 # it (DELTAV_FLOWS_DNS_NAMESERVERS=172.18.0.53). It synthesizes a PTR for any 10/8
