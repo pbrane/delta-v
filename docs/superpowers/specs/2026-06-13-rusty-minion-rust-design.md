@@ -1,4 +1,4 @@
-# Minion++ — Rust Reimplementation of the Delta-V Minion
+# Rusty Minion — Rust Reimplementation of the Delta-V Minion
 
 **Status:** Design (approved for planning)
 **Date:** 2026-06-13
@@ -7,7 +7,7 @@
 
 ## 1. Summary
 
-Minion++ is a ground-up reimplementation of the OpenNMS Delta-V Minion in **Rust**,
+Rusty Minion is a ground-up reimplementation of the OpenNMS Delta-V Minion in **Rust**,
 targeting **new Delta-V deployments only**. It is a production-grade, API-compatible,
 reduced-functionality Minion: it speaks the same logical IPC contract to Core/daemon
 containers but is built on a protobuf-native wire format, a native async runtime, and
@@ -16,7 +16,7 @@ native protocol libraries instead of the JVM + Karaf/OSGi + Spring stack.
 Because there are no legacy Delta-V deployments and no Minions in the field, this design
 takes a **big-bang protobuf cutover**: the IPC contract is redefined as protobuf end to
 end, with **no JAXB/XML compatibility layer on either side**. The existing Java Minion and
-Minion++ both become conforming clients of one shared, versioned `.proto` contract.
+Rusty Minion both become conforming clients of one shared, versioned `.proto` contract.
 
 ## 2. Goals and non-goals
 
@@ -39,7 +39,7 @@ Minion++ both become conforming clients of one shared, versioned `.proto` contra
   Heartbeat / registration
 
 ### Non-goals (explicitly out of scope for v1, but architecturally accommodated)
-- **Minion++ Lite** — a future reduced build for edge/WASM (Cloudflare Worker) deployments,
+- **Rusty Minion Lite** — a future reduced build for edge/WASM (Cloudflare Worker) deployments,
   limited to **PerspectiveMonitoring with HTTPS only**. The Worker sandbox forbids raw
   sockets and UDP binds, so only HTTPS-reachability polling survives there. The core is
   structured so Lite is later a reduced `cargo` feature set plus a `wasm32` target, **not a
@@ -66,7 +66,7 @@ Two findings from the codebase investigation drive the design:
 
 2. **`className` in an RPC request is a dispatch key, not a class to instantiate.** A poll
    request carries `className="org.opennms.netmgt.poller.monitors.IcmpMonitor"`. The Java
-   Minion reflectively instantiates that class; Minion++ instead pattern-matches the string
+   Minion reflectively instantiates that class; Rusty Minion instead pattern-matches the string
    and routes to its own native implementation, returning a contract-compatible response.
    Core never observes the difference.
 
@@ -84,7 +84,7 @@ Relevant Java reference points:
 
 ## 4. Architecture
 
-Minion++ is organized as six layers, each a clean seam. Capability code is unaware of both
+Rusty Minion is organized as six layers, each a clean seam. Capability code is unaware of both
 transport and wire framing.
 
 ```
@@ -213,7 +213,7 @@ is to use **net-snmp via FFI**:
 
 ## 6. Configuration
 
-Karaf/OSGi/Spring previously provided feature wiring and config loading for free; Minion++
+Karaf/OSGi/Spring previously provided feature wiring and config loading for free; Rusty Minion
 rebuilds this. Two config surfaces:
 
 - **Bootstrap config** — transport selection and connection (Kafka brokers or gRPC
@@ -229,16 +229,16 @@ Two tiers:
 - **Tier 1 — golden-message corpus:** captured protobuf bytes for each payload message;
   both the Rust and Java codegen must round-trip them. Runs in unit CI; catches contract
   drift in seconds. Paired with `buf` breaking-change detection on the contract repo.
-- **Tier 2 — end-to-end against a real Java Core:** Minion++ must pass the **existing**
+- **Tier 2 — end-to-end against a real Java Core:** Rusty Minion must pass the **existing**
   acceptance scripts the Java Minion passes — `test-minion-e2e.sh` (trap → Kafka → Trapd →
   EventTranslator → Alarmd → Postgres), `test-syslog-e2e.sh`, and the relevant phases of
-  `test-e2e.sh`. These already encode pass/fail phases for the real wire path, so "Minion++
+  `test-e2e.sh`. These already encode pass/fail phases for the real wire path, so "Rusty Minion
   is done for capability X" means "it passes the same script."
 
 Per-capability unit tests use protocol fixtures (canned SNMP agents, HTTP test servers, DNS
 fixtures) and assert `PollStatus`/`CollectionSet` shape.
 
-The conformance harness is also the entry ticket for any future implementation (Minion++
+The conformance harness is also the entry ticket for any future implementation (Rusty Minion
 Lite, or a C++ experiment): pass Tier 1 plus the applicable subset of the e2e scripts.
 
 ## 8. Phasing
@@ -249,7 +249,7 @@ capability.
 
 - **Phase 0 — Foundation & registration.** Contract repo stood up; Java-side protobuf
   cutover for the payloads in scope; transport skeleton (Kafka + gRPC); identity +
-  heartbeat; Twin subscriber. **Milestone:** Minion++ registers, is visible to Core, and
+  heartbeat; Twin subscriber. **Milestone:** Rusty Minion registers, is visible to Core, and
   receives Twin config. No capabilities yet.
 - **Phase 1 — Listeners (Sink, one-way).** Simplest data path (fire-and-forget). Order:
   **Flows first** (already protobuf, lowest contract risk), then Trap, then Syslog.
@@ -260,7 +260,7 @@ capability.
   via Core.
 - **Phase 3 — Collector (RPC).** SNMP collector, reusing the Phase 2 SNMP client. Includes
   the `CollectionSet` protobuf modeling validated in Phase 0. **Milestone:** Core persists
-  collected SNMP metrics gathered by Minion++.
+  collected SNMP metrics gathered by Rusty Minion.
 
 ## 9. Risks and mitigations
 
@@ -282,5 +282,34 @@ capability.
 - **Contract:** standalone shared `.proto` repository; both Java and Rust generate from it.
 - **Transports:** Kafka IPC and gRPC tunnel, behind one `Transport` trait.
 - **SNMP:** net-snmp via FFI, `unsafe` isolated to `snmp-sys`.
-- **Future tier:** Minion++ Lite (WASM/Cloudflare Worker, PerspectiveMonitoring, HTTPS-only)
+- **Future tier:** Rusty Minion Lite (WASM/Cloudflare Worker, PerspectiveMonitoring, HTTPS-only)
   accommodated as a reduced feature set, not built in v1.
+
+## 11. Planning reconciliation (2026-06-13)
+
+During Phase 0 planning, codebase investigation found that delta-v **already shipped a
+gRPC-native Minion contract and a `minion-gateway` bridge** (the rc2/boot4 migration) that the
+§3/§4.1 reference points (horizon `kafka-rpc.proto`, `OpenNMSIpc`, `twin-message.proto`) predate.
+That existing contract (`core/minion-grpc-contracts`, package `org.deltav.minion.grpc.v1`:
+`HeartbeatService`, `RpcChannelService`, `TwinChannelService`, `TrapService`, `SyslogService`,
+`TelemetryService`) is **envelope-only** — it protobuf-frames the transport but still carries
+horizon's opaque JAXB-XML/JSON payload bytes inside, exactly the porting risk §3 finding #1 names.
+Three decisions resolved (confirmed with the author):
+
+1. **gRPC target:** Rusty Minion implements the existing **delta-v gateway contract**
+   (`org.deltav.minion.grpc.v1`), not horizon's `OpenNMSIpc`. It reuses the envelope services and
+   replaces their opaque `bytes payload` with typed protobuf payloads.
+2. **Transport scope:** **gRPC-to-gateway only** for Phase 0/v1. New remote Minions reach Core
+   through the gateway; the horizon direct-from-Minion Kafka path is not built. The `Transport`
+   trait seam is preserved so Kafka could be added later. (Supersedes "support both transports" in
+   §2/§4.1 for v1.)
+3. **Contract repo:** `opennms-ipc-contract` is seeded by **relocating** the existing
+   `core/minion-grpc-contracts` protos (plus the frozen `deltav-timeseries.proto` as the
+   `CollectionSet` flat model) and adding typed payloads; delta-v Java modules switch to depending
+   on the published contract artifact.
+
+Bonus de-risk: the §4.2 "highest-risk modeling task" (`CollectionSet` → flat protobuf) is already
+solved in-tree by `deltav-timeseries.proto` (frozen at Phase 2 GA); Phase 0 validates against it
+rather than inventing a schema.
+
+Phase 0 plan: `docs/superpowers/plans/2026-06-13-rusty-minion-phase0-foundation.md`.
