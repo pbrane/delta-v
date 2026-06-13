@@ -115,6 +115,11 @@
       <snapshots><enabled>false</enabled></snapshots>
     </repository>
     <repository>
+      <id>github-deltav-ipc-contract</id>
+      <url>https://maven.pkg.github.com/pbrane/opennms-ipc-contract</url>
+      <snapshots><enabled>false</enabled></snapshots>
+    </repository>
+    <repository>
       <id>opennms-repo</id>
       <url>https://maven.opennms.org/repository/everything/</url>
       <snapshots><enabled>false</enabled></snapshots>
