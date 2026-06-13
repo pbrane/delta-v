@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deltav</groupId>
+        <artifactId>delta-v-parent</artifactId>
+        <version>1.3.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <groupId>org.deltav.core</groupId>
+    <artifactId>org.opennms.core.poller-service-catalog</artifactId>
+    <name>OpenNMS :: Core :: Poller Service Catalog</name>
+    <description>Spring-free library for the flat poller service-definition catalog:
+        strict YAML parsing, validation, name resolution, and translation of the
+        catalog into the synthetic JAXB PollerConfiguration the frozen poller engine
+        consumes. Shared by daemon-boot-pollerd and daemon-boot-perspectivepollerd.</description>
+
+    <!-- Deliberately Spring-free (plain Java 21 + Jackson + slf4j-api). Daemon-boot
+         modules do all wiring; the FR9 gauge is registered there, not here. -->
+    <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Test: plain JUnit 5 (no Spring) -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Required by maven-surefire-plugin 3.5.x to discover JUnit Platform 6.x tests. -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

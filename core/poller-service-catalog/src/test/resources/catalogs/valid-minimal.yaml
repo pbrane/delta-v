@@ -1,0 +1,4 @@
+services:
+  - name: ICMP
+    monitor: org.opennms.netmgt.poller.monitors.IcmpMonitor
+    interval: 300000   # 5m
