@@ -84,7 +84,10 @@ class CollectionSetCorpusCaptureTest {
         // Resource (field numbers are wire-identical).
         byte[] bytes = resource.toByteArray();
         Path out = Path.of(System.getProperty("corpus.out"));
-        Files.createDirectories(out.getParent());
+        Path parent = out.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
         Files.write(out, bytes);
 
         System.out.printf(
