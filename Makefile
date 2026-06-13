@@ -49,7 +49,7 @@ TOOLS := tools
 
 export MAVEN_OPTS
 
-.PHONY: help build test test-class daemon clean images daemon-image up down reset status logs verify dev doctor c4-edit c4-export
+.PHONY: help build test test-class daemon lint-catalog clean images daemon-image up down reset status logs verify dev doctor c4-edit c4-export
 
 .DEFAULT_GOAL := help
 
@@ -86,6 +86,13 @@ daemon: ## Rebuild a single daemon boot JAR; set DAEMON=provisiond (etc)
 	  --projects :org.opennms.core.daemon-boot-$(DAEMON) \
 	  --also-make \
 	  install
+
+lint-catalog: ## Lint a poller service catalog; set CATALOG=path/to/poller-services.yaml
+	@test -n "$(CATALOG)" || (echo "ERROR: CATALOG is required, e.g.: make lint-catalog CATALOG=deploy/overlays/pollerd/etc/poller-services.yaml" && exit 1)
+	$(MVN) -B -q -DskipTests \
+	  --projects :org.opennms.core.poller-service-catalog \
+	  compile org.codehaus.mojo:exec-maven-plugin:3.5.0:exec \
+	  '-Dlint.catalog=$(CATALOG)'
 
 clean: ## Remove all build artifacts
 	$(MVN) -B clean

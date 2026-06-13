@@ -22,6 +22,7 @@ import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -92,9 +93,16 @@ public final class CatalogParser {
      * @throws IOException on read failure or malformed/strict-violating YAML
      */
     public Catalog parse(final Reader reader) throws IOException {
+        // readAll may throw a plain IOException (a real read failure); content defects below
+        // surface as CatalogParseException so callers can tell the two failure classes apart.
         final String content = readAll(reader);
         rejectAnchors(content);
-        final Catalog catalog = mapper.readValue(content, Catalog.class);
+        final Catalog catalog;
+        try {
+            catalog = mapper.readValue(content, Catalog.class);
+        } catch (final JsonProcessingException e) {
+            throw new CatalogParseException(e.getMessage(), e);
+        }
         return (catalog == null) ? new Catalog(null) : catalog;
     }
 
@@ -104,7 +112,7 @@ public final class CatalogParser {
      * string fields — a silent mis-parse. To honor the strict contract (no silent middle
      * ground), a catalog using them fails loudly here with a clear message.
      */
-    private static void rejectAnchors(final String yaml) throws IOException {
+    private static void rejectAnchors(final String yaml) throws CatalogParseException {
         try {
             for (final Event event : new Yaml().parse(new StringReader(yaml))) {
                 if (event instanceof AliasEvent) {
@@ -120,8 +128,9 @@ public final class CatalogParser {
         }
     }
 
-    private static IOException unsupportedAnchors() {
-        return new IOException("YAML anchors, aliases, and merge keys (&, *, <<) are not supported in catalogs");
+    private static CatalogParseException unsupportedAnchors() {
+        return new CatalogParseException(
+                "YAML anchors, aliases, and merge keys (&, *, <<) are not supported in catalogs");
     }
 
     private static String readAll(final Reader reader) throws IOException {

@@ -67,4 +67,29 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- `make lint-catalog CATALOG=<file>` -> runs the CatalogLint CLI as a real
+                 subprocess (exec:exec) so its 0/1/2 exit code propagates to the build.
+                 Not bound to any phase; only runs when invoked explicitly. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <executable>java</executable>
+                    <!-- Run from the Maven invocation dir (repo root via `make`), not this
+                         module's dir, so a relative CATALOG path resolves as the user typed it. -->
+                    <workingDirectory>${session.executionRootDirectory}</workingDirectory>
+                    <arguments>
+                        <argument>-classpath</argument>
+                        <classpath/>
+                        <argument>org.deltav.poller.catalog.CatalogLint</argument>
+                        <argument>${lint.catalog}</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
