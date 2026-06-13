@@ -46,6 +46,14 @@
             <version>${deltav.horizon.version}</version>
         </dependency>
 
+        <!-- Test: the REAL frozen poller config layer (PollerConfigFactory/Manager) for the
+             D8 contract ITs — translator output is pinned through the real manager, never mocked. -->
+        <dependency>
+            <groupId>org.opennms.features.poller</groupId>
+            <artifactId>org.opennms.features.poller.config</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Test: plain JUnit 5 (no Spring) -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

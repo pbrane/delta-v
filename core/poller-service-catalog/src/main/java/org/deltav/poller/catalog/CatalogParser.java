@@ -18,6 +18,7 @@ package org.deltav.poller.catalog;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -25,6 +26,11 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.error.YAMLException;
+import org.yaml.snakeyaml.events.AliasEvent;
+import org.yaml.snakeyaml.events.Event;
+import org.yaml.snakeyaml.events.NodeEvent;
 
 /**
  * Strict YAML reader for the flat poller service catalog (FR1 / D1).
@@ -86,7 +92,45 @@ public final class CatalogParser {
      * @throws IOException on read failure or malformed/strict-violating YAML
      */
     public Catalog parse(final Reader reader) throws IOException {
-        final Catalog catalog = mapper.readValue(reader, Catalog.class);
+        final String content = readAll(reader);
+        rejectAnchors(content);
+        final Catalog catalog = mapper.readValue(content, Catalog.class);
         return (catalog == null) ? new Catalog(null) : catalog;
+    }
+
+    /**
+     * Rejects any use of YAML anchors, aliases, or merge keys. jackson-dataformat-yaml does
+     * not resolve these and would silently bind an alias's <em>name</em> as the value on
+     * string fields — a silent mis-parse. To honor the strict contract (no silent middle
+     * ground), a catalog using them fails loudly here with a clear message.
+     */
+    private static void rejectAnchors(final String yaml) throws IOException {
+        try {
+            for (final Event event : new Yaml().parse(new StringReader(yaml))) {
+                if (event instanceof AliasEvent) {
+                    throw unsupportedAnchors();
+                }
+                if (event instanceof NodeEvent nodeEvent && nodeEvent.getAnchor() != null) {
+                    throw unsupportedAnchors();
+                }
+            }
+        } catch (final YAMLException e) {
+            // Let the strict Jackson pass produce the detailed malformed-YAML message.
+            return;
+        }
+    }
+
+    private static IOException unsupportedAnchors() {
+        return new IOException("YAML anchors, aliases, and merge keys (&, *, <<) are not supported in catalogs");
+    }
+
+    private static String readAll(final Reader reader) throws IOException {
+        final StringBuilder sb = new StringBuilder();
+        final char[] buffer = new char[4096];
+        int read;
+        while ((read = reader.read(buffer)) != -1) {
+            sb.append(buffer, 0, read);
+        }
+        return sb.toString();
     }
 }

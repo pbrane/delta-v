@@ -1,0 +1,22 @@
+# D8 anchor-behavior fixture: a scalar anchor, a map alias, and a merge key (<<).
+services:
+  - name: HTTP-8080
+    monitor: org.opennms.netmgt.poller.monitors.HttpMonitor
+    interval: &std-interval 300000
+    parameters: &common-params
+      retry: "2"
+      timeout: "3000"
+
+  # Map alias: reuse the whole parameters map verbatim.
+  - name: HTTPS-8443
+    monitor: org.opennms.netmgt.poller.monitors.HttpsMonitor
+    interval: *std-interval
+    parameters: *common-params
+
+  # Merge key: inherit common params, then add/override one.
+  - name: HTTP-9090
+    monitor: org.opennms.netmgt.poller.monitors.HttpMonitor
+    interval: *std-interval
+    parameters:
+      <<: *common-params
+      banner: "OK"

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -115,7 +116,9 @@ public final class CatalogValidator {
 
     private void checkDuplicateNames(final List<ServiceDefinition> services,
                                      final List<ValidationMessage> out) {
-        final Map<String, List<Integer>> byName = new LinkedHashMap<>();
+        // Case-insensitive: the engine matches service names with equalsIgnoreCase, so names
+        // differing only in case collide on the same synthetic package.
+        final Map<String, List<Integer>> byName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         for (int i = 0; i < services.size(); i++) {
             final String name = services.get(i).name();
             if (!isBlank(name)) {

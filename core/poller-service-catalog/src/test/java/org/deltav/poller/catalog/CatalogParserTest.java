@@ -106,6 +106,33 @@ class CatalogParserTest {
                 "nested-XML block scalar must round-trip as a string, was: " + pageSequence);
     }
 
+    /**
+     * D8 pin: YAML anchors / aliases / merge keys are explicitly rejected (jackson-dataformat-yaml
+     * does not resolve them and would otherwise silently bind an alias's name as the value). The
+     * parser detects them and fails loudly with a clear message — no silent middle ground.
+     */
+    @Test
+    void yamlAnchorsAreRejectedAsUnsupported() throws IOException {
+        final IOException ex = assertThrows(IOException.class, () -> parser.parse(fixture("anchors.yaml")));
+        assertTrue(ex.getMessage().contains("anchors"), ex.getMessage());
+    }
+
+    /** Even an anchor/alias on a String field (which jackson would silently mis-bind) is rejected. */
+    @Test
+    void yamlAnchorOnStringFieldIsRejected() {
+        final String yaml = """
+                services:
+                  - name: ICMP
+                    monitor: &mon org.opennms.netmgt.poller.monitors.IcmpMonitor
+                    interval: 300000
+                  - name: ICMP2
+                    monitor: *mon
+                    interval: 300000
+                """;
+        final IOException ex = assertThrows(IOException.class, () -> parse(yaml));
+        assertTrue(ex.getMessage().contains("anchors"), ex.getMessage());
+    }
+
     private Catalog parse(final String yaml) throws IOException {
         try (Reader reader = new StringReader(yaml)) {
             return parser.parse(reader);

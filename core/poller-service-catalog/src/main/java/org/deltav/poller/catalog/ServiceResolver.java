@@ -17,10 +17,10 @@
 package org.deltav.poller.catalog;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -29,8 +29,9 @@ import java.util.regex.PatternSyntaxException;
  *
  * <p>Precedence: an <em>exact</em> definition (one with no {@code pattern}, matched by name
  * equality) beats any pattern; among multiple matching <em>pattern</em> definitions, the
- * first in file order wins. This mirrors the frozen poller manager's matching so that the
- * FR9 startup check and the translator agree with the engine (resolver parity).
+ * first in file order wins. Exact-name matching is <strong>case-insensitive</strong> to
+ * mirror the frozen manager's {@code equalsIgnoreCase}, so the FR9 startup check and the
+ * translator agree with the engine (resolver parity).
  *
  * <p>Expects a validated catalog. As a defensive measure it skips pattern definitions whose
  * regex does not compile (those are reported as ERRORs by {@link CatalogValidator}); it never
@@ -50,7 +51,8 @@ public final class ServiceResolver {
     private final List<CompiledPattern> patterns; // file order preserved
 
     public ServiceResolver(final Catalog catalog) {
-        this.exactByName = new LinkedHashMap<>();
+        // Case-insensitive to match the frozen manager's equalsIgnoreCase exact matching.
+        this.exactByName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         this.patterns = new ArrayList<>();
         for (final ServiceDefinition def : catalog.services()) {
             if (def.isPattern()) {

@@ -54,6 +54,15 @@ class ServiceResolverTest {
         assertEquals("First", resolver.resolve("HTTP-9090").orElseThrow().name());
     }
 
+    /** Exact matching is case-insensitive, mirroring the frozen manager's equalsIgnoreCase. */
+    @Test
+    void exactMatchIsCaseInsensitive() {
+        final ServiceResolver resolver = new ServiceResolver(new Catalog(List.of(
+                def("HTTP-8080", null, "a.b.HttpMonitor"))));
+        assertEquals("HTTP-8080", resolver.resolve("http-8080").orElseThrow().name());
+        assertEquals("HTTP-8080", resolver.resolve("HTTP-8080").orElseThrow().name());
+    }
+
     /** A name matching nothing resolves to empty (the FR9 unscheduled path). */
     @Test
     void noMatchResolvesEmpty() {
