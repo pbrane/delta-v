@@ -13,43 +13,6 @@
 # Translated from poller-configuration.xml. See docs/audits/2026-06-14-pollerd-catalog-parity-audit.md.
 
 services:
-  - name: JMX-Cassandra
-    monitor: org.opennms.netmgt.poller.monitors.Jsr160Monitor
-    interval: 300000
-    parameters:
-      port: "${requisition:port|detector:port|7199}"
-      retry: "${requisition:poller-retry|requisition:retry|detector:retry|2}"
-      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
-      protocol: "${requisition:protocol|detector:protocol|rmi}"
-      urlPath: "${requisition:urlPath|detector:urlPath|/jmxrmi}"
-      factory: "${requisition:factory|detector:factory|PASSWORD_CLEAR}"
-      username: "${requisition:username|detector:username|cassandra-username}"
-      password: "${requisition:password|detector:password|cassandra-password}"
-      beans.storage: "${requisition:beans.storage|detector:beans.storage|org.apache.cassandra.db:type=StorageService}"
-      tests.operational: "${requisition:tests.operational|detector:tests.operational|storage.OperationMode == 'NORMAL'}"
-      tests.joined: "${requisition:tests.joined|detector:tests.joined|storage.Joined}"
-
-  - name: JMX-Cassandra-Newts
-    monitor: org.opennms.netmgt.poller.monitors.Jsr160Monitor
-    interval: 300000
-    parameters:
-      port: "${requisition:port|detector:port|7199}"
-      retry: "${requisition:poller-retry|requisition:retry|detector:retry|2}"
-      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
-      protocol: "${requisition:protocol|detector:protocol|rmi}"
-      urlPath: "${requisition:urlPath|detector:urlPath|/jmxrmi}"
-      factory: "${requisition:factory|detector:factory|PASSWORD_CLEAR}"
-      username: "${requisition:username|detector:username|cassandra-username}"
-      password: "${requisition:password|detector:password|cassandra-password}"
-      beans.samples: "${requisition:beans.samples|detector:beans.samples|org.apache.cassandra.db:type=ColumnFamilies,keyspace=newts,columnfamily=samples}"
-      tests.samples: "${requisition:tests.samples|detector:tests.samples|samples.ColumnFamilyName == 'samples'}"
-      beans.terms: "${requisition:beans.terms|detector:beans.terms|org.apache.cassandra.db:type=ColumnFamilies,keyspace=newts,columnfamily=terms}"
-      tests.terms: "${requisition:tests.terms|detector:tests.terms|terms.ColumnFamilyName == 'terms'}"
-      beans.resource_attributes: "${requisition:beans.resource_attributes|detector:beans.resource_attributes|org.apache.cassandra.db:type=ColumnFamilies,keyspace=newts,columnfamily=resource_attributes}"
-      tests.resource_attributes: "${requisition:tests.resource_attributes|detector:tests.resource_attributes|resource_attributes.ColumnFamilyName == 'resource_attributes'}"
-      beans.resource_metrics: "${requisition:beans.resource_metrics|detector:beans.resource_metrics|org.apache.cassandra.db:type=ColumnFamilies,keyspace=newts,columnfamily=resource_metrics}"
-      tests.resource_metrics: "${requisition:tests.resource_metrics|detector:tests.resource_metrics|resource_metrics.ColumnFamilyName == 'resource_metrics'}"
-
   - name: ICMP
     monitor: org.opennms.netmgt.poller.monitors.IcmpMonitor
     interval: 300000
@@ -207,27 +170,6 @@ services:
       clock-port: "${requisition:ptp:clockPort|default}"
       port-state: "${requisition:ptp:portState|default}"
 
-  - name: NRPE
-    monitor: org.opennms.netmgt.poller.monitors.NrpeMonitor
-    interval: 300000
-    parameters:
-      retry: "${requisition:poller-retry|requisition:retry|detector:retry|3}"
-      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
-      port: "${requisition:port|detector:port|5666}"
-      command: "${requisition:command|detector:command|_NRPE_CHECK}"
-      padding: "${requisition:padding|detector:padding|2}"
-
-  - name: NRPE-NoSSL
-    monitor: org.opennms.netmgt.poller.monitors.NrpeMonitor
-    interval: 300000
-    parameters:
-      retry: "${requisition:poller-retry|requisition:retry|detector:retry|3}"
-      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
-      port: "${requisition:port|detector:port|5666}"
-      command: "${requisition:command|detector:command|_NRPE_CHECK}"
-      usessl: "${requisition:usessl|detector:usessl|false}"
-      padding: "${requisition:padding|detector:padding|2}"
-
   - name: Windows-Task-Scheduler
     monitor: org.opennms.netmgt.poller.monitors.Win32ServiceMonitor
     interval: 300000
@@ -259,14 +201,6 @@ services:
       banner: "${requisition:banner|detector:banner|*}"
       port: "${requisition:port|detector:port|3389}"
       timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
-
-  - name: ActiveMQ
-    monitor: org.opennms.netmgt.poller.monitors.ActiveMQMonitor
-    interval: 300000
-    parameters:
-      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
-      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
-      brokerURL: "${requisition:brokerURL|detector:brokerURL|tcp://localhost:61616}"
 
   - name: MinaSSH
     monitor: org.opennms.netmgt.poller.monitors.MinaSshMonitor

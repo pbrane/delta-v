@@ -29,23 +29,34 @@ removed from user-facing config):
 `rrd-status` is **kept verbatim** as a parameter — it is not in the documented drop list, so
 preserving it is the zero-delta choice.
 
-## Explained delta (the only non-format change)
+## Explained deltas (service-set changes)
 
 | Service | Action | Justification |
 |---------|--------|---------------|
-| `JMX-Kafka` | **Dropped** | Defined as a `<service>` in the legacy XML but had **no `<monitor>` class-name binding** anywhere in the file. The legacy engine never polls a service with no monitor mapping (registry lookup finds nothing), so it was never actually pollable. The flat format requires `monitor`; dropping the orphan preserves runtime behavior exactly (no service stops or starts polling). Confirmed orphan: `JMX-Kafka` appears only at `poller-configuration.xml:222`. |
+| `JMX-Kafka` | **Dropped (orphan)** | Defined as a `<service>` in the legacy XML but had **no `<monitor>` class-name binding** anywhere in the file. The legacy engine never polls a service with no monitor mapping (registry lookup finds nothing), so it was never actually pollable. The flat format requires `monitor`; dropping the orphan preserves runtime behavior exactly. Confirmed orphan: `JMX-Kafka` appears only at `poller-configuration.xml:222`. |
+| `JMX-Cassandra` | **Removed (deprecated)** | JMX/Cassandra monitoring is deprecated and out of scope for delta-v. (Also: `Jsr160Monitor` is not in delta-v's supported `LocalServiceMonitorRegistry`, so it could only false-DOWN.) |
+| `JMX-Cassandra-Newts` | **Removed (deprecated)** | Same as JMX-Cassandra — deprecated, doesn't matter for delta-v. |
+| `ActiveMQ` | **Removed (out of scope)** | delta-v is built entirely on Kafka; ActiveMQ is explicitly not a focus. (Also: `ActiveMQMonitor` is unsupported by the registry.) |
+| `NRPE` | **Removed (deprecated)** | NRPE is deprecated and not actively maintained. (Also: `NrpeMonitor` is unsupported by the registry.) |
+| `NRPE-NoSSL` | **Removed (deprecated)** | Same as NRPE — deprecated/unmaintained. |
 
-This is the **only** service-set difference. It removes nothing that was running.
+`JMX-Kafka` was never pollable, so dropping it is pure parity. The other five are a **deliberate
+deviation from format-only parity (NFR7)**, removed on product grounds (deprecated / out of
+delta-v's Kafka-first scope) and reinforced by the fact that their monitor classes aren't in the
+supported registry (they could only ever false-DOWN). Other still-unsupported types (SMTP, FTP,
+IMAP, POP3, PTP, Windows-Task-Scheduler, VMware*) are retained for now and surfaced by the FR9
+`deltav_pollerd_services_unscheduled` gauge — see `deferred-work.md`.
 
 ## Service-set & interval parity
 
-38 services in the legacy XML → 37 in the catalog (JMX-Kafka dropped). All intervals
-unchanged. `pattern` carried over for the one dynamic family (PTP).
+38 services in the legacy XML → 32 in the catalog (JMX-Kafka orphan + 5 intentional removals
+for unsupported monitors — see above). All retained intervals unchanged. `pattern` carried over
+for the one dynamic family (PTP).
 
 | Service | Monitor | Interval (ms) | Pattern | Notes |
 |---------|---------|---------------|---------|-------|
-| JMX-Cassandra | Jsr160Monitor | 300000 | — | |
-| JMX-Cassandra-Newts | Jsr160Monitor | 300000 | — | |
+| ~~JMX-Cassandra~~ | Jsr160Monitor | 300000 | — | **removed — deprecated / out of scope** |
+| ~~JMX-Cassandra-Newts~~ | Jsr160Monitor | 300000 | — | **removed — deprecated / out of scope** |
 | ICMP | IcmpMonitor | 300000 | — | |
 | DNS | DnsMonitor | 300000 | — | |
 | Elasticsearch | HttpMonitor | 300000 | — | |
@@ -64,14 +75,14 @@ unchanged. `pattern` carried over for the one dynamic family (PTP).
 | IMAP | ImapMonitor | 300000 | — | |
 | POP3 | Pop3Monitor | 300000 | — | |
 | PTP | PtpMonitor | 300000 | `^PTP-.*$` | dynamic family preserved as `pattern:` |
-| NRPE | NrpeMonitor | 300000 | — | |
-| NRPE-NoSSL | NrpeMonitor | 300000 | — | |
+| ~~NRPE~~ | NrpeMonitor | 300000 | — | **removed — deprecated / out of scope** |
+| ~~NRPE-NoSSL~~ | NrpeMonitor | 300000 | — | **removed — deprecated / out of scope** |
 | Windows-Task-Scheduler | Win32ServiceMonitor | 300000 | — | |
 | ~~JMX-Kafka~~ | _(none)_ | 300000 | — | **dropped — orphan, no monitor binding** |
 | VMwareCim-HostSystem | VmwareCimMonitor | 300000 | — | |
 | VMware-ManagedEntity | VmwareMonitor | 300000 | — | |
 | MS-RDP | TcpMonitor | 300000 | — | |
-| ActiveMQ | ActiveMQMonitor | 300000 | — | |
+| ~~ActiveMQ~~ | ActiveMQMonitor | 300000 | — | **removed — deprecated / out of scope** |
 | MinaSSH | MinaSshMonitor | 300000 | — | |
 | Deltav-Health | PageSequenceMonitor | 30000 | — | `page-sequence` block scalar |
 | Minion-Health | TcpMonitor | 30000 | — | |
@@ -92,7 +103,7 @@ normalization — anti-pattern guard). Spot-confirmed for the high-risk shapes:
   round-trip byte-identical as double-quoted strings.
 - **`page-sequence` nested XML** (Deltav-Health, Google-Search) survives as a block scalar; XML
   structure preserved (PSM parses it whitespace-insensitively).
-- **Embedded-quote values** (`tests.operational: ... 'NORMAL'`, `response-text: ~.*status.:.green.*`)
+- **Embedded-quote / regex values** (`response-text: ~.*status.:.green.*` on Elasticsearch)
   preserved via double-quoting.
 - **Empty-default DSL values** (`userid`/`password` FTP defaults `|}`) preserved.
 
@@ -105,6 +116,9 @@ The only parameters removed from any definition are the documented drops above
 
 ## Conclusion
 
-**Zero unexplained deltas.** The single intentional change (dropping the never-pollable
-`JMX-Kafka` orphan) does not alter what pollerd actually monitors. All other differences are
-the documented FR5/FR6 field drops. NFR7 satisfied.
+**Zero unexplained deltas.** Six service types differ from the legacy XML, each explained above:
+`JMX-Kafka` (never-pollable orphan — pure parity) and five intentional removals
+(`JMX-Cassandra`, `JMX-Cassandra-Newts`, `ActiveMQ`, `NRPE`, `NRPE-NoSSL`) whose monitor classes
+delta-v's pollerd does not support and which could therefore only false-DOWN. All remaining
+differences are the documented FR5/FR6 field drops. The five removals are a deliberate,
+documented deviation from strict NFR7 format-only parity (justified: unschedulable definitions).
