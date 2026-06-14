@@ -48,8 +48,9 @@ services:
         </page-sequence>
 
   # Type-level kill switch: omit a type from scheduling without deleting it.
-  - name: NRPE
-    monitor: org.opennms.netmgt.poller.monitors.NrpeMonitor
+  # (Illustrative name — do not paste a real service name here, or you'll disable it.)
+  - name: Experimental-Probe
+    monitor: org.example.poller.monitors.ExperimentalMonitor
     interval: 300000
     enabled: false
 ```

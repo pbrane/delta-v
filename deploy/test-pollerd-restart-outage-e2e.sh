@@ -210,16 +210,19 @@ log "  Restarting Provisiond to import the requisition..."
 docker compose restart provisiond
 wait_for_healthy delta-v-provisiond || err "Provisiond not healthy after restart"
 
-if wait_for_db "$(outage_query)" "$PROVISION_TIMEOUT" "service '${SERVICE_NAME}' on '${NODE_LABEL}'" \
-   || wait_for_db "SELECT count(*) FROM node WHERE nodelabel = '${NODE_LABEL}'" "$PROVISION_TIMEOUT" "node '${NODE_LABEL}'"; then
-    ok "Node provisioned"
+# Gate on the monitored-service row existing (not just the node, and not outages — there are
+# none yet while the target is UP), so we don't advance to Phase 2 before the service is schedulable.
+SVC_QUERY="SELECT count(*) FROM ifservices s
+            JOIN service svc ON s.serviceid = svc.serviceid
+            JOIN ipinterface ip ON s.ipinterfaceid = ip.id
+            JOIN node n ON ip.nodeid = n.nodeid
+           WHERE n.nodelabel = '${NODE_LABEL}' AND svc.servicename = '${SERVICE_NAME}'"
+if wait_for_db "$SVC_QUERY" "$PROVISION_TIMEOUT" "service '${SERVICE_NAME}' on '${NODE_LABEL}'"; then
+    ok "Node + service '${SERVICE_NAME}' provisioned"
 else
-    fail "Node '${NODE_LABEL}' not provisioned within ${PROVISION_TIMEOUT}s"
+    fail "Service '${SERVICE_NAME}' on '${NODE_LABEL}' not provisioned within ${PROVISION_TIMEOUT}s"
     log "Results: $PASS passed, $FAIL failed"; exit 1
 fi
-
-SVC_COUNT=$(psql_query "$(outage_query)" 2>/dev/null || echo "0")
-log "  (current outages for ${SERVICE_NAME} on this node: ${SVC_COUNT:-0})"
 
 # Restart Pollerd so it rebuilds its in-memory poll schedule with the new node ID,
 # then let it run a couple of poll cycles against the (currently up) target.

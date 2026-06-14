@@ -17,6 +17,7 @@
 package org.deltav.poller.catalog;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -112,6 +113,22 @@ class CatalogTranslatorTest {
         final IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> translator.translate(badInterval, EngineSettings.defaults()));
         assertTrue(ex.getMessage().contains("interval"), ex.getMessage());
+    }
+
+    @Test
+    void emitsDisabledNodeOutageSoTheFrozenEngineNeverNpes() {
+        // The frozen engine dereferences getNodeOutage() with no null guard (PollerConfigManager
+        // isNodeOutageProcessingEnabled/getCriticalService and PollableInterface.poll on the core
+        // poll path), so the element must be present even though processing is off. Mirrors the
+        // legacy poller-configuration.xml node-outage block.
+        final PollerConfiguration config = translator.translate(
+                new Catalog(List.of()), EngineSettings.defaults());
+
+        assertNotNull(config.getNodeOutage(), "node-outage element must be present (engine NPEs on null)");
+        assertEquals("off", config.getNodeOutage().getStatus());
+        assertEquals("true", config.getNodeOutage().getPollAllIfNoCriticalServiceDefined());
+        assertNotNull(config.getNodeOutage().getCriticalService());
+        assertEquals("ICMP", config.getNodeOutage().getCriticalService().getName());
     }
 
     @Test

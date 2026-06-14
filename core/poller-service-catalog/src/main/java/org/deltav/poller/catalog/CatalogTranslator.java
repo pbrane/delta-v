@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.opennms.netmgt.config.poller.CriticalService;
 import org.opennms.netmgt.config.poller.Downtime;
+import org.opennms.netmgt.config.poller.NodeOutage;
 import org.opennms.netmgt.config.poller.Package;
 import org.opennms.netmgt.config.poller.PollerConfiguration;
 import org.opennms.netmgt.config.poller.Service;
@@ -72,6 +74,7 @@ public final class CatalogTranslator {
         config.setMaxConcurrentAsyncPolls(settings.maxConcurrentAsyncPolls());
         config.setServiceUnresponsiveEnabled(DISABLED);
         config.setPathOutageEnabled(DISABLED);
+        config.setNodeOutage(disabledNodeOutage());
         // nextOutageId intentionally left unset (dead; JAXB default applies harmlessly).
 
         for (final ServiceDefinition def : orderedExactBeforePattern(catalog)) {
@@ -79,6 +82,22 @@ public final class CatalogTranslator {
             config.addMonitor(def.name(), def.monitor());
         }
         return config;
+    }
+
+    /**
+     * Node-outage processing is disabled in delta-v ({@code status="off"}), but the element must be
+     * <em>present</em>: the frozen engine dereferences {@code getNodeOutage()} with no null guard —
+     * {@code PollerConfigManager.isNodeOutageProcessingEnabled()/getCriticalService()} and, on the
+     * core poll path, {@code PollableInterface.poll()} — so an absent element NPEs on the first poll.
+     * This mirrors the legacy {@code poller-configuration.xml} node-outage block exactly (status off,
+     * pollAll true, critical service ICMP), preserving behavior while keeping the engine non-null.
+     */
+    private static NodeOutage disabledNodeOutage() {
+        final NodeOutage nodeOutage = new NodeOutage();
+        nodeOutage.setStatus("off");
+        nodeOutage.setPollAllIfNoCriticalServiceDefined("true");
+        nodeOutage.setCriticalService(new CriticalService("ICMP"));
+        return nodeOutage;
     }
 
     /** Enabled definitions only, exact ones first then pattern ones, each preserving file order. */
