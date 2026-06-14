@@ -1,0 +1,61 @@
+# Grafana unified-alerting provisioning — auto-loaded at startup from
+# /etc/grafana/provisioning/alerting/ (baked in via Dockerfile.grafana).
+#
+# Fires when pollerd reports a service type it cannot schedule: a type present in
+# inventory with no matching definition in poller-services.yaml, or one whose monitor
+# class is absent from the supported ServiceMonitorRegistry. Such a type is silently
+# unmonitored (and may false-DOWN), so a config gap should page rather than hide.
+# Source metric: deltav_pollerd_services_unscheduled{service=...} (one series per gap).
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Pollerd Catalog
+    folder: Delta-V Alerts
+    interval: 1m
+    rules:
+      - uid: deltav-pollerd-services-unscheduled
+        title: Pollerd service type unscheduled (config gap)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        isPaused: false
+        labels:
+          severity: warning
+          component: pollerd
+        annotations:
+          summary: 'Pollerd cannot schedule service type "{{ $labels.service }}"'
+          description: >-
+            Service type {{ $labels.service }} exists in inventory but pollerd cannot schedule it:
+            either no definition matches it in poller-services.yaml, or its monitor class is absent
+            from the supported ServiceMonitorRegistry. It will not be polled and may report false-DOWN.
+            Fix: add or correct the catalog definition, or register the monitor.
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: victoriametrics
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: max by (service) (deltav_pollerd_services_unscheduled)
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params:
+                      - 0

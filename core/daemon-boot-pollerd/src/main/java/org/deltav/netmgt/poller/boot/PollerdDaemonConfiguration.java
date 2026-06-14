@@ -29,6 +29,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
+import org.deltav.poller.catalog.Catalog;
 import org.deltav.poller.catalog.CatalogParser;
 import org.deltav.poller.catalog.CatalogTranslator;
 import org.deltav.poller.catalog.CatalogValidator;
@@ -58,6 +59,7 @@ import org.opennms.netmgt.icmp.proxy.LocationAwarePingClient;
 import org.opennms.netmgt.poller.LocationAwarePollerClient;
 import org.opennms.netmgt.poller.Poller;
 import org.opennms.netmgt.poller.QueryManager;
+import org.opennms.netmgt.poller.ServiceMonitorRegistry;
 import org.opennms.netmgt.poller.pollables.PollContext;
 import org.opennms.netmgt.poller.pollables.PollableNetwork;
 import org.opennms.netmgt.threshd.api.ThresholdingService;
@@ -131,15 +133,12 @@ public class PollerdDaemonConfiguration {
      * {@code isManaged != 'D'}), queried lazily inside a read-only transaction.</p>
      */
     @Bean
-    public PollerConfig pollerConfig(IpInterfaceDao ipInterfaceDao, SessionUtils sessionUtils) throws IOException {
+    public PollerConfig pollerConfig(Catalog pollerCatalog, IpInterfaceDao ipInterfaceDao, SessionUtils sessionUtils)
+            throws IOException {
         var catalogFile = new File(opennmsHome, "etc/poller-services.yaml");
-        LOG.info("Loading flat poller service catalog from {}", catalogFile);
-
-        var catalog = new CatalogParser().parse(catalogFile.toPath());
-        failOnValidationErrors(catalogFile, new CatalogValidator().validate(catalog));
 
         var settings = new EngineSettings(pollerThreads, pollerAsyncPollingEngineEnabled, pollerMaxConcurrentAsyncPolls);
-        var config = new CatalogTranslator().translate(catalog, settings);
+        var config = new CatalogTranslator().translate(pollerCatalog, settings);
 
         var filterDao = new InventoryFilterDao(() -> activeInventoryIps(ipInterfaceDao, sessionUtils));
 
@@ -147,6 +146,36 @@ public class PollerdDaemonConfiguration {
         var factory = new PollerConfigFactory(catalogFile.lastModified(), config, filterDao);
         PollerConfigFactory.setInstance(factory);
         return factory;
+    }
+
+    /**
+     * Parses and validates the flat catalog once, shared by {@link #pollerConfig} (which translates
+     * it for the engine) and {@link #catalogStartupCheck} (which compares it against inventory).
+     * Refusing to start on any validation ERROR keeps a malformed catalog from silently
+     * unmonitoring services (defense-in-depth behind the build-time lint).
+     */
+    @Bean
+    public Catalog pollerCatalog() throws IOException {
+        var catalogFile = new File(opennmsHome, "etc/poller-services.yaml");
+        LOG.info("Loading flat poller service catalog from {}", catalogFile);
+        var catalog = new CatalogParser().parse(catalogFile.toPath());
+        failOnValidationErrors(catalogFile, new CatalogValidator().validate(catalog));
+        return catalog;
+    }
+
+    /**
+     * Config-gap observability (FR9): publishes the {@code deltav_pollerd_services_unscheduled}
+     * gauge and the one-line {@code catalog-summary} for inventory service types pollerd cannot
+     * schedule. See {@link CatalogStartupCheck}.
+     */
+    @Bean
+    public CatalogStartupCheck catalogStartupCheck(Catalog pollerCatalog,
+                                                   ServiceMonitorRegistry serviceMonitorRegistry,
+                                                   MonitoredServiceDao monitoredServiceDao,
+                                                   SessionUtils sessionUtils,
+                                                   MeterRegistry meterRegistry) {
+        return new CatalogStartupCheck(pollerCatalog, serviceMonitorRegistry, monitoredServiceDao,
+                sessionUtils, meterRegistry);
     }
 
     /**
