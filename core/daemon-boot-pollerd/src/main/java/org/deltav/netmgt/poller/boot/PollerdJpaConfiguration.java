@@ -16,14 +16,6 @@
  */
 package org.deltav.netmgt.poller.boot;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-
-import javax.sql.DataSource;
-
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
-import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl;
 import org.opennms.core.tsid.TsidFactory;
 import org.opennms.netmgt.collection.api.AttributeGroup;
@@ -33,15 +25,11 @@ import org.opennms.netmgt.collection.api.CollectionSet;
 import org.opennms.netmgt.collection.api.Persister;
 import org.opennms.netmgt.collection.api.PersisterFactory;
 import org.opennms.netmgt.collection.api.ServiceParameters;
-import org.opennms.netmgt.config.api.DefaultDatabaseSchemaConfig;
-import org.opennms.netmgt.config.filter.DatabaseSchema;
 import org.opennms.netmgt.dao.api.IpInterfaceDao;
 import org.opennms.netmgt.dao.api.MonitoredServiceDao;
 import org.opennms.netmgt.dao.api.NodeDao;
 import org.opennms.netmgt.dao.api.OutageDao;
 import org.opennms.netmgt.dao.api.SessionUtils;
-import org.opennms.netmgt.filter.FilterDaoFactory;
-import org.opennms.netmgt.filter.JdbcFilterDao;
 import org.opennms.netmgt.model.OnmsCategory;
 import org.opennms.netmgt.model.OnmsDistPoller;
 import org.opennms.netmgt.model.OnmsIpInterface;
@@ -66,8 +54,6 @@ import org.opennms.netmgt.model.jakarta.converter.NodeLabelSourceConverter;
 import org.opennms.netmgt.model.jakarta.converter.NodeTypeConverter;
 import org.opennms.netmgt.model.jakarta.converter.OnmsSeverityConverter;
 import org.opennms.netmgt.model.jakarta.converter.PrimaryTypeConverter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -93,15 +79,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 @EnableTransactionManagement
 public class PollerdJpaConfiguration {
-
-    private static final Logger LOG = LoggerFactory.getLogger(PollerdJpaConfiguration.class);
-
-    private static final XmlMapper XML_MAPPER;
-    static {
-        XML_MAPPER = XmlMapper.builder().defaultUseWrapper(false).build();
-        XML_MAPPER.registerModule(new JaxbAnnotationModule());
-        XML_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    }
 
     // ===================================================================
     // Section 1: JPA / Naming
@@ -186,39 +163,6 @@ public class PollerdJpaConfiguration {
     @Bean
     public TransactionTemplate transactionTemplate(PlatformTransactionManager txManager) {
         return new TransactionTemplate(txManager);
-    }
-
-    // ===================================================================
-    // Section 3: FilterDaoFactory initialization
-    // ===================================================================
-
-    /**
-     * Initializes FilterDaoFactory with a JDBC-backed FilterDao.
-     * Must happen before PollerConfigFactory.init() is called (Task 7),
-     * because filter rule validation requires FilterDaoFactory.getInstance().
-     *
-     * <p>The FilterDaoFactory is a static singleton. We create a JdbcFilterDao
-     * backed by the Spring Boot DataSource and set it on the factory.</p>
-     */
-    @Bean
-    public JdbcFilterDao filterDaoInitializer(DataSource dataSource) {
-        LOG.info("Initializing FilterDaoFactory with JdbcFilterDao");
-        var jdbcFilterDao = new JdbcFilterDao();
-        jdbcFilterDao.setDataSource(dataSource);
-        var schemaConfig = loadDatabaseSchemaConfig();
-        jdbcFilterDao.setDatabaseSchemaConfigFactory(schemaConfig);
-        jdbcFilterDao.afterPropertiesSet();
-        FilterDaoFactory.setInstance(jdbcFilterDao);
-        return jdbcFilterDao;
-    }
-
-    private DefaultDatabaseSchemaConfig loadDatabaseSchemaConfig() {
-        try (var is = getClass().getResourceAsStream("/database-schema.xml")) {
-            var schema = XML_MAPPER.readValue(is, DatabaseSchema.class);
-            return new DefaultDatabaseSchemaConfig(schema);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load database-schema.xml from classpath", e);
-        }
     }
 
     // ===================================================================
