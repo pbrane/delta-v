@@ -1,0 +1,19 @@
+services:
+  # Exact definition with a metadata DSL parameter value (must round-trip verbatim).
+  - name: HTTP-8080
+    monitor: org.opennms.netmgt.poller.monitors.HttpMonitor
+    interval: 300000
+    parameters:
+      port: "${requisition:port|detector:port|80}"
+
+  # Pattern definition with a nested-XML block scalar (FR4: first-class, no DOM workaround).
+  - name: PageSequenceHTTP
+    pattern: "^HTTP-(\\d+)$"
+    monitor: org.opennms.netmgt.poller.monitors.PageSequenceMonitor
+    interval: 30000
+    enabled: false
+    parameters:
+      page-sequence: |
+        <page-sequence>
+          <page path="/" port="8080" successMatch="OK"/>
+        </page-sequence>

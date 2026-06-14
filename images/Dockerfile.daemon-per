@@ -32,4 +32,16 @@ COPY staging/${DAEMON_NAME}/app/ /opt/app/
 # provisiond-imports-init sidecar with a uid:100:101 host-path chown).
 COPY --chown=opennms:opennms overlays/${DAEMON_NAME}/etc /opt/deltav/etc
 
+# Catalog lint (FR10/D5): fail the image build on a malformed poller catalog, after the
+# overlay COPY so it is unbypassable. No-op for daemons that ship no poller-services.yaml.
+# Uses the SAME 5-segment classpath as deploy/entrypoint.sh — CatalogLint's deps (Jackson,
+# SnakeYAML) live in /opt/libs/external, not /opt/libs/daemon. The `java` invocation must
+# remain the LAST command in the branch so its 0/1/2 exit status fails the build (exit 1 =
+# errors abort; warnings pass).
+RUN if [ -f /opt/deltav/etc/poller-services.yaml ]; then \
+        echo "Linting poller-services.yaml ..."; \
+        java -cp "/opt/libs/priority/*:/opt/libs/external/*:/opt/libs/internal/*:/opt/libs/daemon/*:/opt/app/*" \
+            org.deltav.poller.catalog.CatalogLint /opt/deltav/etc/poller-services.yaml; \
+    fi
+
 ENTRYPOINT ["/opt/entrypoint.sh"]
