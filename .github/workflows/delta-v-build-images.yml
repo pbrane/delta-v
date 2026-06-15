@@ -125,6 +125,11 @@ jobs:
                 <username>${GITHUB_REPOSITORY_OWNER}</username>
                 <password>${PACKAGES_TOKEN}</password>
               </server>
+              <server>
+                <id>github-deltav-ipc-contract</id>
+                <username>${GITHUB_REPOSITORY_OWNER}</username>
+                <password>${PACKAGES_TOKEN}</password>
+              </server>
             </servers>
           </settings>
           SETTINGS
