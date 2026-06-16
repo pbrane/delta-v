@@ -25,6 +25,7 @@ import org.opennms.netmgt.config.poller.Downtime;
 import org.opennms.netmgt.config.poller.NodeOutage;
 import org.opennms.netmgt.config.poller.Package;
 import org.opennms.netmgt.config.poller.PollerConfiguration;
+import org.opennms.netmgt.config.poller.Rrd;
 import org.opennms.netmgt.config.poller.Service;
 
 /**
@@ -126,8 +127,35 @@ public final class CatalogTranslator {
         downtime.setInterval(def.interval().longValue());
         pkg.addDowntime(downtime);
 
+        pkg.setRrd(defaultRrd());
         pkg.addService(toService(def));
         return pkg;
+    }
+
+    /**
+     * Emits a parity-only {@code <rrd>} block. This does <em>not</em> reintroduce RRD persistence:
+     * delta-v's Pollerd wires a <strong>no-op {@code PersisterFactory}</strong>
+     * ({@code PollerdJpaConfiguration#persisterFactory} — "Pollerd does not persist collection
+     * metrics"), so the step/RRAs read here are used only to construct an {@code RrdRepository} that
+     * the no-op persister immediately discards. No RRD file is ever written.
+     *
+     * <p>The block must nonetheless be <em>present</em> because delta-v reuses the <em>frozen</em>
+     * horizon poller engine unchanged, and that engine dereferences {@code getRrd()} with no null
+     * guard on the status-storing poll path: {@code StatusStoringServiceMonitorAdaptor.storeStatus}
+     * → {@code PollerConfigManager.getStep(pkg)}/{@code getRRAList(pkg)} call
+     * {@code pkg.getRrd().getStep()} on <em>every</em> poll result. An absent element NPEs and the
+     * service is force-marked DOWN. We mirror the legacy {@code poller-configuration.xml} block
+     * exactly (step 300, standard RRAs) for parity with pre-flat-catalog behavior. The proper fix —
+     * a null guard in the frozen engine so it skips the RRD path when persistence is a no-op — is
+     * tracked upstream; until then this matches {@link #disabledNodeOutage()} (same null-guard class).
+     */
+    private static Rrd defaultRrd() {
+        return new Rrd(300,
+                "RRA:AVERAGE:0.5:1:2016",
+                "RRA:AVERAGE:0.5:12:1488",
+                "RRA:AVERAGE:0.5:288:366",
+                "RRA:MAX:0.5:288:366",
+                "RRA:MIN:0.5:288:366");
     }
 
     /**
