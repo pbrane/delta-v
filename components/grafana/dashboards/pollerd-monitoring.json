@@ -211,6 +211,49 @@
       "title": "Phase 3 records published (5m bucket)",
       "type": "timeseries",
       "description": "Confirms Pollerd's publisher is emitting to deltav-timeseries. Each bucket = records sent in the prior 5 minutes, by location. Zero across the board means the publisher is not running or deltav.timeseries.enabled is off."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "auto", "cellOptions": { "type": "color-background" }, "inspect": false },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 },
+      "id": 6,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": { "show": true, "reducer": ["count"], "countRows": true, "fields": "" }
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "deltav_pollerd_services_unscheduled",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true },
+            "renameByName": { "service": "Unscheduled service type", "Value": "Gap" }
+          }
+        }
+      ],
+      "title": "Unscheduled service types (config gap)",
+      "type": "table",
+      "description": "Inventory service types pollerd cannot schedule — no definition in poller-services.yaml, or a definition whose monitor class is absent from the supported ServiceMonitorRegistry (which would throw 'Monitor not found' and false-DOWN). 'No data' is healthy. Mirrors the deltav_pollerd_services_unscheduled gauge and the catalog-summary startup log line."
     }
   ],
   "preload": false,

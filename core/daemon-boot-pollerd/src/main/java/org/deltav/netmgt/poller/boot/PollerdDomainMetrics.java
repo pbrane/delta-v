@@ -45,6 +45,10 @@ public final class PollerdDomainMetrics {
     public static final String OUTAGES_OPENED        = "deltav.pollerd.outages.opened";
     public static final String OUTAGES_RESOLVED      = "deltav.pollerd.outages.resolved";
 
+    /** Labeled gauge (one series per unschedulable inventory service type) for catalog config gaps (FR9). */
+    public static final String SERVICES_UNSCHEDULED  = "deltav.pollerd.services.unscheduled";
+
     static final String TAG_LOCATION = "location";
     static final String TAG_RESULT   = "result";
+    static final String TAG_SERVICE  = "service";
 }

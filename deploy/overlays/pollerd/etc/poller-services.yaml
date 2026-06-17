@@ -1,0 +1,295 @@
+# delta-v flat poller service catalog — pollerd overlay.
+#
+# Replaces the package/filter/downtime structure of poller-configuration.xml with a
+# flat service-definition list. Service selection is inventory-driven (every monitored
+# service is polled); resolution is exact-name first, then pattern in file order.
+#
+# Shape per entry: { name, pattern?, monitor, interval, enabled?=true, parameters }.
+# - interval is milliseconds.
+# - parameter values are opaque strings (metadata DSL chains round-trip verbatim).
+# - dropped vs. the legacy XML (no behavior change): downtime models, <rrd> blocks,
+#   rrd-repository / rrd-base-name / ds-name params, thresholding-enabled, user-defined.
+#
+# Translated from poller-configuration.xml. See docs/audits/2026-06-14-pollerd-catalog-parity-audit.md.
+
+services:
+  - name: ICMP
+    monitor: org.opennms.netmgt.poller.monitors.IcmpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|2}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+
+  - name: DNS
+    monitor: org.opennms.netmgt.poller.monitors.DnsMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|2}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|5000}"
+      port: "${requisition:port|detector:port|53}"
+      lookup: "${requisition:lookup|detector:lookup|localhost}"
+      fatal-response-codes: "${requisition:fatal-response-codes|detector:fatal-response-codes|2,3,5}"
+
+  - name: Elasticsearch
+    monitor: org.opennms.netmgt.poller.monitors.HttpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      port: "${requisition:port|detector:port|9200}"
+      url: "${requisition:url|detector:url|/_cluster/stats}"
+      response: "${requisition:response|detector:response|200-202,299}"
+      response-text: "${requisition:response-text|detector:response-text|~.*status.:.green.*}"
+
+  - name: SMTP
+    monitor: org.opennms.netmgt.poller.monitors.SmtpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      port: "${requisition:port|detector:port|25}"
+
+  - name: FTP
+    monitor: org.opennms.netmgt.poller.monitors.FtpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      port: "${requisition:port|detector:port|21}"
+      userid: "${requisition:userid|detector:userid|}"
+      password: "${requisition:password|detector:password|}"
+
+  - name: SNMP
+    monitor: org.opennms.netmgt.poller.monitors.SnmpMonitor
+    interval: 300000
+    parameters:
+      oid: "${requisition:oid|detector:oid|.1.3.6.1.2.1.1.2.0}"
+
+  - name: HTTP
+    monitor: org.opennms.netmgt.poller.monitors.HttpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      port: "${requisition:port|detector:port|80}"
+      url: "${requisition:url|detector:url|/}"
+
+  - name: HTTP-8080
+    monitor: org.opennms.netmgt.poller.monitors.HttpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      port: "${requisition:port|detector:port|8080}"
+      url: "${requisition:url|detector:url|/}"
+
+  - name: HTTP-8000
+    monitor: org.opennms.netmgt.poller.monitors.HttpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      port: "${requisition:port|detector:port|8000}"
+      url: "${requisition:url|detector:url|/}"
+
+  - name: HTTPS
+    monitor: org.opennms.netmgt.poller.monitors.HttpsMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|5000}"
+      port: "${requisition:port|detector:port|443}"
+      url: "${requisition:url|detector:url|/}"
+
+  - name: MySQL
+    monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      port: "${requisition:port|detector:port|3306}"
+      banner: "${requisition:banner|detector:banner|*}"
+
+  - name: SQLServer
+    monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      port: "${requisition:port|detector:port|1433}"
+      banner: "${requisition:banner|detector:banner|*}"
+
+  - name: Oracle
+    monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      port: "${requisition:port|detector:port|1521}"
+      banner: "${requisition:banner|detector:banner|*}"
+
+  - name: Postgres
+    monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      banner: "${requisition:banner|detector:banner|*}"
+      port: "${requisition:port|detector:port|5432}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+
+  - name: SSH
+    monitor: org.opennms.netmgt.poller.monitors.SshMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      banner: "${requisition:banner|detector:banner|SSH}"
+      port: "${requisition:port|detector:port|22}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+
+  - name: IMAP
+    monitor: org.opennms.netmgt.poller.monitors.ImapMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      port: "${requisition:port|detector:port|143}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+
+  - name: POP3
+    monitor: org.opennms.netmgt.poller.monitors.Pop3Monitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      port: "${requisition:port|detector:port|110}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+
+  - name: PTP
+    pattern: "^PTP-.*$"
+    monitor: org.opennms.netmgt.poller.monitors.PtpMonitor
+    interval: 300000
+    parameters:
+      clock-port: "${requisition:ptp:clockPort|default}"
+      port-state: "${requisition:ptp:portState|default}"
+
+  - name: Windows-Task-Scheduler
+    monitor: org.opennms.netmgt.poller.monitors.Win32ServiceMonitor
+    interval: 300000
+    parameters:
+      service-name: "${requisition:service-name|detector:service-name|Task Scheduler}"
+
+  - name: VMwareCim-HostSystem
+    monitor: org.opennms.netmgt.poller.monitors.VmwareCimMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|2}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      ignoreStandBy: "${requisition:ignoreStandBy|detector:ignoreStandBy|false}"
+
+  - name: VMware-ManagedEntity
+    monitor: org.opennms.netmgt.poller.monitors.VmwareMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|2}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      ignoreStandBy: "${requisition:ignoreStandBy|detector:ignoreStandBy|false}"
+      reportAlarms: "${requisition:reportAlarms|detector:reportAlarms|}"
+
+  - name: MS-RDP
+    monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      banner: "${requisition:banner|detector:banner|*}"
+      port: "${requisition:port|detector:port|3389}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+
+  - name: MinaSSH
+    monitor: org.opennms.netmgt.poller.monitors.MinaSshMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|1}"
+      port: "${requisition:port|detector:port|22}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      username: "${requisition:username|detector:username|admin}"
+      password: "${requisition:password|detector:password|admin}"
+
+  # Delta-V container health checks via PageSequenceMonitor
+  - name: Deltav-Health
+    monitor: org.opennms.netmgt.poller.monitors.PageSequenceMonitor
+    interval: 30000
+    parameters:
+      rrd-status: "false"
+      timeout: "3000"
+      retry: "0"
+      strict-timeout: "true"
+      page-sequence: |
+        <page-sequence>
+          <page host="${nodelabel}" path="/actuator/health" port="8080"
+                response-range="200-299"/>
+        </page-sequence>
+
+  - name: Minion-Health
+    monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
+    interval: 30000
+    parameters:
+      rrd-status: "false"
+      timeout: "3000"
+      retry: "0"
+      port: "8181"
+
+  # Delta-V infrastructure TCP monitors
+  - name: PostgreSQL
+    monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
+    interval: 30000
+    parameters:
+      rrd-status: "false"
+      timeout: "3000"
+      retry: "0"
+      port: "5432"
+      hostname: "${nodeLabel}"
+
+  - name: Kafka
+    monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
+    interval: 30000
+    parameters:
+      rrd-status: "false"
+      timeout: "3000"
+      retry: "0"
+      port: "9092"
+      hostname: "${nodeLabel}"
+
+  # Perspective-polled service: PSM resolves ${nodelabel} via DNS on each Minion
+  - name: Google-Search
+    monitor: org.opennms.netmgt.poller.monitors.PageSequenceMonitor
+    interval: 30000
+    parameters:
+      rrd-status: "false"
+      timeout: "10000"
+      retry: "1"
+      page-sequence: |
+        <page-sequence>
+          <page host="${nodelabel}" path="/" port="443" scheme="https"
+                response-range="200-399"/>
+        </page-sequence>
+
+  # Passive cloud service monitors — status driven by syslog → Event Translator → passiveServiceStatus
+  - name: GoogleCloud
+    monitor: org.opennms.netmgt.poller.monitors.PassiveServiceMonitor
+    interval: 30000
+
+  - name: Azure
+    monitor: org.opennms.netmgt.poller.monitors.PassiveServiceMonitor
+    interval: 30000
+
+  - name: AWS
+    monitor: org.opennms.netmgt.poller.monitors.PassiveServiceMonitor
+    interval: 30000
+
+  - name: StrafePing
+    monitor: org.opennms.netmgt.poller.monitors.StrafePingMonitor
+    interval: 300000
+    parameters:
+      retry: "${requisition:poller-retry|requisition:retry|detector:retry|0}"
+      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
+      ping-count: "${requisition:ping-count|detector:ping-count|20}"
+      failure-ping-count: "${requisition:failure-ping-count|detector:failure-ping-count|20}"
+      wait-interval: "${requisition:wait-interval|detector:wait-interval|50}"

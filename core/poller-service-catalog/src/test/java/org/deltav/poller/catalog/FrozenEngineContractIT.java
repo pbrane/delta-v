@@ -146,6 +146,41 @@ class FrozenEngineContractIT {
         assertNotNull(factory.getPackage("catalog-ICMP"), "synthetic config must survive update()");
     }
 
+    /**
+     * Node-outage methods on the real manager must not NPE. The frozen engine dereferences
+     * getNodeOutage() with no null guard (isNodeOutageProcessingEnabled/getCriticalService and, on
+     * the core poll path, PollableInterface.poll), so the translator must emit the disabled element.
+     */
+    @Test
+    void nodeOutageMethodsDoNotThrowOnSyntheticConfig() throws UnknownHostException {
+        final PollerConfigFactory factory = factory(
+                catalog(def("ICMP", null, "org.opennms.netmgt.poller.monitors.IcmpMonitor", 300000)),
+                List.of(addr("10.0.0.1")));
+
+        assertFalse(factory.isNodeOutageProcessingEnabled(), "node-outage processing is off in delta-v");
+        assertEquals("ICMP", factory.getCriticalService());
+        assertDoesNotThrow(factory::shouldPollAllIfNoCriticalServiceDefined);
+    }
+
+    /**
+     * The frozen engine's status-storing path dereferences the per-package {@code Rrd} with no null
+     * guard: on every poll result, {@code StatusStoringServiceMonitorAdaptor.storeStatus} calls
+     * {@code PollerConfigManager.getStep(pkg)} → {@code pkg.getRrd().getStep()}. If the translator
+     * emits no {@code Rrd}, every poll NPEs and the service is force-marked DOWN. The translator must
+     * emit the legacy {@code <rrd step="300">} block, exactly as it emits the disabled node-outage.
+     */
+    @Test
+    void rrdStepResolvesOnSyntheticConfig() throws UnknownHostException {
+        final PollerConfigFactory factory = factory(
+                catalog(def("ICMP", null, "org.opennms.netmgt.poller.monitors.IcmpMonitor", 300000)),
+                List.of(addr("10.0.0.1")));
+        final Package pkg = factory.getPackage("catalog-ICMP");
+
+        // getStep() is the exact call that NPE'd at runtime (PollerConfigManager.getStep:991).
+        assertEquals(300, factory.getStep(pkg), "per-package rrd step must resolve (legacy parity)");
+        assertDoesNotThrow(() -> factory.getRRAList(pkg), "rra list must resolve without NPE");
+    }
+
     // --- helpers ---
 
     private PollerConfigFactory factory(final Catalog catalog, final List<InetAddress> ips) {
