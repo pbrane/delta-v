@@ -52,7 +52,7 @@ services:
         -XX:+UseSerialGC -Xss256k
         -Djava.security.egd=file:/dev/./urandom
 
-  minion-lab:
+  nl6-minion:
     environment:
       JAVA_OPTS: >-
         -Xms64m -Xmx192m -XX:MaxMetaspaceSize=256m
