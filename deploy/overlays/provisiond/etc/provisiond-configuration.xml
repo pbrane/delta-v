@@ -1,11 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Scheduled-import policy (delta-v):
+
+  The seed requisitions below are STATIC content. They are scheduled only so a
+  fresh stack imports them shortly after start; they must NOT drive a continuous
+  rescan storm.
+
+  Each scheduled import re-scans existing nodes (provisiond uses rescanExisting=true
+  for scheduled imports — the ?rescanExisting=false URL query is NOT honored on the
+  scheduled-import path), so the import cadence directly sets the rescan load. These
+  are therefore on a 5-minute cron (was 0/30 = every 30s): first import is still
+  prompt, but the steady-state rescan rate is 10x lower. Existing nodes also rescan
+  on their own foreign-source scan-interval (1d) independent of these imports.
+
+  Background: with the prior 0/30, provisiond re-scanned every node every 30s
+  (~4.8 interface-scans/sec sustained on the demo stack), permanently saturating
+  scanThreads. The nl6 foreign-source (foreign-sources/nl6.xml) further caps that
+  to ICMP+SNMP instead of the 17-detector built-in default. See the provisiond
+  E2E slowness investigation.
+-->
 <provisiond-configuration xmlns="http://xmlns.opennms.org/xsd/config/provisiond-configuration"
   foreign-source-dir="/opt/deltav/etc/foreign-sources"
   requistion-dir="/opt/deltav/etc/imports"
   importThreads="4" scanThreads="4" rescanThreads="4" writeThreads="4" >
   <requisition-def import-name="delta-v"
                    import-url-resource="file:///opt/deltav/etc/imports/delta-v.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
+    <cron-schedule>0 0/5 * * * ?</cron-schedule>
   </requisition-def>
   <!--
     rpc-canary: self-contained Default-location SNMP canary (node at 172.18.0.2
@@ -22,11 +42,11 @@
   -->
   <requisition-def import-name="rpc-canary"
                    import-url-resource="file:///opt/deltav/etc/imports/rpc-canary.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
+    <cron-schedule>0 0/5 * * * ?</cron-schedule>
   </requisition-def>
   <requisition-def import-name="cloud-services"
                    import-url-resource="file:///opt/deltav/etc/imports/cloud-services.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
+    <cron-schedule>0 0/5 * * * ?</cron-schedule>
   </requisition-def>
   <!--
     mhuot-labs auto-import disabled (delta-v#<this PR>): the requisition
@@ -36,17 +56,17 @@
     re-enable. The imports/mhuot-labs.xml file is preserved on disk.
   <requisition-def import-name="mhuot-labs"
                    import-url-resource="file:///opt/deltav/etc/imports/mhuot-labs.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
+    <cron-schedule>0 0/5 * * * ?</cron-schedule>
   </requisition-def>
   -->
   <requisition-def import-name="nl6-lab"
                    import-url-resource="file:///opt/deltav/etc/imports/nl6-lab.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
+    <cron-schedule>0 0/5 * * * ?</cron-schedule>
   </requisition-def>
   <requisition-def import-name="perspective-test" import-url-resource="file:///opt/deltav/etc/imports/perspective-test.xml">
     <cron-schedule>0 0/1 * * * ? *</cron-schedule>
   </requisition-def>
   <requisition-def import-name="perspective-smoke" import-url-resource="file:///opt/deltav/etc/imports/perspective-smoke.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
+    <cron-schedule>0 0/5 * * * ?</cron-schedule>
   </requisition-def>
 </provisiond-configuration>
