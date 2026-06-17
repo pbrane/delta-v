@@ -66,6 +66,14 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Flat poller service catalog — CatalogParser/Validator/Translator, InventoryFilterDao,
+             EngineSettings (replaces the legacy poller-configuration.xml + JdbcFilterDao path) -->
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>org.opennms.core.poller-service-catalog</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- PerspectivePoller implementation — PerspectivePollerd daemon class -->
         <dependency>
             <groupId>org.opennms.features</groupId>
@@ -114,12 +122,6 @@
         <dependency>
             <groupId>org.opennms.features.poller</groupId>
             <artifactId>org.opennms.features.poller.config</artifactId>
-        </dependency>
-
-        <!-- FilterDaoFactory, JdbcFilterDao -->
-        <dependency>
-            <groupId>org.opennms.core</groupId>
-            <artifactId>org.opennms.core.filter</artifactId>
         </dependency>
 
         <!-- SnmpPeerFactory -->

@@ -39,10 +39,32 @@ PLATFORMS="${PLATFORMS:-}"
 # The 12 horizon-derived Spring Boot daemons that share daemon-base.
 DAEMON_NAMES="alarmd bsmd collectd discovery enlinkd eventtranslator perspectivepollerd pollerd provisiond syslogd telemetryd trapd"
 
+# Daemons that consume the flat poller service catalog. Both pollerd and
+# perspectivepollerd run on the SAME catalog; the single source of truth is
+# committed at overlays/shared/poller-services.yaml and staged into each
+# consumer's overlay at image-build time (per-daemon copies are git-ignored).
+CATALOG_CONSUMERS="pollerd perspectivepollerd"
+
 VERSION="$(cd "$REPO_ROOT" && ./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout 2>/dev/null || grep '<version>0\.' "$REPO_ROOT/pom.xml" | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
 
 log() { echo "==> $*"; }
 err() { echo "ERROR: $*" >&2; exit 1; }
+
+# Stage the single shared poller service catalog into each consuming daemon's
+# overlay (overlays/<daemon>/etc/poller-services.yaml) so the per-daemon Docker
+# COPY and the Dockerfile lint stage pick it up. The destination files are
+# git-ignored generated artifacts; overlays/shared/poller-services.yaml is the
+# committed source of truth. Idempotent — safe to run before every image build.
+stage_shared_poller_catalog() {
+    local shared="$DEPLOY_DIR/overlays/shared/poller-services.yaml"
+    [ -f "$shared" ] || err "shared poller catalog not found: $shared"
+    local name
+    for name in $CATALOG_CONSUMERS; do
+        mkdir -p "$DEPLOY_DIR/overlays/$name/etc"
+        cp "$shared" "$DEPLOY_DIR/overlays/$name/etc/poller-services.yaml"
+        log "  staged shared poller catalog -> overlays/$name/etc/poller-services.yaml"
+    done
+}
 
 # build_image SHORT_NAME -f DOCKERFILE [docker-build-args...] CONTEXT
 # Tags ${IMAGE_PREFIX}/SHORT_NAME at :$VERSION and :latest. Uses buildx;
@@ -343,6 +365,10 @@ do_deltav_images() {
 
     cd "$DEPLOY_DIR"
 
+    # Stage the shared poller catalog into the pollerd + perspectivepollerd overlays
+    # before the per-daemon COPY/lint runs.
+    stage_shared_poller_catalog
+
     # Phase 2: Build daemon-base image
     log "Building ${IMAGE_PREFIX}/daemon-base:$VERSION..."
     build_image daemon-base --no-cache \
@@ -514,6 +540,10 @@ do_single_daemon_image() {
         || err "Failed to build core/daemon-boot-$name"
 
     cd "$DEPLOY_DIR"
+
+    # Stage the shared poller catalog so a single-daemon rebuild of pollerd or
+    # perspectivepollerd bakes the current catalog (and lints it).
+    stage_shared_poller_catalog
 
     # compute-shared-libs.sh re-derives the shared/unique library split — it
     # needs every daemon's fat JAR present — and repopulates staging/. This is

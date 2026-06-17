@@ -1,0 +1,63 @@
+# Grafana unified-alerting provisioning — auto-loaded at startup from
+# /etc/grafana/provisioning/alerting/ (baked in via Dockerfile.grafana).
+#
+# Fires when perspectivepollerd reports a perspective-polled service type it cannot schedule: a
+# service mapped into an application/perspective-location whose name has no matching definition in
+# poller-services.yaml, or whose monitor class is absent from the supported ServiceMonitorRegistry.
+# Such a service is silently dropped from perspective polling, so a config gap should page rather
+# than hide. Source metric: deltav_perspectivepollerd_services_unscheduled{service=...} (one series
+# per gap).
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: PerspectivePollerd Catalog
+    folder: Delta-V Alerts
+    interval: 1m
+    rules:
+      - uid: deltav-perspectivepollerd-services-unscheduled
+        title: PerspectivePollerd service type unscheduled (config gap)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        isPaused: false
+        labels:
+          severity: warning
+          component: perspectivepollerd
+        annotations:
+          summary: 'PerspectivePollerd cannot schedule perspective service type "{{ $labels.service }}"'
+          description: >-
+            Service type {{ $labels.service }} is mapped into an application with perspective
+            locations but perspectivepollerd cannot schedule it: either no definition matches it in
+            poller-services.yaml, or its monitor class is absent from the supported
+            ServiceMonitorRegistry. It will not be perspective-polled from any location.
+            Fix: add or correct the catalog definition, or register the monitor.
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: victoriametrics
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: max by (service) (deltav_perspectivepollerd_services_unscheduled)
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params:
+                      - 0

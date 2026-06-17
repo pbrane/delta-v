@@ -18,12 +18,22 @@ package org.deltav.netmgt.perspectivepoller.boot;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
+import java.net.InetAddress;
+import java.util.List;
+import java.util.Objects;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
+import io.micrometer.core.instrument.MeterRegistry;
 
+import org.deltav.poller.catalog.Catalog;
+import org.deltav.poller.catalog.CatalogParser;
+import org.deltav.poller.catalog.CatalogTranslator;
+import org.deltav.poller.catalog.CatalogValidator;
+import org.deltav.poller.catalog.EngineSettings;
+import org.deltav.poller.catalog.InventoryFilterDao;
+import org.deltav.poller.catalog.ValidationMessage;
 import org.opennms.core.mate.api.EntityScopeProvider;
 import org.opennms.core.tracing.api.TracerRegistry;
 import org.opennms.netmgt.collection.api.CollectionAgentFactory;
@@ -31,23 +41,24 @@ import org.opennms.netmgt.collection.api.PersisterFactory;
 import org.opennms.netmgt.config.PollerConfig;
 import org.opennms.netmgt.config.PollerConfigFactory;
 import org.opennms.netmgt.config.SnmpPeerFactory;
-import org.opennms.netmgt.config.poller.PollerConfiguration;
-import org.opennms.netmgt.filter.api.FilterDao;
 import org.opennms.netmgt.config.api.SnmpAgentConfigFactory;
 import org.opennms.netmgt.config.snmp.SnmpConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.opennms.netmgt.dao.api.ApplicationDao;
+import org.opennms.netmgt.dao.api.IpInterfaceDao;
 import org.opennms.netmgt.dao.api.MonitoredServiceDao;
 import org.opennms.netmgt.dao.api.MonitoringLocationDao;
 import org.opennms.netmgt.dao.api.OutageDao;
 import org.opennms.netmgt.dao.api.SessionUtils;
+import org.opennms.netmgt.model.OnmsIpInterface;
 import org.opennms.netmgt.events.api.EventForwarder;
 import org.opennms.netmgt.events.api.EventIpcManager;
 import org.opennms.netmgt.events.api.AnnotationBasedEventListenerAdapter;
 import org.opennms.netmgt.perspectivepoller.PerspectivePollerd;
 import org.opennms.netmgt.perspectivepoller.PerspectiveServiceTracker;
 import org.opennms.netmgt.poller.LocationAwarePollerClient;
+import org.opennms.netmgt.poller.ServiceMonitorRegistry;
 import org.opennms.netmgt.threshd.api.ThresholdingService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,7 +66,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.deltav.core.daemon.common.SpringServiceDaemonSmartLifecycle;
 import org.deltav.poller.timeseries.ResponseTimePublisher;
-import org.deltav.core.daemon.common.XmlConfigPostProcessor;
 import org.springframework.context.SmartLifecycle;
 
 /**
@@ -67,12 +77,21 @@ import org.springframework.context.SmartLifecycle;
  * {@code afterPropertiesSet()} then {@code start()}.</p>
  *
  * <p>PerspectivePollerd polls services from perspective (remote) monitoring
- * locations to detect location-specific outages. It shares poller-configuration.xml
- * with Pollerd but uses its own scheduling and outage tracking logic.</p>
+ * locations to detect location-specific outages. It shares the flat poller service
+ * catalog ({@code etc/poller-services.yaml}) with Pollerd but uses its own scheduling
+ * (driven by application membership via {@code ApplicationDao}) and outage tracking.</p>
  *
- * <p>The {@link PollerConfigFactory} is created with a constructor-injected
- * {@link FilterDao}, eliminating the hidden {@code FilterDaoFactory.getInstance()}
- * coupling and the need for {@code @DependsOn} bean ordering.</p>
+ * <p>The {@link PollerConfigFactory} is built from the flat catalog translated into the
+ * synthetic config the frozen engine expects, with a constructor-injected
+ * {@link InventoryFilterDao} replacing the legacy {@code JdbcFilterDao}/{@code FilterDaoFactory}/
+ * DB-schema coupling (FR7). The frozen {@code PerspectivePollerd.onServicePerspectiveAdded} DOES
+ * consult the synthetic config — it selects the per-service package via
+ * {@code isInterfaceInPackage(ip, pkg)} (matched against the {@link InventoryFilterDao}-built IP map)
+ * and {@code isServiceInPackageAndEnabled(serviceName, pkg)}, then looks up the monitor + parameters.
+ * The {@link InventoryFilterDao} catch-all over active inventory IPs reproduces the legacy
+ * {@code JdbcFilterDao} active-IP set, so behavior is unchanged. A perspective-mapped service absent
+ * from the catalog (or whose monitor is unregistered) is silently dropped by the engine — surfaced by
+ * the FR9 {@link PerspectiveCatalogStartupCheck} gauge.</p>
  */
 @Configuration
 public class PerspectivePollerdDaemonConfiguration {
@@ -88,6 +107,18 @@ public class PerspectivePollerdDaemonConfiguration {
 
     @Value("${opennms.home:/opt/deltav}")
     private String opennmsHome;
+
+    // Engine-tuning scalars (FR1b three-way split): not monitoring semantics, so they live in
+    // application.yml rather than the catalog file. Defaults mirror the legacy poller-configuration.xml
+    // root attributes (threads=30, asyncPollingEngineEnabled=false, maxConcurrentAsyncPolls=200).
+    @Value("${poller.engine.threads:30}")
+    private int pollerThreads;
+
+    @Value("${poller.engine.async-polling-engine-enabled:false}")
+    private boolean pollerAsyncPollingEngineEnabled;
+
+    @Value("${poller.engine.max-concurrent-async-polls:200}")
+    private int pollerMaxConcurrentAsyncPolls;
 
     /**
      * Initializes the SNMP peer factory from snmp-config.xml via Jackson XmlMapper.
@@ -106,19 +137,65 @@ public class PerspectivePollerdDaemonConfiguration {
     }
 
     /**
-     * Loads poller-configuration.xml via Jackson XmlMapper and creates a
-     * PollerConfigFactory with constructor-injected FilterDao.
+     * Translates the flat poller service catalog into the synthetic JAXB
+     * {@link org.opennms.netmgt.config.poller.PollerConfiguration} the frozen engine expects and
+     * creates a {@link PollerConfigFactory} backed by an {@link InventoryFilterDao} (FR7 — no
+     * {@code JdbcFilterDao}/{@code FilterDaoFactory}/DB-schema coupling).
+     *
+     * <p>The set of polled {@code (service, perspective-location)} tuples is application-membership
+     * driven ({@code ApplicationDao}), but for each such service the engine still resolves its package
+     * from the synthetic config via {@code isInterfaceInPackage} (over the {@link InventoryFilterDao}
+     * IP map) and {@code isServiceInPackageAndEnabled}, then reads the monitor + parameters — so the
+     * catalog and the catch-all FilterDao are both on the perspective scheduling path, reproducing the
+     * legacy active-IP behavior. The {@code setPollerConfigFile} + matching {@code lastModified} version
+     * neutralizes the manager's reload guard so the (non-XML) YAML is never parsed over the synthetic
+     * config.</p>
      */
     @Bean
-    public PollerConfig pollerConfig(FilterDao filterDao) throws IOException {
-        var configFile = new java.io.File(opennmsHome, "etc/poller-configuration.xml");
-        LOG.info("Loading PollerConfigFactory from {}", configFile);
-        var config = XML_MAPPER.readValue(configFile, PollerConfiguration.class);
-        patchNestedXmlParameters(configFile, config);
-        PollerConfigFactory.validate(config, filterDao);
-        var factory = new PollerConfigFactory(configFile.lastModified(), config, filterDao);
+    public PollerConfig pollerConfig(Catalog perspectiveCatalog, IpInterfaceDao ipInterfaceDao,
+            SessionUtils sessionUtils) throws IOException {
+        var catalogFile = new File(opennmsHome, "etc/poller-services.yaml");
+
+        var settings = new EngineSettings(pollerThreads, pollerAsyncPollingEngineEnabled, pollerMaxConcurrentAsyncPolls);
+        var config = new CatalogTranslator().translate(perspectiveCatalog, settings);
+
+        var filterDao = new InventoryFilterDao(() -> activeInventoryIps(ipInterfaceDao, sessionUtils));
+
+        PollerConfigFactory.setPollerConfigFile(catalogFile);
+        var factory = new PollerConfigFactory(catalogFile.lastModified(), config, filterDao);
         PollerConfigFactory.setInstance(factory);
         return factory;
+    }
+
+    /**
+     * Parses and validates the flat catalog once. Refusing to start on any validation ERROR keeps a
+     * malformed catalog from silently unmonitoring services (defense-in-depth behind the build-time
+     * lint).
+     */
+    @Bean
+    public Catalog perspectiveCatalog() throws IOException {
+        var catalogFile = new File(opennmsHome, "etc/poller-services.yaml");
+        LOG.info("Loading flat poller service catalog from {}", catalogFile);
+        var catalog = new CatalogParser().parse(catalogFile.toPath());
+        failOnValidationErrors(catalogFile, new CatalogValidator().validate(catalog));
+        return catalog;
+    }
+
+    /**
+     * Config-gap observability (FR9): publishes the {@code deltav_perspectivepollerd_services_unscheduled}
+     * gauge and a one-line {@code perspective-catalog-summary} for the perspective-polled service types
+     * (application members) perspectivepollerd cannot schedule. Unlike pollerd's inventory-wide check, the
+     * universe here is {@code ApplicationDao.getServicePerspectives()} — the services PerspectivePollerd
+     * actually attempts to poll. See {@link PerspectiveCatalogStartupCheck}.
+     */
+    @Bean
+    public PerspectiveCatalogStartupCheck perspectiveCatalogStartupCheck(Catalog perspectiveCatalog,
+                                                                         ServiceMonitorRegistry serviceMonitorRegistry,
+                                                                         ApplicationDao applicationDao,
+                                                                         SessionUtils sessionUtils,
+                                                                         MeterRegistry meterRegistry) {
+        return new PerspectiveCatalogStartupCheck(perspectiveCatalog, serviceMonitorRegistry, applicationDao,
+                sessionUtils, meterRegistry);
     }
 
     /**
@@ -216,28 +293,37 @@ public class PerspectivePollerdDaemonConfiguration {
     }
 
     /**
-     * Patches parameters with nested XML content that Jackson XmlMapper
-     * silently drops (e.g., {@code <page-sequence>} inside {@code <parameter>}).
-     *
-     * @see PollerdDaemonConfiguration for the full explanation
+     * Logs every validation finding and refuses to start if any is an ERROR. The build-time lint
+     * already gates the image; this is defense-in-depth so a malformed catalog fails the context
+     * loudly rather than silently unmonitoring services.
      */
-    private void patchNestedXmlParameters(File configFile, PollerConfiguration config) {
-        Map<String, String> nestedParams = XmlConfigPostProcessor.extractNestedXmlParameters(configFile);
-        if (nestedParams.isEmpty()) {
-            return;
-        }
-        for (var pkg : config.getPackages()) {
-            for (var service : pkg.getServices()) {
-                for (var param : service.getParameters()) {
-                    String lookupKey = pkg.getName() + ":" + service.getName() + ":" + param.getKey();
-                    String xmlString = nestedParams.get(lookupKey);
-                    if (xmlString != null && param.getValue() == null) {
-                        param.setValue(xmlString);
-                        LOG.debug("Patched parameter {}.{}.{} with nested XML",
-                                pkg.getName(), service.getName(), param.getKey());
-                    }
-                }
+    private static void failOnValidationErrors(File catalogFile, List<ValidationMessage> messages) {
+        boolean hasError = false;
+        for (var message : messages) {
+            if (message.isError()) {
+                LOG.error("{}", message.format(catalogFile.getName()));
+                hasError = true;
+            } else {
+                LOG.warn("{}", message.format(catalogFile.getName()));
             }
         }
+        if (hasError) {
+            throw new IllegalStateException(
+                    "Poller service catalog " + catalogFile + " has validation errors; refusing to start");
+        }
+    }
+
+    /**
+     * Every non-deleted inventory IP address, queried lazily inside a read-only transaction.
+     * Replicates the legacy active-IP set ({@code ipInterface.isManaged != 'D'}); the synthetic
+     * catalog packages have no filter rules, so this is the complete polled-interface universe.
+     */
+    private static List<InetAddress> activeInventoryIps(IpInterfaceDao ipInterfaceDao, SessionUtils sessionUtils) {
+        return sessionUtils.withReadOnlyTransaction(() ->
+                ipInterfaceDao.findAll().stream()
+                        .filter(iface -> !"D".equals(iface.getIsManaged()))
+                        .map(OnmsIpInterface::getIpAddress)
+                        .filter(Objects::nonNull)
+                        .toList());
     }
 }
