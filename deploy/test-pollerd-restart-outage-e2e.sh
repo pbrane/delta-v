@@ -106,11 +106,24 @@ target_listener_down() { docker exec "$TARGET_NAME" pkill -x socat 2>/dev/null |
 
 cleanup() {
     docker rm -f "$TARGET_NAME" >/dev/null 2>&1 || true
+    # Remove the in-container provisioning artifacts so the scheduler stops importing
+    # the throwaway requisition and re-runs start clean. (Best-effort; container may
+    # already be gone.)
+    docker exec "$PROV" sh -c "rm -f /opt/deltav/etc/imports/${FOREIGN_SOURCE}.xml \
+        /opt/deltav/etc/foreign-sources/${FOREIGN_SOURCE}.xml" 2>/dev/null || true
+    docker exec "$PROV" sh -c "grep -q 'import-name=\"${FOREIGN_SOURCE}\"' /opt/deltav/etc/provisiond-configuration.xml 2>/dev/null" \
+        && { TMP_C="$(mktemp)"; docker cp "${PROV}:/opt/deltav/etc/provisiond-configuration.xml" "$TMP_C" 2>/dev/null \
+             && python3 -c "import re,sys; p=sys.argv[1]; fs=sys.argv[2]; s=open(p).read(); \
+import_re=re.compile(r'\s*<requisition-def import-name=\"'+re.escape(fs)+r'\".*?</requisition-def>\n', re.S); \
+open(p,'w').write(import_re.sub('', s))" "$TMP_C" "$FOREIGN_SOURCE" \
+             && docker cp "$TMP_C" "${PROV}:/opt/deltav/etc/provisiond-configuration.xml" 2>/dev/null; \
+             rm -f "$TMP_C"; } || true
     if $POST_CLEANUP; then
         log "Post-run cleanup (--post-cleanup): removing test node..."
         psql_query "DELETE FROM node WHERE nodelabel = '${NODE_LABEL}'" 2>/dev/null || true
     fi
 }
+PROV=delta-v-provisiond
 trap cleanup EXIT
 
 # ── Pre-run cleanup (--pre-clean) ─────────────────────────────────
@@ -168,9 +181,16 @@ ok "Listener started on ${TARGET_PORT}"
 log ""
 log "Phase 1: provisioning '${NODE_LABEL}' at ${TARGET_IP} with active '${SERVICE_NAME}'..."
 
-mkdir -p overlays/provisiond/etc/foreign-sources overlays/provisiond/etc/imports
+# Deliver provisioning artifacts DIRECTLY into the running provisiond container.
+# The host overlays/provisiond/etc/ path is NOT mounted into provisiond — config
+# is baked into the image and imports/ is a named volume seeded by an init sidecar
+# (see test-minion-rpc-e2e.sh + project_provisiond_e2e_slowness_root_cause). Writing
+# to the host path silently does nothing; write into the container instead.
+PROV=delta-v-provisiond
 
-cat > "overlays/provisiond/etc/foreign-sources/${FOREIGN_SOURCE}.xml" <<FSEOF
+# 1. Foreign source — empty detectors (the service is declared in the requisition,
+#    so no scan-time detection is needed; this also avoids the 17-detector default).
+docker exec -i "$PROV" tee "/opt/deltav/etc/foreign-sources/${FOREIGN_SOURCE}.xml" >/dev/null <<FSEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <foreign-source xmlns="http://xmlns.opennms.org/xsd/config/foreign-source" name="${FOREIGN_SOURCE}">
     <scan-interval>1d</scan-interval>
@@ -179,7 +199,8 @@ cat > "overlays/provisiond/etc/foreign-sources/${FOREIGN_SOURCE}.xml" <<FSEOF
 </foreign-source>
 FSEOF
 
-cat > "overlays/provisiond/etc/imports/${FOREIGN_SOURCE}.xml" <<REQEOF
+# 2. Requisition with the throwaway target IP + the active service.
+docker exec -i "$PROV" tee "/opt/deltav/etc/imports/${FOREIGN_SOURCE}.xml" >/dev/null <<REQEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import"
               foreign-source="${FOREIGN_SOURCE}"
@@ -192,19 +213,27 @@ cat > "overlays/provisiond/etc/imports/${FOREIGN_SOURCE}.xml" <<REQEOF
 </model-import>
 REQEOF
 
-cat > overlays/provisiond/etc/provisiond-configuration.xml <<PROVEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<provisiond-configuration xmlns="http://xmlns.opennms.org/xsd/config/provisiond-configuration"
-  foreign-source-dir="/opt/deltav/etc/foreign-sources"
-  requistion-dir="/opt/deltav/etc/imports"
-  importThreads="4" scanThreads="4" rescanThreads="4" writeThreads="4" >
-  <requisition-def import-name="${FOREIGN_SOURCE}"
-                   import-url-resource="file:///opt/deltav/etc/imports/${FOREIGN_SOURCE}.xml">
-    <cron-schedule>0/30 * * * * ?</cron-schedule>
-  </requisition-def>
-</provisiond-configuration>
-PROVEOF
-ok "Requisition, foreign source, and provisiond config written"
+# 3. Add a requisition-def for our foreign source to the in-container config so the
+#    scheduler imports it. Edit via a docker cp round-trip (no reliance on in-container
+#    sed). 0/30 cron = first import within 30s; the def + node are removed in cleanup.
+if ! docker exec "$PROV" grep -q "import-name=\"${FOREIGN_SOURCE}\"" /opt/deltav/etc/provisiond-configuration.xml; then
+    TMP_CFG="$(mktemp)"
+    docker cp "${PROV}:/opt/deltav/etc/provisiond-configuration.xml" "$TMP_CFG"
+    python3 - "$TMP_CFG" "$FOREIGN_SOURCE" <<'PY'
+import sys
+path, fs = sys.argv[1], sys.argv[2]
+defn = (f'  <requisition-def import-name="{fs}"\n'
+        f'                   import-url-resource="file:///opt/deltav/etc/imports/{fs}.xml">\n'
+        f'    <cron-schedule>0/30 * * * * ?</cron-schedule>\n'
+        f'  </requisition-def>\n')
+s = open(path).read()
+s = s.replace('</provisiond-configuration>', defn + '</provisiond-configuration>')
+open(path, 'w').write(s)
+PY
+    docker cp "$TMP_CFG" "${PROV}:/opt/deltav/etc/provisiond-configuration.xml"
+    rm -f "$TMP_CFG"
+fi
+ok "Requisition, foreign source, and provisiond-config delivered into the container"
 
 log "  Restarting Provisiond to import the requisition..."
 docker compose restart provisiond

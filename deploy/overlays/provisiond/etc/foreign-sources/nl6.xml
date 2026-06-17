@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Foreign source for the nl6 simulator's dynamically-generated requisition
+  (imports/nl6.xml, foreign-source="nl6"). Without this file, nodes provisioned
+  with foreignsource="nl6" matched NO foreign-source definition and fell back to
+  the hardcoded built-in default (17 detectors: WS-Man, SSH, HTTP(S), FTP, IMAP,
+  POP3, SMTP, DNS, LDAP, NRPE, MS-RDP, JMX x3, ...), 15 of which fail against the
+  SNMP-only sim nodes — driving a heavy scan load. Restrict to ICMP + SNMP, exactly
+  like nl6-lab.xml. (The simulator emits foreign-source="nl6"; the pre-existing
+  nl6-lab.xml never matched it — name mismatch.)
+-->
+<foreign-source xmlns="http://xmlns.opennms.org/xsd/config/foreign-source" name="nl6">
+    <scan-interval>1d</scan-interval>
+    <detectors>
+        <detector name="ICMP" class="org.opennms.netmgt.provision.detector.icmp.IcmpDetector"/>
+        <detector name="SNMP" class="org.opennms.netmgt.provision.detector.snmp.SnmpDetector"/>
+    </detectors>
+    <policies/>
+</foreign-source>

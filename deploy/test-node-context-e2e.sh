@@ -51,26 +51,17 @@ PROVISIOND_CONFIG_BACKUP="$(mktemp -t provisiond-config.XXXXXX.xml)"
 
 cleanup() {
     echo "==> Tearing down stack"
-    rm -f "${E2E_REQUISITION_FILE}"
-    # Restore provisiond-configuration.xml from the committed state (captured
-    # before mutation in Step 3) so this test never leaves the working tree
-    # in a state that breaks other e2e tests that depend on the full set of
-    # requisition-defs (rpc-canary, cloud-services, nl6-lab, …).
-    # Guard with -s (non-empty), not -f: the backup is an empty mktemp file at
-    # trap-arm time and is only populated by the `cp` in Step 3. An early exit
-    # (e.g. stack bring-up fails before Step 3) would otherwise restore the
-    # empty backup OVER the tracked config, truncating it to 0 bytes and
-    # cascading into requisition-import failures across the whole suite.
-    if [ -s "${PROVISIOND_CONFIG_BACKUP}" ]; then
-        cp "${PROVISIOND_CONFIG_BACKUP}" "${PROVISIOND_CONFIG}"
-        rm -f "${PROVISIOND_CONFIG_BACKUP}"
-    fi
+    rm -f "${PROVISIOND_CONFIG_BACKUP}"
+    # The requisition + requisition-def are written only INTO the provisiond
+    # container (not the host overlays/, which isn't mounted). `down -v` removes
+    # the container, so the baked config resets and nothing leaks into the working
+    # tree or other e2e tests.
     docker compose down -v --remove-orphans || true
 }
 trap cleanup EXIT
 
-echo "==> Starting delta-v Docker Compose (lite profile)"
-docker compose --profile lite up -d --build
+echo "==> Starting delta-v Docker Compose (active profile)"
+docker compose --profile active up -d --build
 
 # ── Step 1: Wait for provisiond /actuator/health ──────────────────────────────
 
@@ -115,9 +106,12 @@ echo "==> bootstrap runner executed — lifecycle wiring verified"
 # after each successful import and the NodeContextChangeFeedListener fan-out
 # enqueues every node in the foreignSource for a "change" publish.
 
-echo "==> Writing E2E requisition ${E2E_FOREIGN_SOURCE}"
-mkdir -p overlays/provisiond/etc/imports
-cat > "${E2E_REQUISITION_FILE}" <<'REQEOF'
+# Write the requisition DIRECTLY into the running provisiond container. The host
+# overlays/provisiond/etc/ path is NOT mounted into provisiond (config is baked into
+# the image; imports/ is a named volume seeded by an init sidecar), so host writes
+# never reach the daemon. See project_provisiond_e2e_slowness_root_cause.
+echo "==> Writing E2E requisition ${E2E_FOREIGN_SOURCE} into the provisiond container"
+docker compose exec -T provisiond tee "/opt/deltav/etc/imports/${E2E_FOREIGN_SOURCE}.xml" >/dev/null <<'REQEOF'
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import"
               date-stamp="2026-04-16T00:00:00.000-05:00"
               foreign-source="node-context-e2e">
@@ -134,23 +128,26 @@ REQEOF
 # requisition-def (delta-v, rpc-canary, cloud-services, nl6-lab,
 # perspective-test) that other e2e tests depend on.
 # The committed state is backed up in cleanup()'s trap and restored on exit.
-echo "==> Injecting ${E2E_FOREIGN_SOURCE} requisition-def into ${PROVISIOND_CONFIG}"
-cp "${PROVISIOND_CONFIG}" "${PROVISIOND_CONFIG_BACKUP}"
-python3 - "${PROVISIOND_CONFIG}" "${E2E_FOREIGN_SOURCE}" <<'PYEOF'
-import sys
-path, fs = sys.argv[1], sys.argv[2]
+# Add the requisition-def to the IN-CONTAINER provisiond-configuration.xml (the baked
+# config), via a docker cp round-trip. The container is reset by `down -v` in cleanup,
+# so the host config is never mutated and needs no backup/restore.
+echo "==> Injecting ${E2E_FOREIGN_SOURCE} requisition-def into the in-container provisiond config"
+python3 - "${PROVISIOND_CONFIG_BACKUP}" "${E2E_FOREIGN_SOURCE}" <<'PYEOF'
+import subprocess, sys
+tmp, fs = sys.argv[1], sys.argv[2]
+subprocess.run(["docker", "cp", "delta-v-provisiond:/opt/deltav/etc/provisiond-configuration.xml", tmp], check=True)
 snippet = (
     f'  <requisition-def import-name="{fs}"\n'
     f'                   import-url-resource="file:///opt/deltav/etc/imports/{fs}.xml">\n'
     f'    <cron-schedule>0/30 * * * * ?</cron-schedule>\n'
     f'  </requisition-def>\n'
 )
-with open(path) as f: content = f.read()
+with open(tmp) as f: content = f.read()
 marker = '</provisiond-configuration>'
 if marker not in content:
-    sys.exit(f"marker {marker!r} not found in {path}")
-content = content.replace(marker, snippet + marker, 1)
-with open(path, 'w') as f: f.write(content)
+    sys.exit(f"marker {marker!r} not found in container config")
+with open(tmp, 'w') as f: f.write(content.replace(marker, snippet + marker, 1))
+subprocess.run(["docker", "cp", tmp, "delta-v-provisiond:/opt/deltav/etc/provisiond-configuration.xml"], check=True)
 PYEOF
 
 echo "==> Restarting provisiond to pick up E2E requisition"
