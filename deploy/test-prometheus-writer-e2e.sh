@@ -334,7 +334,7 @@ while (( SECONDS < deadline )); do
             'import json,sys; d=json.load(sys.stdin); print(len(d.get("data",{}).get("result",[])))' \
             2>/dev/null || echo "0")
     if (( count > 0 )); then
-        echo "==> VM returned ${count} series for nl6-lab (Minion-lab is working)"
+        echo "==> VM returned ${count} series for nl6-lab (nl6-minion is working)"
         echo "$resp" | grep -q '"location":"nl6-lab"' || \
             { echo "FAIL: series missing location label"; exit 1; }
         lab_landed=true
@@ -345,12 +345,12 @@ done
 if [[ "$lab_landed" != "true" ]]; then
     echo "FAIL: nl6-lab produced no interface HC metrics within ${VM_QUERY_TIMEOUT}s"
     echo "Last VM response: $resp"
-    docker compose logs minion-lab | tail -30
+    docker compose logs nl6-minion | tail -30
     exit 1
 fi
 
 # ── Step 11: Verify nl6-lab IPFIX flows + full 4-protocol coverage in ClickHouse ──
-# Asserts the flow pipeline (nl6 → minion-lab → flow-enricher → ClickHouse)
+# Asserts the flow pipeline (nl6 → nl6-minion → flow-enricher → ClickHouse)
 # delivers IPFIX flows AND that all four parser paths (NetFlow v5, NetFlow v9,
 # IPFIX, sFlow) reach ClickHouse. All four protocols now come from the nl6
 # fleet (its 29 devices are round-robined across netflow9/netflow5/sflow/ipfix
@@ -381,7 +381,7 @@ if [[ "$flows_landed" != "true" ]]; then
     echo "FAIL: nl6-lab flows did not land with full 4-protocol coverage within ${CLICKHOUSE_QUERY_TIMEOUT}s"
     echo "Last rows: ${rows:-0}; last protocols: ${protos:-0}"
     docker compose logs flow-enricher | tail -30
-    docker compose logs minion-lab | tail -20
+    docker compose logs nl6-minion | tail -20
     exit 1
 fi
 

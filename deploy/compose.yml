@@ -163,7 +163,7 @@ services:
     # per-device exporter IP, which maps to the per-device nodes in the
     # nl6-lab requisition (one node per 10.0.0.x, location nl6-lab).
     #
-    # COLLECTOR = the veth host end 10.254.0.1, where minion-lab (which shares
+    # COLLECTOR = the veth host end 10.254.0.1, where nl6-minion (which shares
     # this root netns via network_mode: container:delta-v-nl6) listens on
     # :4729/:1162/:1514. The per-device collectors in components/nl6/devices.json
     # (flow 10.254.0.1:4729, trap :1162, syslog :1514) OVERRIDE the CLI
@@ -222,7 +222,7 @@ services:
       # NOTE: collectors are now the literal veth IP 10.254.0.1 (see nl6 above),
       # NOT the `minion` hostname, so the seed no longer does a DNS lookup of
       # `minion` — the original "lookup minion ... no such host" race is gone.
-      # The real flow listener is minion-lab (shared netns), not this Default
+      # The real flow listener is nl6-minion (shared netns), not this Default
       # `minion`. This dependency is retained only as soft ordering safety and
       # is a candidate for removal once validated.
       minion:
@@ -351,18 +351,18 @@ services:
       retries: 12
       start_period: 15s
 
-  minion-lab:
+  nl6-minion:
     <<: *no-search-domain
     image: ${IMAGE_PREFIX:-deltav}/minion-boot:${VERSION}
-    container_name: delta-v-minion-lab
+    container_name: delta-v-nl6-minion
     profiles: [active, full, metrics, demo]
     # network_mode pins this container to nl6's netns BY CONTAINER ID. If nl6 is
     # ever recreated (image bump, command/config change), this netns reference
-    # is invalidated: minion-lab exits and `docker restart` CANNOT recover it
+    # is invalidated: nl6-minion exits and `docker restart` CANNOT recover it
     # ("joining network namespace of container: No such container"). Because all
     # nl6 flows route through here, an unnoticed nl6 recreate silently kills the
     # whole flow pipeline. Recreate the two TOGETHER:
-    #   docker compose up -d --force-recreate nl6 minion-lab
+    #   docker compose up -d --force-recreate nl6 nl6-minion
     network_mode: "container:delta-v-nl6"
     cap_add:
       - NET_RAW
@@ -376,7 +376,7 @@ services:
       nl6-provisioner:
         condition: service_completed_successfully
     environment:
-      MINION_ID: minion-nl6-lab-01
+      MINION_ID: nl6-minion-01
       MINION_LOCATION: nl6-lab
       # Port-collision avoidance under shared netns: nl6 binds 8080 for
       # its REST API, Minion's actuator defaults to 8080 too. Move Minion's
@@ -669,6 +669,34 @@ services:
         find /runtime -type d -exec chmod 755 {} +
         find /runtime -type f -exec chmod 644 {} +
 
+  # Profile-gated nl6 requisition swap-in. provisiond-imports-init seeds an EMPTY
+  # nl6-lab.xml; this sidecar (nl6 profiles only — same set as nl6 + nl6-minion)
+  # overwrites it with the real 29-node requisition, so the nl6 nodes are imported
+  # ONLY when there's an nl6-minion at location=nl6-lab to poll them. On a
+  # Default-only/lean E2E stack this service is absent, nl6-lab.xml stays empty,
+  # and provisiond imports 0 nl6 nodes (no minion-less-location RPC flood — #368).
+  provisiond-nl6-init:
+    <<: *no-search-domain
+    profiles: [active, full, metrics, demo]
+    image: ${IMAGE_PREFIX:-deltav}/provisiond-imports-init:${VERSION}
+    container_name: delta-v-provisiond-nl6-init
+    user: "0:0"
+    restart: "no"
+    depends_on:
+      provisiond-imports-init:
+        condition: service_completed_successfully
+    volumes:
+      - provisiond_imports:/runtime
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "[provisiond-nl6-init] Swapping in the real nl6-lab requisition (29 nodes)"
+        cp /seed-nl6/nl6-lab.xml /runtime/nl6-lab.xml
+        chown 100:101 /runtime/nl6-lab.xml
+        chmod 644 /runtime/nl6-lab.xml
+
   provisiond:
     <<: *no-search-domain
     profiles: [active, passive, full, metrics, demo]
@@ -774,7 +802,7 @@ services:
     depends_on:
       provisiond:
         condition: service_healthy
-      minion-lab:
+      nl6-minion:
         condition: service_healthy
     environment:
       PGHOST: postgres

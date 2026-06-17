@@ -80,7 +80,7 @@ while [ "${loc_count:-0}" -ne 2 ]; do
     if [ "${loc_count:-0}" -ne 2 ]; then
         if [ "$(date +%s)" -gt "$deadline" ]; then
             log "FAIL: expected both monitoring locations (${LOCATION_A}, ${LOCATION_B}); found ${loc_count} within ${WAIT_TIMEOUT}s"
-            log "      ensure minion-lab is running and has registered with the gateway"
+            log "      ensure nl6-minion is running and has registered with the gateway"
             exit 1
         fi
         sleep "$POLL_INTERVAL"

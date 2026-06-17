@@ -12,3 +12,7 @@ LABEL org.opencontainers.image.title="Delta-V Provisiond Imports Init" \
       org.opencontainers.image.description="Seeds provisiond_imports named volume from baked requisitions"
 
 COPY overlays/provisiond/etc/imports-seed/ /seed/
+# Profile-gated nl6 requisition (the real 29-node nl6-lab requisition). The base
+# /seed ships an EMPTY nl6-lab.xml; the provisiond-nl6-init service (nl6 profiles
+# only) copies this over it so the nl6 nodes exist only when nl6-minion runs.
+COPY overlays/provisiond/etc/imports-seed-nl6/ /seed-nl6/
