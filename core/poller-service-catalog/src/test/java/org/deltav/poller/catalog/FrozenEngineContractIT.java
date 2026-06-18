@@ -163,11 +163,12 @@ class FrozenEngineContractIT {
     }
 
     /**
-     * The frozen engine's status-storing path dereferences the per-package {@code Rrd} with no null
-     * guard: on every poll result, {@code StatusStoringServiceMonitorAdaptor.storeStatus} calls
-     * {@code PollerConfigManager.getStep(pkg)} → {@code pkg.getRrd().getStep()}. If the translator
-     * emits no {@code Rrd}, every poll NPEs and the service is force-marked DOWN. The translator must
-     * emit the legacy {@code <rrd step="300">} block, exactly as it emits the disabled node-outage.
+     * The translator emits no {@code <rrd>} block (delta-v's Pollerd uses a no-op persister). The
+     * frozen engine's status-storing path calls {@code PollerConfigManager.getStep(pkg)} /
+     * {@code getRRAList(pkg)} on every poll result; as of horizon 1.0.19 those null-guard
+     * {@code getRrd()} and return a default step (300) / empty RRA list rather than NPE-ing and
+     * force-marking the service DOWN. This pins that the synthetic config (no rrd) + the engine
+     * guard resolve a usable step — so the parity {@code <rrd>} workaround can stay removed (#362).
      */
     @Test
     void rrdStepResolvesOnSyntheticConfig() throws UnknownHostException {
@@ -176,8 +177,8 @@ class FrozenEngineContractIT {
                 List.of(addr("10.0.0.1")));
         final Package pkg = factory.getPackage("catalog-ICMP");
 
-        // getStep() is the exact call that NPE'd at runtime (PollerConfigManager.getStep:991).
-        assertEquals(300, factory.getStep(pkg), "per-package rrd step must resolve (legacy parity)");
+        // getStep() is the exact call that NPE'd at runtime; the engine guard now returns the default.
+        assertEquals(300, factory.getStep(pkg), "engine returns the default step when no <rrd> is present");
         assertDoesNotThrow(() -> factory.getRRAList(pkg), "rra list must resolve without NPE");
     }
 
