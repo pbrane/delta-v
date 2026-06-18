@@ -108,6 +108,13 @@ auth.json
 deploy/overlays/provisiond/etc/imports/*
 !deploy/overlays/provisiond/etc/imports/.gitkeep
 
+# Flat poller service catalog — the single source of truth is committed at
+# overlays/shared/poller-services.yaml; build.sh stages a copy into each
+# consuming daemon's overlay at image-build time. Those copies are generated,
+# never committed (see tools/build.sh stage_shared_poller_catalog).
+deploy/overlays/pollerd/etc/poller-services.yaml
+deploy/overlays/perspectivepollerd/etc/poller-services.yaml
+
 # C4 diagram export tooling (npm deps)
 docs/architecture/c4/scripts/node_modules/
 # Structurizr Lite regenerable artifacts (layout cache + compiled workspace)

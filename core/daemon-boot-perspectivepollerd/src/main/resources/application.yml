@@ -62,6 +62,16 @@ opennms:
       enabled: ${OPENNMS_RPC_KAFKA_ENABLED:true}
       bootstrap-servers: ${OPENNMS_RPC_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
 
+# Poller engine-tuning scalars (FR1b): bound into EngineSettings and applied to the synthetic
+# PollerConfiguration root. Defaults mirror the legacy poller-configuration.xml attributes.
+# PerspectivePollerd polls remotely via Minion RPC, but the frozen engine still reads these
+# root attributes, so they are kept identical to pollerd's.
+poller:
+  engine:
+    threads: ${POLLER_ENGINE_THREADS:30}
+    async-polling-engine-enabled: ${POLLER_ENGINE_ASYNC_ENABLED:false}
+    max-concurrent-async-polls: ${POLLER_ENGINE_MAX_CONCURRENT_ASYNC_POLLS:200}
+
 management:
   endpoints:
     web:

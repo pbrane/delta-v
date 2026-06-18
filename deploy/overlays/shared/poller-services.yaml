@@ -1,8 +1,14 @@
-# delta-v flat poller service catalog — pollerd overlay.
+# delta-v flat poller service catalog — SHARED by pollerd and perspectivepollerd.
+#
+# Single source of truth for both daemons' service definitions. build.sh stages this file
+# into deploy/overlays/{pollerd,perspectivepollerd}/etc/poller-services.yaml at image-build
+# time (those per-daemon copies are git-ignored); each daemon's Dockerfile then bakes + lints it.
 #
 # Replaces the package/filter/downtime structure of poller-configuration.xml with a
 # flat service-definition list. Service selection is inventory-driven (every monitored
-# service is polled); resolution is exact-name first, then pattern in file order.
+# service is polled); resolution is exact-name first, then pattern in file order. For
+# perspectivepollerd the catalog is consulted only as the monitor-class + parameter registry —
+# the polled (service, perspective-location) set is driven by application membership, not filters.
 #
 # Shape per entry: { name, pattern?, monitor, interval, enabled?=true, parameters }.
 # - interval is milliseconds.
@@ -10,7 +16,9 @@
 # - dropped vs. the legacy XML (no behavior change): downtime models, <rrd> blocks,
 #   rrd-repository / rrd-base-name / ds-name params, thresholding-enabled, user-defined.
 #
-# Translated from poller-configuration.xml. See docs/audits/2026-06-14-pollerd-catalog-parity-audit.md.
+# Translated from poller-configuration.xml. See
+# docs/audits/2026-06-14-pollerd-catalog-parity-audit.md (pollerd) and
+# docs/audits/2026-06-17-perspectivepollerd-catalog-parity-audit.md (perspectivepollerd).
 
 services:
   - name: ICMP

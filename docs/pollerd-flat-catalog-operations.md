@@ -7,9 +7,17 @@ catalog** — `etc/poller-services.yaml` — baked into the image at build time.
 is inventory-driven: pollerd polls every monitored service that exists in inventory; there are no
 packages, filters, include-ranges, or downtime models in the config.
 
+**Shared with perspectivepollerd.** Both `pollerd` and `perspectivepollerd` run on the **same**
+catalog. The single committed source is `deploy/overlays/shared/poller-services.yaml`; the build
+(`tools/build.sh`) stages a copy into each daemon's overlay (`overlays/{pollerd,perspectivepollerd}/etc/`)
+at image-build time, so editing one file updates both daemons. PerspectivePollerd uses the catalog
+only as the per-service monitor + parameter registry — its polled `(service, perspective-location)`
+set comes from application membership, not from the catalog. Edit the shared file, never the
+generated per-daemon copies (those are git-ignored).
+
 ## 1. The catalog format
 
-`deploy/overlays/pollerd/etc/poller-services.yaml`:
+`deploy/overlays/shared/poller-services.yaml`:
 
 ```yaml
 services:
@@ -119,14 +127,16 @@ The catalog is **immutable at runtime** — it is baked into the image and valid
 lint stage that fails the image build on a malformed catalog. There is no runtime reload.
 
 ```bash
-# 1. Edit the overlay catalog.
-$EDITOR deploy/overlays/pollerd/etc/poller-services.yaml
+# 1. Edit the shared catalog (drives both pollerd and perspectivepollerd).
+$EDITOR deploy/overlays/shared/poller-services.yaml
 
 # 2. Lint locally (same check the image build runs; exit 0 = clean).
-make lint-catalog CATALOG=deploy/overlays/pollerd/etc/poller-services.yaml
+make lint-catalog CATALOG=deploy/overlays/shared/poller-services.yaml
 
-# 3. Rebuild the pollerd image (the lint stage runs again here, unbypassable).
+# 3. Rebuild the affected image(s) — the lint stage runs again here, unbypassable.
+#    Rebuild both consumers if the change affects perspective-polled services.
 make daemon-image DAEMON=pollerd
+make daemon-image DAEMON=perspectivepollerd
 
 # 4. Roll the stack onto the new image.
 make up PROFILE=full
@@ -143,4 +153,5 @@ edits.
 ## Related
 
 - Parity audit (legacy XML → YAML): `docs/audits/2026-06-14-pollerd-catalog-parity-audit.md`
+- Perspective parity audit (shared catalog): `docs/audits/2026-06-17-perspectivepollerd-catalog-parity-audit.md`
 - Restart-during-outage E2E: `deploy/test-pollerd-restart-outage-e2e.sh`

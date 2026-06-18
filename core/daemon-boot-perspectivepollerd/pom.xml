@@ -59,10 +59,28 @@
             <groupId>org.deltav.core</groupId>
             <artifactId>org.opennms.core.daemon-registry</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <!-- daemon-registry pulls opennms-detector-lineoriented:1.0.18 -> spring-dependencies,
+                     which drags the legacy ServiceMix-bundled spring-messaging 4.2.9. That shadows the
+                     Spring Boot 3 spring-messaging 7.x and breaks Spring Cloud Stream's
+                     CompositeMessageConverter (NoSuchMethod AbstractMessageConverter.<init>(MimeType[])).
+                     Exclude it here (perspectivepoller/client-rpc already exclude the same wildcard); the
+                     real spring-messaging 7.x remains. Mirrors pollerd, which ships only 7.x. -->
+                <exclusion><groupId>org.apache.servicemix.bundles</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>org.opennms.dependencies</groupId><artifactId>spring-dependencies</artifactId></exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.deltav.core</groupId>
             <artifactId>org.opennms.core.poller-timeseries-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Flat poller service catalog — CatalogParser/Validator/Translator, InventoryFilterDao,
+             EngineSettings (replaces the legacy poller-configuration.xml + JdbcFilterDao path) -->
+        <dependency>
+            <groupId>org.deltav.core</groupId>
+            <artifactId>org.opennms.core.poller-service-catalog</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -114,12 +132,6 @@
         <dependency>
             <groupId>org.opennms.features.poller</groupId>
             <artifactId>org.opennms.features.poller.config</artifactId>
-        </dependency>
-
-        <!-- FilterDaoFactory, JdbcFilterDao -->
-        <dependency>
-            <groupId>org.opennms.core</groupId>
-            <artifactId>org.opennms.core.filter</artifactId>
         </dependency>
 
         <!-- SnmpPeerFactory -->

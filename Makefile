@@ -88,7 +88,7 @@ daemon: ## Rebuild a single daemon boot JAR; set DAEMON=provisiond (etc)
 	  install
 
 lint-catalog: ## Lint a poller service catalog; set CATALOG=path/to/poller-services.yaml
-	@test -n "$(CATALOG)" || (echo "ERROR: CATALOG is required, e.g.: make lint-catalog CATALOG=deploy/overlays/pollerd/etc/poller-services.yaml" && exit 1)
+	@test -n "$(CATALOG)" || (echo "ERROR: CATALOG is required, e.g.: make lint-catalog CATALOG=deploy/overlays/shared/poller-services.yaml" && exit 1)
 	$(MVN) -B -q -DskipTests \
 	  --projects :org.opennms.core.poller-service-catalog \
 	  compile org.codehaus.mojo:exec-maven-plugin:3.5.0:exec \

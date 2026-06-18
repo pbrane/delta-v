@@ -18,8 +18,11 @@ package org.deltav.netmgt.perspectivepoller.boot;
 
 /**
  * Canonical Micrometer meter names for perspectivepollerd domain signals.
- * Names become {@code deltav_perspective_*} at {@code /actuator/prometheus}
- * after Micrometer's dot-to-underscore flattening.
+ * Per-poll instrumentation names become {@code deltav_perspective_*} at
+ * {@code /actuator/prometheus} after Micrometer's dot-to-underscore flattening;
+ * the FR9 config-gap gauge uses the full per-daemon prefix
+ * ({@code deltav_perspectivepollerd_services_unscheduled}) for symmetry with
+ * pollerd's {@code deltav_pollerd_services_unscheduled}.
  *
  * <p>Instrumentation seam: {@link InstrumentedPerspectivePollerd} overrides
  * horizon's {@code persistResponseTimeData(PerspectivePolledService, PollStatus)}
@@ -41,7 +44,14 @@ public final class PerspectivePollerdDomainMetrics {
     public static final String POLLS_COMPLETED           = "deltav.perspective.polls.completed";
     public static final String POLL_DURATION             = "deltav.perspective.poll.duration";
 
+    /**
+     * Labeled gauge (one series per unschedulable perspective service type) for catalog config
+     * gaps (FR9). Full per-daemon prefix, mirroring pollerd's {@code deltav_pollerd_services_unscheduled}.
+     */
+    public static final String SERVICES_UNSCHEDULED      = "deltav.perspectivepollerd.services.unscheduled";
+
     static final String TAG_LOCATION    = "location";
     static final String TAG_PERSPECTIVE = "perspective";
     static final String TAG_RESULT      = "result";
+    static final String TAG_SERVICE     = "service";
 }
