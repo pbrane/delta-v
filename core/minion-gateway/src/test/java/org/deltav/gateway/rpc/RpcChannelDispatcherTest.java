@@ -25,7 +25,6 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class RpcChannelDispatcherTest {
@@ -95,21 +94,29 @@ class RpcChannelDispatcherTest {
     }
 
     @Test
-    void dispatch_noStream_logsAndDropsWithoutFailing() {
+    void dispatch_noStream_publishesFastErrorResponse() {
         MinionStreamPool pool = mock(MinionStreamPool.class);
         InFlightRpcTable table = new InFlightRpcTable();
         RpcResponsePublisher publisher = mock(RpcResponsePublisher.class);
         RpcChannelDispatcher dispatcher = new RpcChannelDispatcher(pool, table, publisher);
 
-        when(pool.pickStream("Default")).thenReturn(null);
+        when(pool.pickStream("nl6-lab")).thenReturn(null);
 
         RpcRequest req = RpcRequest.newBuilder()
-            .setRpcId("xyz").setLocation("Default").build();
+            .setRpcId("xyz").setLocation("nl6-lab").build();
 
-        // Must not throw. Must not record. Must not invoke publisher.
+        // No Minion at the location: rather than dropping (the caller then waits its
+        // full ~30s RPC deadline, and many services targeting a minion-less location
+        // flood the RPC path and starve other locations), publish a fast error
+        // response so the caller fails immediately and marks the service UNKNOWN
+        // (an RPC error, not a false outage — feedback_rpc_timeout_no_outages). See #368.
         dispatcher.dispatch(req);
 
-        assertThat(table.findEntry("xyz")).isNull();
-        verifyNoInteractions(publisher);
+        assertThat(table.findEntry("xyz")).isNull(); // nothing to track without a stream
+        org.mockito.ArgumentCaptor<org.deltav.minion.grpc.v1.RpcResponse> cap =
+            org.mockito.ArgumentCaptor.forClass(org.deltav.minion.grpc.v1.RpcResponse.class);
+        verify(publisher).publish(cap.capture());
+        assertThat(cap.getValue().getRpcId()).isEqualTo("xyz");
+        assertThat(cap.getValue().getErrorMessage()).contains("nl6-lab");
     }
 }

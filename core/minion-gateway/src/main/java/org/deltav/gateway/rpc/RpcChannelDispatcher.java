@@ -121,8 +121,19 @@ public class RpcChannelDispatcher implements RpcStreamCloseHandler, RpcResponseH
     void dispatch(RpcRequest req) {
         StreamObserver<RpcRequest> stream = pool.pickStream(req.getLocation());
         if (stream == null) {
-            LOG.info("No Minion streams for location={}; dropping rpcId={} (caller will time out)",
+            // No Minion is connected at this location. Don't silently drop: the caller
+            // would wait its full RPC deadline (~30s), and when many services target a
+            // minion-less location (e.g. a seeded requisition with no Minion to serve
+            // it) those timeouts flood the RPC client and starve other locations'
+            // responses. Publish a fast error response so the caller fails immediately
+            // and marks the service UNKNOWN — an RPC error, never a false outage
+            // (feedback_rpc_timeout_no_outages). See #368.
+            LOG.info("No Minion streams for location={}; fast-failing rpcId={} (UNAVAILABLE)",
                 req.getLocation(), req.getRpcId());
+            publisher.publish(RpcResponse.newBuilder()
+                .setRpcId(req.getRpcId())
+                .setErrorMessage("No Minion connected at location=" + req.getLocation())
+                .build());
             return;
         }
 
