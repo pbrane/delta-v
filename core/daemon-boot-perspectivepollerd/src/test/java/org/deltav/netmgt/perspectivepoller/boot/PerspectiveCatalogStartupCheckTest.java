@@ -61,7 +61,9 @@ class PerspectiveCatalogStartupCheckTest {
         final Catalog catalog = new Catalog(List.of(
                 def("ICMP", ICMP_MONITOR, true),        // schedulable -> not on gauge
                 def("HTTP", MISSING_MONITOR, true),     // monitor absent -> gap
-                def("Legacy", ICMP_MONITOR, false)));   // disabled by choice -> excluded
+                def("Legacy", MISSING_MONITOR, false))); // disabled by choice -> excluded DESPITE missing monitor
+        // Legacy uses a missing monitor on purpose: the disabled flag is the SOLE reason it stays off the
+        // gauge, so a broken enabled-check would flip it to a (missing-monitor) gap and fail this test.
         // The perspective universe also contains "Mystery" with no definition at all -> gap.
         final SimpleMeterRegistry registry = new SimpleMeterRegistry();
         final PerspectiveCatalogStartupCheck check = new PerspectiveCatalogStartupCheck(
@@ -107,16 +109,20 @@ class PerspectiveCatalogStartupCheckTest {
     }
 
     @Test
-    void onlyPerspectiveMembersAreEvaluated() {
-        // "Mystery" has no catalog definition, but it is NOT an application/perspective member, so it must
-        // never be flagged — the gap universe is membership, not inventory (the key difference from pollerd).
+    void duplicatePerspectiveRowsCollapseToOneSeries() {
+        // getServicePerspectives() returns one row per (service x perspective-location), so the same service
+        // legitimately recurs — and resolution is case-insensitive. A single undefined service spread across
+        // several rows (and case variants) must collapse to exactly ONE gauge series, not one per row. This
+        // pins the case-insensitive TreeSet dedup; a HashSet/case-sensitive regression would blow up gauge
+        // cardinality and still pass every other test. This is the axis where perspectivepollerd diverges
+        // from pollerd (whose inventory query yields one row per type).
         final Catalog catalog = new Catalog(List.of(def("ICMP", ICMP_MONITOR, true)));
         final SimpleMeterRegistry registry = new SimpleMeterRegistry();
         new PerspectiveCatalogStartupCheck(catalog, registryWith(ICMP_MONITOR),
-                daoWithPerspectiveTypes("ICMP"), directSessionUtils(), registry).recompute(true);
+                daoWithPerspectiveTypes("HTTP", "http", "HTTP"), directSessionUtils(), registry).recompute(true);
 
-        assertEquals(Set.of(), unscheduledServices(registry),
-                "a non-member service type with no definition must not appear on the gauge");
+        assertEquals(1, unscheduledServices(registry).size(),
+                "duplicate / mixed-case perspective rows for one undefined service must collapse to a single series");
     }
 
     @Test
