@@ -19,6 +19,7 @@
 #   ./test-perspective-e2e.sh --verbose    Show diagnostic queries on failure
 #   ./test-perspective-e2e.sh --pre-clean  Delete prior test data before run
 #   ./test-perspective-e2e.sh --post-cleanup  Delete test data after run
+#   ./test-perspective-e2e.sh --single-location  Validate Default only (no labbox)
 #
 # Prerequisites:
 #   - Delta-V deployed with full profile: ./deploy.sh up full
@@ -395,9 +396,10 @@ PYEOF
 # --status running` shows the container even in its "restarting" state,
 # which fooled the previous check into passing prematurely; instead we
 # poll the /actuator/health endpoint until it returns 200 (or give up
-# at 60s). The first restart for mhuot-labs inject already waited for
-# the monitoringlocations row, so provisiond is known-healthy before we
-# enter this block.
+# at 60s). In two-location mode the first restart for the mhuot-labs inject
+# already waited for the monitoringlocations row; in --single-location mode
+# that inject is skipped, so the health poll below is the sole readiness gate
+# (provisiond may be cold here — the poll covers it either way).
 docker restart delta-v-provisiond >/dev/null 2>&1 || true
 deadline=$(( $(date +%s) + 60 ))
 prov_healthy=false
@@ -495,7 +497,12 @@ fi
 for LOC in "${PERSPECTIVE_LOCATIONS[@]}"; do
     psql_query "INSERT INTO application_perspective_location_map (appid, monitoringlocationid) VALUES (${APP_ID}, '${LOC}') ON CONFLICT DO NOTHING" || true
 done
-PLOC_COUNT=$(psql_query "SELECT count(*) FROM application_perspective_location_map WHERE appid = ${APP_ID}")
+# Count only the locations this run manages, not every row for the app. A prior
+# two-location run can leave a mhuot-labs mapping behind; without scoping this,
+# a subsequent --single-location run (sans --pre-clean) would see 2 != 1 and
+# fail spuriously.
+PLOC_IN_LIST=$(printf "'%s'," "${PERSPECTIVE_LOCATIONS[@]}"); PLOC_IN_LIST="${PLOC_IN_LIST%,}"
+PLOC_COUNT=$(psql_query "SELECT count(*) FROM application_perspective_location_map WHERE appid = ${APP_ID} AND monitoringlocationid IN (${PLOC_IN_LIST})")
 if [ "${PLOC_COUNT:-0}" -eq "$EXPECTED_PLOC" ]; then
     ok "Perspective location(s) mapped (${PERSPECTIVE_LOCATIONS[*]})"
 else
