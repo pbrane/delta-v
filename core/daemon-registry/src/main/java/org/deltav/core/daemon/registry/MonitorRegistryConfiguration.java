@@ -22,19 +22,25 @@ import org.opennms.netmgt.poller.ServiceMonitorRegistry;
 import org.opennms.netmgt.poller.monitors.BgpSessionMonitor;
 import org.opennms.netmgt.poller.monitors.DNSResolutionMonitor;
 import org.opennms.netmgt.poller.monitors.DnsMonitor;
+import org.opennms.netmgt.poller.monitors.FtpMonitor;
 import org.opennms.netmgt.poller.monitors.HttpMonitor;
 import org.opennms.netmgt.poller.monitors.HttpsMonitor;
 import org.opennms.netmgt.poller.monitors.IcmpMonitor;
+import org.opennms.netmgt.poller.monitors.ImapMonitor;
 import org.opennms.netmgt.poller.monitors.MinaSshMonitor;
 import org.opennms.netmgt.poller.monitors.NtpMonitor;
 import org.opennms.netmgt.poller.monitors.PageSequenceMonitor;
 import org.opennms.netmgt.poller.monitors.PassiveServiceMonitor;
+import org.opennms.netmgt.poller.monitors.Pop3Monitor;
+import org.opennms.netmgt.poller.monitors.PtpMonitor;
 import org.opennms.netmgt.poller.monitors.SSLCertMonitor;
+import org.opennms.netmgt.poller.monitors.SmtpMonitor;
 import org.opennms.netmgt.poller.monitors.SnmpMonitor;
 import org.opennms.netmgt.poller.monitors.SshMonitor;
 import org.opennms.netmgt.poller.monitors.StrafePingMonitor;
 import org.opennms.netmgt.poller.monitors.TcpMonitor;
 import org.opennms.netmgt.poller.monitors.WebMonitor;
+import org.opennms.netmgt.poller.monitors.Win32ServiceMonitor;
 import org.opennms.protocols.radius.monitor.RadiusAuthMonitor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -66,7 +72,16 @@ public class MonitorRegistryConfiguration {
             new StrafePingMonitor(),
             new WebMonitor(),
             new PassiveServiceMonitor(),
-            new RadiusAuthMonitor()
+            new RadiusAuthMonitor(),
+            // Catalog service types whose monitors live in the core monitors jar but were
+            // previously unregistered (false-DOWN if provisioned). All no-arg constructible,
+            // no new dependencies. See poller-services.yaml: SMTP/FTP/IMAP/POP3/PTP/Windows-Task-Scheduler.
+            new SmtpMonitor(),
+            new FtpMonitor(),
+            new ImapMonitor(),
+            new Pop3Monitor(),
+            new PtpMonitor(),
+            new Win32ServiceMonitor()
         ));
     }
 }
