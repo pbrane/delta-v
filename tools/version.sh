@@ -78,9 +78,9 @@ deltav_sync_env_version() {
     [ "$current" = "$VERSION" ] && return 0
     tmp="$DELTAV_ENV.tmp"
     if grep -q '^VERSION=' "$DELTAV_ENV"; then
-        sed "s|^VERSION=.*|VERSION=$VERSION|" "$DELTAV_ENV" > "$tmp"
+        sed "s|^VERSION=.*|VERSION=$VERSION|" "$DELTAV_ENV" > "$tmp" || { rm -f "$tmp"; return 1; }
     else
-        cp "$DELTAV_ENV" "$tmp" && printf 'VERSION=%s\n' "$VERSION" >> "$tmp"
+        { cp "$DELTAV_ENV" "$tmp" && printf 'VERSION=%s\n' "$VERSION" >> "$tmp"; } || { rm -f "$tmp"; return 1; }
     fi
     mv "$tmp" "$DELTAV_ENV"
     echo "==> version.sh: synced deploy/.env VERSION ${current:-<unset>} -> $VERSION" >&2

@@ -59,5 +59,7 @@ check "no-pom: .env untouched" "VERSION=published-tag" "$(cat "$T3/deploy/.env")
 check "fallback: project version after </parent>" "2.0.0" \
   "$(awk '/<\/parent>/{p=1} p&&/<version>/{gsub(/.*<version>|<\/version>.*/,"");print;exit}' "$T2/pom.xml")"
 
+rm -rf "$T1" "$T2" "$T3"
+
 echo "── $PASS passed, $FAIL failed ──"
 [ "$FAIL" -eq 0 ]
