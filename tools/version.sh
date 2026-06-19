@@ -76,12 +76,13 @@ deltav_sync_env_version() {
     local current tmp
     current="$(grep -m1 '^VERSION=' "$DELTAV_ENV" | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d ' \t\r')"
     [ "$current" = "$VERSION" ] && return 0
+    # Fixed temp name assumes non-concurrent sync (this repo runs e2e tests serially).
     tmp="$DELTAV_ENV.tmp"
     if grep -q '^VERSION=' "$DELTAV_ENV"; then
         sed "s|^VERSION=.*|VERSION=$VERSION|" "$DELTAV_ENV" > "$tmp" || { rm -f "$tmp"; return 1; }
     else
         { cp "$DELTAV_ENV" "$tmp" && printf 'VERSION=%s\n' "$VERSION" >> "$tmp"; } || { rm -f "$tmp"; return 1; }
     fi
-    mv "$tmp" "$DELTAV_ENV"
+    mv "$tmp" "$DELTAV_ENV" || { rm -f "$tmp"; return 1; }
     echo "==> version.sh: synced deploy/.env VERSION ${current:-<unset>} -> $VERSION" >&2
 }
