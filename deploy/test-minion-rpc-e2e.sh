@@ -244,7 +244,7 @@ REQEOF
 ok "Requisition written into container at ${CANARY_REQ_IN_CONTAINER}"
 
 # Update provisiond-configuration.xml to auto-import this foreign source.
-# If an existing config has other requisition-defs (e.g., delta-v, mhuot-labs),
+# If an existing config has other requisition-defs (e.g., delta-v, nl6-lab),
 # we need to append ours without destroying theirs.
 PROV_CONFIG="overlays/provisiond/etc/provisiond-configuration.xml"
 mkdir -p overlays/provisiond/etc

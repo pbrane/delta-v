@@ -226,7 +226,7 @@ log "Assertion 2: ≥2 <MinionIdentityDTO> records on DeltaV.Sink.Heartbeat"
 
 # 90s window covers ≥2 publishes at 30s heartbeat interval (with slack
 # for consumer-group rebalance). Default offset=latest skips historical
-# log pollution from prior runs and SSH-tunneled labbox traffic.
+# log pollution from prior runs.
 HEARTBEAT_SAMPLE="${TEST_TMPDIR}/heartbeats.sample"
 docker compose exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
     --bootstrap-server localhost:9092 \
@@ -306,8 +306,8 @@ minion_id = os.environ['MINION_ID']
 #   <MinionIdentityDTO><id>minion-default-01</id>...</MinionIdentityDTO>
 #
 # IMPORTANT: the topic also receives interleaved <minion>...</minion>
-# records via the legacy direct Kafka producer (e.g. an SSH-tunneled
-# labbox Minion writing to the same broker). Those records have NO
+# records via the legacy direct Kafka producer (e.g. a Minion using the
+# legacy direct-Kafka path writing to the same broker). Those records have NO
 # <?xml ...?> prelude — they go straight to a binary SinkMessage envelope
 # followed by <minion>. We MUST require the <?xml ...?> prelude between
 # CreateTime: and <MinionIdentityDTO>; without that anchor, the regex
