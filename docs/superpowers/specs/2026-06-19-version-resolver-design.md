@@ -59,8 +59,11 @@ self-heals on the next scripted invocation.
 
 - **`tools/version.sh`** (new) — one sourceable helper, repo-root-relative to its
   own location (`tools/` → parent). Two single-purpose functions:
-  - `deltav_resolve_version()` — **read-only.** Sets and exports `VERSION` per the
-    precedence above. From-source resolution uses
+  - `deltav_resolve_version()` — **read-only** (w.r.t. `.env`). Sets and exports
+    `VERSION` per the precedence above. When an explicit shell `VERSION` is honored
+    (precedence #1) it also exports `DELTAV_VERSION_OVERRIDDEN=true` so
+    `deltav_sync_env_version()` can cheaply tell an override from an auto-resolved
+    value and skip writing `.env`. From-source resolution uses
     `./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout`
     (authoritative). Fallback when `mvnw` is unavailable/fails: a POSIX parser that
     takes the first `<version>` **after `</parent>`** so the Spring Boot parent
@@ -74,9 +77,12 @@ self-heals on the next scripted invocation.
   - `deltav_sync_env_version()` — **writes `deploy/.env`.** Only acts when: a pom
     is present, no explicit shell `VERSION` override is in effect, `deploy/.env`
     exists, and its `VERSION` differs from (or is missing) the resolved value. It
-    rewrites just the `VERSION=` line atomically (temp file + `mv`), preserving all
-    other lines and comments, and logs a one-line notice when it does. No-ops on
-    the smoke VM (no pom) and under an explicit shell override.
+    rewrites just the `VERSION=` line atomically — write to a temp file **in
+    `deploy/`** (e.g. `deploy/.env.tmp`), then `mv` over `.env`; the temp must be on
+    the same filesystem as `.env` (NOT `/tmp`, which may be a separate mount) for
+    `mv` to be atomic. Preserves all other lines and comments, and logs a one-line
+    notice when it writes. Skips when `DELTAV_VERSION_OVERRIDDEN=true`, and no-ops
+    on the smoke VM (no pom).
 - **`tools/build.sh`** — replace its inline `VERSION="$(... mvnw ...)"` with
   `source tools/version.sh; deltav_resolve_version`. Single source of truth; keep
   its "also-tag the `.env` version if it differs" behavior (now rarely triggers).
