@@ -45,7 +45,10 @@ DAEMON_NAMES="alarmd bsmd collectd discovery enlinkd eventtranslator perspective
 # consumer's overlay at image-build time (per-daemon copies are git-ignored).
 CATALOG_CONSUMERS="pollerd perspectivepollerd"
 
-VERSION="$(cd "$REPO_ROOT" && ./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout 2>/dev/null || grep '<version>0\.' "$REPO_ROOT/pom.xml" | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/version.sh"
+deltav_resolve_version
+deltav_sync_env_version
 
 log() { echo "==> $*"; }
 err() { echo "ERROR: $*" >&2; exit 1; }

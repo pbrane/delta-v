@@ -17,14 +17,23 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DEPLOY_DIR="$REPO_ROOT/deploy"
 cd "$DEPLOY_DIR"
 
-# Source .env so IMAGE_PREFIX and VERSION are available to both this script
-# and every `docker compose` child invocation below.
+# Source version.sh FIRST so it snapshots any genuine shell VERSION override
+# before .env (whose VERSION would otherwise look like one).
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/version.sh"
+
+# Source .env for IMAGE_PREFIX / KAFKA_EXTERNAL_HOST (and, tentatively, VERSION).
 if [ -f .env ]; then
     set -a
     # shellcheck disable=SC1091
     . ./.env
     set +a
 fi
+
+# Authoritatively set VERSION (project.version on a source tree, overwriting any
+# stale .env value; the snapshotted shell override still wins) and heal .env.
+deltav_resolve_version
+deltav_sync_env_version
 IMAGE_PREFIX="${IMAGE_PREFIX:-deltav}"
 
 log() { echo "==> $*"; }
