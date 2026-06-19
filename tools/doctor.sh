@@ -40,14 +40,23 @@ else
     bad "~/.m2/settings.xml missing <server> id 'github-deltav-horizon' (PAT with read:packages). See BUILD.md."
 fi
 
-# 4. .env present with a non-empty VERSION
+# 4. Resolved VERSION (project.version on a source tree; .env on a no-source host)
 ENV_FILE="$DEPLOY_DIR/.env"
-V=""
-if [ -f "$ENV_FILE" ]; then
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/version.sh"
+deltav_resolve_version
+V="${VERSION:-}"
+if [ -z "$V" ] && [ -f "$ENV_FILE" ]; then
     V=$(grep -m1 '^VERSION=' "$ENV_FILE" | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d ' \t\r')
-    [ -n "$V" ] && ok ".env present (VERSION=$V)" || bad ".env present but VERSION is empty. Set VERSION in $ENV_FILE."
+fi
+if [ -n "$V" ]; then
+    ok "VERSION resolves to $V"
+    if [ -f "$ENV_FILE" ] && [ -f "$REPO_ROOT/pom.xml" ]; then
+        EV=$(grep -m1 '^VERSION=' "$ENV_FILE" | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d ' \t\r')
+        [ "$EV" = "$V" ] || warn ".env VERSION='$EV' differs from project.version='$V' — the build/deploy/test tooling will auto-sync it."
+    fi
 else
-    bad "$ENV_FILE missing. Run: cp .env.example .env"
+    bad "could not resolve VERSION (no pom.xml and no .env VERSION). Run: cp .env.example .env"
 fi
 
 # 5. Pre-up image completeness (only meaningful if VERSION known)
