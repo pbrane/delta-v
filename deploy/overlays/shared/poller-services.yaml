@@ -184,22 +184,10 @@ services:
     parameters:
       service-name: "${requisition:service-name|detector:service-name|Task Scheduler}"
 
-  - name: VMwareCim-HostSystem
-    monitor: org.opennms.netmgt.poller.monitors.VmwareCimMonitor
-    interval: 300000
-    parameters:
-      retry: "${requisition:poller-retry|requisition:retry|detector:retry|2}"
-      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
-      ignoreStandBy: "${requisition:ignoreStandBy|detector:ignoreStandBy|false}"
-
-  - name: VMware-ManagedEntity
-    monitor: org.opennms.netmgt.poller.monitors.VmwareMonitor
-    interval: 300000
-    parameters:
-      retry: "${requisition:poller-retry|requisition:retry|detector:retry|2}"
-      timeout: "${requisition:poller-timeout|requisition:timeout|detector:timeout|3000}"
-      ignoreStandBy: "${requisition:ignoreStandBy|detector:ignoreStandBy|false}"
-      reportAlarms: "${requisition:reportAlarms|detector:reportAlarms|}"
+  # NOTE: VMware monitors (VmwareCimMonitor / VmwareMonitor) are intentionally absent.
+  # delta-v does not bundle the vmware integration module, so those classes are not on
+  # the classpath and cannot be polled. If VMware support is ever added, reintroduce the
+  # module and the catalog entries together.
 
   - name: MS-RDP
     monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
