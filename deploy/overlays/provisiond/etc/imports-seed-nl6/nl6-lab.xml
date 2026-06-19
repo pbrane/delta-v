@@ -1,179 +1,328 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import"
-              date-stamp="2026-05-30T08:47:33.000Z"
               foreign-source="nl6">
-   <node location="nl6-lab" foreign-id="juniper-mx960-10.0.0.6" node-label="juniper-mx960-10.0.0.6">
-      <interface ip-addr="10.0.0.6" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="check-point-15600-10.0.0.11" node-label="check-point-15600-10.0.0.11">
-      <interface ip-addr="10.0.0.11" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="nvidia-dgx-h100-10.0.0.23" node-label="nvidia-dgx-h100-10.0.0.23">
-      <interface ip-addr="10.0.0.23" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="ibm-power-s922-10.0.0.20" node-label="ibm-power-s922-10.0.0.20">
-      <interface ip-addr="10.0.0.20" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="nvidia-hgx-h200-10.0.0.24" node-label="nvidia-hgx-h200-10.0.0.24">
-      <interface ip-addr="10.0.0.24" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="dell-emc-unity-10.0.0.27" node-label="dell-emc-unity-10.0.0.27">
-      <interface ip-addr="10.0.0.27" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="pure-storage-flasharray-10.0.0.26" node-label="pure-storage-flasharray-10.0.0.26">
-      <interface ip-addr="10.0.0.26" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="nokia-7750-sr12-10.0.0.15" node-label="nokia-7750-sr12-10.0.0.15">
-      <interface ip-addr="10.0.0.15" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="cisco-catalyst-9500-10.0.0.29" node-label="cisco-catalyst-9500-10.0.0.29">
-      <interface ip-addr="10.0.0.29" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="hpe-proliant-dl380-10.0.0.19" node-label="hpe-proliant-dl380-10.0.0.19">
-      <interface ip-addr="10.0.0.19" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="asr9k-10.0.0.3" node-label="asr9k-10.0.0.3">
-      <interface ip-addr="10.0.0.3" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="netapp-ontap-10.0.0.25" node-label="netapp-ontap-10.0.0.25">
-      <interface ip-addr="10.0.0.25" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="cisco-catalyst-9500-10.0.0.1" node-label="cisco-catalyst-9500-10.0.0.1">
+   <node location="nl6-lab" foreign-id="core-10.0.0.1" node-label="core-10.0.0.1">
       <interface ip-addr="10.0.0.1" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
          <monitored-service service-name="SNMP"/>
       </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
    </node>
-   <node location="nl6-lab" foreign-id="extreme-vsp4450-10.0.0.14" node-label="extreme-vsp4450-10.0.0.14">
-      <interface ip-addr="10.0.0.14" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="sonicwall-nsa6700-10.0.0.16" node-label="sonicwall-nsa6700-10.0.0.16">
-      <interface ip-addr="10.0.0.16" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="dlink-dgs3630-10.0.0.17" node-label="dlink-dgs3630-10.0.0.17">
-      <interface ip-addr="10.0.0.17" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="arista-7280r3-10.0.0.10" node-label="arista-7280r3-10.0.0.10">
-      <interface ip-addr="10.0.0.10" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="palo-alto-pa3220-10.0.0.4" node-label="palo-alto-pa3220-10.0.0.4">
-      <interface ip-addr="10.0.0.4" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="dell-poweredge-r750-10.0.0.18" node-label="dell-poweredge-r750-10.0.0.18">
-      <interface ip-addr="10.0.0.18" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="cisco-nexus-9500-10.0.0.7" node-label="cisco-nexus-9500-10.0.0.7">
-      <interface ip-addr="10.0.0.7" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="juniper-mx240-10.0.0.2" node-label="juniper-mx240-10.0.0.2">
+   <node location="nl6-lab" foreign-id="core-10.0.0.2" node-label="core-10.0.0.2">
       <interface ip-addr="10.0.0.2" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
          <monitored-service service-name="SNMP"/>
       </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
    </node>
-   <node location="nl6-lab" foreign-id="cisco-ios-10.0.0.13" node-label="cisco-ios-10.0.0.13">
-      <interface ip-addr="10.0.0.13" status="1" snmp-primary="P">
+   <node location="nl6-lab" foreign-id="core-10.0.0.3" node-label="core-10.0.0.3">
+      <interface ip-addr="10.0.0.3" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
          <monitored-service service-name="SNMP"/>
       </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
    </node>
-   <node location="nl6-lab" foreign-id="huawei-ne8000-10.0.0.8" node-label="huawei-ne8000-10.0.0.8">
-      <interface ip-addr="10.0.0.8" status="1" snmp-primary="P">
+   <node location="nl6-lab" foreign-id="core-10.0.0.4" node-label="core-10.0.0.4">
+      <interface ip-addr="10.0.0.4" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
          <monitored-service service-name="SNMP"/>
       </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
    </node>
-   <node location="nl6-lab" foreign-id="nvidia-dgx-a100-10.0.0.22" node-label="nvidia-dgx-a100-10.0.0.22">
-      <interface ip-addr="10.0.0.22" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="aws-s3-storage-10.0.0.28" node-label="aws-s3-storage-10.0.0.28">
-      <interface ip-addr="10.0.0.28" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="fortinet-fortigate-600e-10.0.0.5" node-label="fortinet-fortigate-600e-10.0.0.5">
-      <interface ip-addr="10.0.0.5" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="nec-ix3315-10.0.0.9" node-label="nec-ix3315-10.0.0.9">
-      <interface ip-addr="10.0.0.9" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="cisco-crs-x-10.0.0.12" node-label="cisco-crs-x-10.0.0.12">
-      <interface ip-addr="10.0.0.12" status="1" snmp-primary="P">
-         <monitored-service service-name="ICMP"/>
-         <monitored-service service-name="SNMP"/>
-      </interface>
-   </node>
-   <node location="nl6-lab" foreign-id="linux-server-10.0.0.21" node-label="linux-server-10.0.0.21">
+   <node location="nl6-lab" foreign-id="agg-10.0.0.21" node-label="agg-10.0.0.21">
       <interface ip-addr="10.0.0.21" status="1" snmp-primary="P">
          <monitored-service service-name="ICMP"/>
          <monitored-service service-name="SNMP"/>
       </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="agg-10.0.0.22" node-label="agg-10.0.0.22">
+      <interface ip-addr="10.0.0.22" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="agg-10.0.0.23" node-label="agg-10.0.0.23">
+      <interface ip-addr="10.0.0.23" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="agg-10.0.0.24" node-label="agg-10.0.0.24">
+      <interface ip-addr="10.0.0.24" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="agg-10.0.0.25" node-label="agg-10.0.0.25">
+      <interface ip-addr="10.0.0.25" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="agg-10.0.0.26" node-label="agg-10.0.0.26">
+      <interface ip-addr="10.0.0.26" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="agg-10.0.0.27" node-label="agg-10.0.0.27">
+      <interface ip-addr="10.0.0.27" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="agg-10.0.0.28" node-label="agg-10.0.0.28">
+      <interface ip-addr="10.0.0.28" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="edge-10.0.0.41" node-label="edge-10.0.0.41">
+      <interface ip-addr="10.0.0.41" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="edge-10.0.0.42" node-label="edge-10.0.0.42">
+      <interface ip-addr="10.0.0.42" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="edge-10.0.0.43" node-label="edge-10.0.0.43">
+      <interface ip-addr="10.0.0.43" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="edge-10.0.0.44" node-label="edge-10.0.0.44">
+      <interface ip-addr="10.0.0.44" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="edge-10.0.0.45" node-label="edge-10.0.0.45">
+      <interface ip-addr="10.0.0.45" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="edge-10.0.0.46" node-label="edge-10.0.0.46">
+      <interface ip-addr="10.0.0.46" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="edge-10.0.0.47" node-label="edge-10.0.0.47">
+      <interface ip-addr="10.0.0.47" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="edge-10.0.0.48" node-label="edge-10.0.0.48">
+      <interface ip-addr="10.0.0.48" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.61" node-label="host-10.0.0.61">
+      <interface ip-addr="10.0.0.61" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.62" node-label="host-10.0.0.62">
+      <interface ip-addr="10.0.0.62" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.63" node-label="host-10.0.0.63">
+      <interface ip-addr="10.0.0.63" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.64" node-label="host-10.0.0.64">
+      <interface ip-addr="10.0.0.64" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.65" node-label="host-10.0.0.65">
+      <interface ip-addr="10.0.0.65" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.66" node-label="host-10.0.0.66">
+      <interface ip-addr="10.0.0.66" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.67" node-label="host-10.0.0.67">
+      <interface ip-addr="10.0.0.67" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.68" node-label="host-10.0.0.68">
+      <interface ip-addr="10.0.0.68" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.69" node-label="host-10.0.0.69">
+      <interface ip-addr="10.0.0.69" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.70" node-label="host-10.0.0.70">
+      <interface ip-addr="10.0.0.70" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.71" node-label="host-10.0.0.71">
+      <interface ip-addr="10.0.0.71" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.72" node-label="host-10.0.0.72">
+      <interface ip-addr="10.0.0.72" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.73" node-label="host-10.0.0.73">
+      <interface ip-addr="10.0.0.73" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.74" node-label="host-10.0.0.74">
+      <interface ip-addr="10.0.0.74" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.75" node-label="host-10.0.0.75">
+      <interface ip-addr="10.0.0.75" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
+   </node>
+   <node location="nl6-lab" foreign-id="host-10.0.0.76" node-label="host-10.0.0.76">
+      <interface ip-addr="10.0.0.76" status="1" snmp-primary="P">
+         <monitored-service service-name="ICMP"/>
+         <monitored-service service-name="SNMP"/>
+      </interface>
+      <asset name="latitude" value="40.631895"/>
+      <asset name="longitude" value="14.490686"/>
+      <asset name="city" value="Montepertuso, 84017 SA, Italy"/>
    </node>
 </model-import>

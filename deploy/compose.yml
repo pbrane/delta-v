@@ -148,12 +148,13 @@ services:
       - SYS_ADMIN
     devices:
       - /dev/net/tun
-    # Start with no devices; the provisioner POSTs the 29-device mix from
-    # components/nl6/devices.json after this service is healthy.
+    # Start with no devices; the provisioner POSTs the 36-device 5-stage Clos
+    # from components/nl6/devices.json (+ its LLDP topology clos.json) after
+    # this service is healthy.
     #
     # NAMESPACE MODE (default; -no-namespace is intentionally NOT set) is
     # required for true per-device flow exporter attribution. nl6 builds an
-    # 'opensim' netns holding the per-device TUN interfaces (10.0.0.1-29 on
+    # 'opensim' netns holding the per-device TUN interfaces (10.0.0.1-.76 on
     # simN), joined to the container root netns by a veth pair:
     #   veth-sim-ns (10.254.0.2, in opensim) <-> veth-sim-host (10.254.0.1, root)
     # `-flow-source-per-device` then binds a per-device UDP socket inside
@@ -267,6 +268,19 @@ services:
         case "$$count" in ''|null) count=0 ;; esac
         echo "provisioner: nl6 now reports $$count devices (expected $$expected)"
         [ "$$count" -eq "$$expected" ] || { echo "FAIL expected $$expected devices got $$count"; exit 1; }
+        # Load the 5-stage Clos LLDP topology (clos.json) so enlinkd can discover
+        # inter-device links. nl6 >= v0.10.0 serves the LLDP-MIB (1.0.8802.1.1.2)
+        # for linked ports; -fsS fails fast on any non-2xx. Links resolve lazily
+        # upstream, so this is safe to run right after the device seed.
+        echo "provisioner: loading Clos topology from /seed/clos.json"
+        curl -fsS -X POST http://127.0.0.1:8080/api/v1/topology \
+            -H 'Content-Type: application/json' --data @/seed/clos.json || {
+            echo "FAIL could not POST /api/v1/topology"; exit 1;
+        }
+        echo
+        # Informational: report configured vs active link counts (the enlinkd
+        # E2E asserts on this; the provisioner only gates on the POST succeeding).
+        echo "provisioner: topology/status: $$(curl -sf http://127.0.0.1:8080/api/v1/topology/status || echo unavailable)"
 
   # gRPC-to-Kafka translator for the Minion-facing surface (Heartbeat in rc1;
   # Sink/RPC channels follow in v1.3). Sole inbound surface for Minions per
