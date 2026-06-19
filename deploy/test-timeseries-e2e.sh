@@ -103,7 +103,7 @@ echo "==> deltav_timeseries_batches_failed_total = 0"
 # FanoutPersister's isolation would otherwise hide it.
 # step=visitResource is deliberately NOT asserted: Bug #1
 # (MetaTagDataLoader rollback) is a separate investigation and may still
-# tick on labbox today.
+# tick today.
 echo "==> Asserting inner-persister cascade counters stay at zero"
 for step in visitGroup visitAttribute persistNumericAttribute persistStringAttribute completeResource; do
     value=$(echo "${metrics}" | \
