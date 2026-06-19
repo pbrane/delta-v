@@ -131,8 +131,8 @@ services:
     <<: *no-search-domain
     # Upstream simulator image. The project was renamed from
     # labmonkeys-space/l8opensim to labmonkeys-space/nl6 in May 2026.
-    # v0.9.1 release notes: https://github.com/labmonkeys-space/nl6/releases/tag/v0.9.1
-    image: ghcr.io/labmonkeys-space/nl6@sha256:26738adbef8e091df66b29dfb4fce426ddd19973c5695e7069577b093a3de53e  # v0.9.1
+    # v0.11.2 release notes: https://github.com/labmonkeys-space/nl6/releases/tag/v0.11.2
+    image: ghcr.io/labmonkeys-space/nl6@sha256:e628f36ca1702a300533276aecbe452f60826c8207b8d42def3ba8df2caaf0ee  # v0.11.2
     container_name: delta-v-nl6
     profiles: [active, full, metrics, demo]
     # privileged is REQUIRED for namespace mode: creating the 'opensim' netns
