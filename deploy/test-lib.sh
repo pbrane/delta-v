@@ -5,6 +5,17 @@
 # Source this file from test scripts: source "$(dirname "$0")/test-lib.sh"
 #
 
+# Resolve VERSION from project.version and heal deploy/.env so every direct
+# `docker compose` call in the sourcing test script uses the current image tag
+# (not a stale gitignored .env). See tools/version.sh.
+_DELTAV_TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../tools" && pwd)"
+if [ -f "$_DELTAV_TOOLS/version.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$_DELTAV_TOOLS/version.sh"
+    deltav_resolve_version
+    deltav_sync_env_version
+fi
+
 # Delete ALL nodes and dependent data from the database (FK-safe order).
 # Usage: clean_all_nodes
 clean_all_nodes() {
