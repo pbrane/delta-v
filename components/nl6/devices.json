@@ -1,876 +1,106 @@
-{
-  "success": true,
-  "message": "Success",
-  "data": [
-    {
-      "id": "cisco-crs-x-10.0.0.12",
-      "ip": "10.0.0.12",
-      "interface": "sim31",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "cisco_crs_x.json",
-      "device_type": "Cisco Router/Switch",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow9",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
+[
+  {
+    "start_ip": "10.0.0.1",
+    "device_count": 4,
+    "netmask": "24",
+    "resource_file": "cisco_crs_x.json",
+    "flow": {
+      "collector": "10.254.0.1:4729",
+      "protocol": "netflow9",
+      "tick_interval": "5s",
+      "active_timeout": "30s",
+      "inactive_timeout": "15s"
     },
-    {
-      "id": "linux-server-10.0.0.21",
-      "ip": "10.0.0.21",
-      "interface": "sim40",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "linux_server.json",
-      "device_type": "Linux Server",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow5",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
+    "traps": {
+      "collector": "10.254.0.1:1162",
+      "mode": "trap",
+      "community": "public",
+      "interval": "30s",
+      "inform_timeout": "5s",
+      "inform_retries": 2
     },
-    {
-      "id": "juniper-mx960-10.0.0.6",
-      "ip": "10.0.0.6",
-      "interface": "sim25",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "juniper_mx960.json",
-      "device_type": "Juniper",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "sflow",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "check-point-15600-10.0.0.11",
-      "ip": "10.0.0.11",
-      "interface": "sim30",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "check_point_15600.json",
-      "device_type": "Check Point",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "ipfix",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "nvidia-dgx-h100-10.0.0.23",
-      "ip": "10.0.0.23",
-      "interface": "sim42",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "nvidia_dgx_h100.json",
-      "device_type": "NVIDIA GPU Server",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow9",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "ibm-power-s922-10.0.0.20",
-      "ip": "10.0.0.20",
-      "interface": "sim39",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "ibm_power_s922.json",
-      "device_type": "IBM",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow5",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "nvidia-hgx-h200-10.0.0.24",
-      "ip": "10.0.0.24",
-      "interface": "sim43",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "nvidia_hgx_h200.json",
-      "device_type": "NVIDIA GPU Server",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "sflow",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "dell-emc-unity-10.0.0.27",
-      "ip": "10.0.0.27",
-      "interface": "sim46",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "dell_emc_unity.json",
-      "device_type": "Dell",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "ipfix",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "pure-storage-flasharray-10.0.0.26",
-      "ip": "10.0.0.26",
-      "interface": "sim45",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "pure_storage_flasharray.json",
-      "device_type": "Pure Storage",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow9",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "nokia-7750-sr12-10.0.0.15",
-      "ip": "10.0.0.15",
-      "interface": "sim34",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "nokia_7750_sr12.json",
-      "device_type": "Nokia",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow5",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "cisco-catalyst-9500-10.0.0.29",
-      "ip": "10.0.0.29",
-      "interface": "sim48",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "cisco_catalyst_9500.json",
-      "device_type": "Cisco Router/Switch",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "sflow",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "hpe-proliant-dl380-10.0.0.19",
-      "ip": "10.0.0.19",
-      "interface": "sim38",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "hpe_proliant_dl380.json",
-      "device_type": "HPE",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "ipfix",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "asr9k-10.0.0.3",
-      "ip": "10.0.0.3",
-      "interface": "sim22",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "asr9k.json",
-      "device_type": "Cisco ASR9K",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow9",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "netapp-ontap-10.0.0.25",
-      "ip": "10.0.0.25",
-      "interface": "sim44",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "netapp_ontap.json",
-      "device_type": "NetApp",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow5",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "cisco-catalyst-9500-10.0.0.1",
-      "ip": "10.0.0.1",
-      "interface": "sim20",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "cisco_catalyst_9500.json",
-      "device_type": "Cisco Router/Switch",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "sflow",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "extreme-vsp4450-10.0.0.14",
-      "ip": "10.0.0.14",
-      "interface": "sim33",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "extreme_vsp4450.json",
-      "device_type": "Extreme Networks",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "ipfix",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "sonicwall-nsa6700-10.0.0.16",
-      "ip": "10.0.0.16",
-      "interface": "sim35",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "sonicwall_nsa6700.json",
-      "device_type": "SonicWall",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow9",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "dlink-dgs3630-10.0.0.17",
-      "ip": "10.0.0.17",
-      "interface": "sim36",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "dlink_dgs3630.json",
-      "device_type": "D-Link",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow5",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "arista-7280r3-10.0.0.10",
-      "ip": "10.0.0.10",
-      "interface": "sim29",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "arista_7280r3.json",
-      "device_type": "Arista",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "sflow",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "palo-alto-pa3220-10.0.0.4",
-      "ip": "10.0.0.4",
-      "interface": "sim23",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "palo_alto_pa3220.json",
-      "device_type": "Palo Alto",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "ipfix",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "dell-poweredge-r750-10.0.0.18",
-      "ip": "10.0.0.18",
-      "interface": "sim37",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "dell_poweredge_r750.json",
-      "device_type": "Dell",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow9",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "cisco-nexus-9500-10.0.0.7",
-      "ip": "10.0.0.7",
-      "interface": "sim26",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "cisco_nexus_9500.json",
-      "device_type": "Cisco Router/Switch",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow5",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "juniper-mx240-10.0.0.2",
-      "ip": "10.0.0.2",
-      "interface": "sim21",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "juniper_mx240.json",
-      "device_type": "Juniper",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "sflow",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "cisco-ios-10.0.0.13",
-      "ip": "10.0.0.13",
-      "interface": "sim32",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "cisco_ios.json",
-      "device_type": "Cisco IOS",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "ipfix",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "huawei-ne8000-10.0.0.8",
-      "ip": "10.0.0.8",
-      "interface": "sim27",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "huawei_ne8000.json",
-      "device_type": "Huawei",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow9",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "nvidia-dgx-a100-10.0.0.22",
-      "ip": "10.0.0.22",
-      "interface": "sim41",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "nvidia_dgx_a100.json",
-      "device_type": "NVIDIA GPU Server",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow5",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "aws-s3-storage-10.0.0.28",
-      "ip": "10.0.0.28",
-      "interface": "sim47",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "aws_s3_storage.json",
-      "device_type": "AWS",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "sflow",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "fortinet-fortigate-600e-10.0.0.5",
-      "ip": "10.0.0.5",
-      "interface": "sim24",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "fortinet_fortigate_600e.json",
-      "device_type": "Fortinet",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "ipfix",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
-    },
-    {
-      "id": "nec-ix3315-10.0.0.9",
-      "ip": "10.0.0.9",
-      "interface": "sim28",
-      "snmp_port": 161,
-      "ssh_port": 22,
-      "running": true,
-      "resource_file": "nec_ix3315.json",
-      "device_type": "NEC",
-      "flow": {
-        "collector": "10.254.0.1:4729",
-        "protocol": "netflow9",
-        "tick_interval": "5s",
-        "active_timeout": "30s",
-        "inactive_timeout": "15s"
-      },
-      "traps": {
-        "collector": "10.254.0.1:1162",
-        "mode": "trap",
-        "community": "public",
-        "interval": "30s",
-        "inform_timeout": "5s",
-        "inform_retries": 2
-      },
-      "syslog": {
-        "collector": "10.254.0.1:1514",
-        "format": "5424",
-        "interval": "10s"
-      }
+    "syslog": {
+      "collector": "10.254.0.1:1514",
+      "format": "5424",
+      "interval": "10s"
     }
-  ]
-}
+  },
+  {
+    "start_ip": "10.0.0.21",
+    "device_count": 8,
+    "netmask": "24",
+    "resource_file": "arista_7280r3.json",
+    "flow": {
+      "collector": "10.254.0.1:4729",
+      "protocol": "netflow9",
+      "tick_interval": "5s",
+      "active_timeout": "30s",
+      "inactive_timeout": "15s"
+    },
+    "traps": {
+      "collector": "10.254.0.1:1162",
+      "mode": "trap",
+      "community": "public",
+      "interval": "30s",
+      "inform_timeout": "5s",
+      "inform_retries": 2
+    },
+    "syslog": {
+      "collector": "10.254.0.1:1514",
+      "format": "5424",
+      "interval": "10s"
+    }
+  },
+  {
+    "start_ip": "10.0.0.41",
+    "device_count": 8,
+    "netmask": "24",
+    "resource_file": "cisco_catalyst_9500.json",
+    "flow": {
+      "collector": "10.254.0.1:4729",
+      "protocol": "netflow9",
+      "tick_interval": "5s",
+      "active_timeout": "30s",
+      "inactive_timeout": "15s"
+    },
+    "traps": {
+      "collector": "10.254.0.1:1162",
+      "mode": "trap",
+      "community": "public",
+      "interval": "30s",
+      "inform_timeout": "5s",
+      "inform_retries": 2
+    },
+    "syslog": {
+      "collector": "10.254.0.1:1514",
+      "format": "5424",
+      "interval": "10s"
+    }
+  },
+  {
+    "start_ip": "10.0.0.61",
+    "device_count": 16,
+    "netmask": "24",
+    "resource_file": "linux_server.json",
+    "flow": {
+      "collector": "10.254.0.1:4729",
+      "protocol": "netflow9",
+      "tick_interval": "5s",
+      "active_timeout": "30s",
+      "inactive_timeout": "15s"
+    },
+    "traps": {
+      "collector": "10.254.0.1:1162",
+      "mode": "trap",
+      "community": "public",
+      "interval": "30s",
+      "inform_timeout": "5s",
+      "inform_retries": 2
+    },
+    "syslog": {
+      "collector": "10.254.0.1:1514",
+      "format": "5424",
+      "interval": "10s"
+    }
+  }
+]
