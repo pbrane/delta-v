@@ -52,7 +52,7 @@ With all 12 daemons on Spring Boot, the Karaf-based Sentinel image (`deltav/daem
 
 | Service            | Image                         | Purpose                                                                  | Host Port |
 |--------------------|-------------------------------|--------------------------------------------------------------------------|-----------|
-| postgres           | postgres:15                   | Shared database (alarms only)                                            | 5432      |
+| postgres           | postgres:16                   | Shared database (alarms only)                                            | 5432      |
 | kafka              | apache/kafka                  | Event bus (KRaft mode)                                                   | 19092     |
 | db-init            | deltav/db-init               | One-shot PostgreSQL schema migration (exits after init)                  | —         |
 | clickhouse         | clickhouse/clickhouse-server  | Flow storage: `deltav.flows_raw` + 4 dimension MVs                       | 8123      |
