@@ -81,7 +81,7 @@
     "start_ip": "10.0.0.61",
     "device_count": 16,
     "netmask": "24",
-    "resource_file": "linux_server.json",
+    "resource_file": "dell_poweredge_r750.json",
     "flow": {
       "collector": "10.254.0.1:4729",
       "protocol": "netflow9",

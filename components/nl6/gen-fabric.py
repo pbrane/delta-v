@@ -63,7 +63,11 @@ RES = {
     "core": "cisco_crs_x.json",
     "agg": "arista_7280r3.json",
     "edge": "cisco_catalyst_9500.json",
-    "host": "linux_server.json",
+    # NOT linux_server.json: that nl6 resource file serves a degenerate system
+    # group (sysObjectID = 0.0/ccitt, no sysDescr — "OID not supported"), so
+    # provisiond stores NULL sysObjectID for every host. dell_poweredge_r750 is
+    # a real compute-leaf model with a valid sysObjectID (enterprises.674...).
+    "host": "dell_poweredge_r750.json",
 }
 
 # delta-v per-device export collectors — the veth host end where nl6-minion
