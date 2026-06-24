@@ -71,4 +71,27 @@ class TwinPatchGeneratorTest {
         ByteString patch = gen.diff(from, to);
         assertThat(patch).isNull();
     }
+
+    @Test
+    void apply_reconstructsFullStateFromHorizonPatch() {
+        TwinPatchGenerator gen = new TwinPatchGenerator();
+        ByteString base = ByteString.copyFromUtf8("{\"AWS\":\"Up\"}");
+        ByteString target = ByteString.copyFromUtf8("{\"AWS\":\"Down\"}");
+
+        // Horizon publishes the JSON-Patch delta; the gateway must apply it to the
+        // cached base to recover the full state before broadcasting to Minions.
+        ByteString patch = gen.diff(base, target);
+        ByteString applied = gen.apply(base, patch);
+
+        assertThat(applied.toStringUtf8()).contains("\"AWS\":\"Down\"");
+    }
+
+    @Test
+    void apply_invalidPatch_returnsNull() {
+        TwinPatchGenerator gen = new TwinPatchGenerator();
+        ByteString base = ByteString.copyFromUtf8("{\"x\":1}");
+        ByteString notAPatch = ByteString.copyFromUtf8("{\"not\":\"a patch array\"}");
+
+        assertThat(gen.apply(base, notAPatch)).isNull();
+    }
 }

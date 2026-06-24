@@ -55,6 +55,18 @@ public class TwinChannelDispatcher {
 
     private static final Logger LOG = LoggerFactory.getLogger(TwinChannelDispatcher.class);
 
+    /**
+     * Kafka topic pattern for horizon-published Twin updates. Horizon's
+     * {@code KafkaTwinPublisher} routes by location: a broadcast (location-null)
+     * update goes to the <em>global</em> topic {@code <instance>.twin.response}
+     * (e.g. {@code DeltaV.twin.response}), while a location-scoped update goes to
+     * {@code <instance>.twin.response.<location>}. This pattern must match BOTH —
+     * passive-status (and any other broadcast) updates land on the global topic,
+     * so a pattern that requires the {@code .<location>} suffix silently drops
+     * them (the consumer is assigned 0 partitions and never bridges to gRPC).
+     */
+    static final String TWIN_RESPONSE_TOPIC_PATTERN = "DeltaV\\.twin\\.response(\\..*)?";
+
     private final TwinStateCache cache;
     private final MinionTwinSubscriberRegistry registry;
     private final TwinPatchGenerator patcher;
@@ -68,7 +80,7 @@ public class TwinChannelDispatcher {
     }
 
     @KafkaListener(
-        topicPattern = "DeltaV\\.twin\\.response\\..*",
+        topicPattern = TWIN_RESPONSE_TOPIC_PATTERN,
         groupId = "minion-gateway-twin",
         containerFactory = "twinResponseContainerFactory"
     )
@@ -94,42 +106,98 @@ public class TwinChannelDispatcher {
     void handleHorizonUpdate(TwinResponseProto msg) {
         String key = msg.getConsumerKey();
         String location = msg.getLocation();
-        ByteString newState = msg.getTwinObject();
         int newVersion = msg.getVersion();
         String newSession = msg.getSessionId();
 
         TwinStateCache.Entry prior = cache.get(key, location);
+
+        // Horizon's AbstractTwinPublisher sends a full snapshot first, then RFC 6902
+        // JSON-Patch deltas (is_patch_object=true) carrying only the change. Recover
+        // the full state by applying the patch to our cached state; forwarding the
+        // raw patch array as if it were a snapshot makes the Minion's subscriber
+        // fail to deserialize it (issue #284).
+        ByteString newState;
+        if (msg.getIsPatchObject()) {
+            if (prior == null) {
+                LOG.warn("Inbound Twin patch for key={} location={} with no cached base state; "
+                    + "dropping until the publisher sends a full snapshot", key, location);
+                return;
+            }
+            newState = patcher.apply(prior.state(), msg.getTwinObject());
+            if (newState == null) {
+                LOG.warn("Failed to apply inbound Twin patch for key={} location={}; dropping update", key, location);
+                return;
+            }
+        } else {
+            newState = msg.getTwinObject();
+        }
+
         cache.put(key, location, newState, newVersion, newSession);
 
-        for (MinionTwinSubscriberRegistry.Subscription sub : registry.subscribers(key, location)) {
-            boolean canPatch = prior != null
-                && prior.sessionId().equals(newSession)
-                && sub.lastSentVersion() == prior.version();
-            ByteString outBytes = canPatch ? patcher.diff(prior.state(), newState) : null;
-
-            TwinUpdate.Builder b = TwinUpdate.newBuilder()
-                .setConsumerKey(key)
-                .setLocation(location)
-                .setVersion(newVersion)
-                .setSessionId(newSession)
-                .setDispatchedAt(now());
-
-            if (outBytes != null) {
-                b.setTwinObject(outBytes).setIsPatch(true);
-            } else {
-                b.setTwinObject(newState).setIsPatch(false);
+        // A global (location-null/empty) publish — how horizon broadcasts
+        // passive-status — applies to every location, so fan it out to all of a
+        // key's subscribers regardless of the location they subscribed at. A
+        // location-scoped publish only reaches that location's subscribers.
+        if (isGlobal(location)) {
+            // Global broadcasts are always sent as full snapshots: the Minion's
+            // horizon AbstractTwinSubscriber deserializes the bytes directly as
+            // the config class and cannot apply a JSON-Patch array, so a patch
+            // would fail to deserialize on the Minion (issue #284). Snapshots are
+            // also the safe choice when fanning one update out to many subscribers
+            // at independent versions across locations.
+            for (MinionTwinSubscriberRegistry.LocatedSubscription ls : registry.subscribersForAllLocations(key)) {
+                deliver(key, ls.location(), ls.subscription(), prior, newState, newVersion, newSession, false);
             }
-
-            try {
-                synchronized (sub.observer()) {
-                    sub.observer().onNext(b.build());
-                }
-                registry.updateLastSentVersion(key, location, sub.observer(), newVersion);
-            } catch (Throwable t) {
-                LOG.warn("Failed to send TwinUpdate to subscriber for key={} location={}; unregistering",
-                    key, location, t);
-                registry.unregister(key, location, sub.observer());
+        } else {
+            for (MinionTwinSubscriberRegistry.Subscription sub : registry.subscribers(key, location)) {
+                deliver(key, location, sub, prior, newState, newVersion, newSession, true);
             }
+        }
+    }
+
+    private static boolean isGlobal(String location) {
+        return location == null || location.isEmpty();
+    }
+
+    /**
+     * Translate and send one update to a single subscriber, as a JSON patch when
+     * the subscriber's lastSentVersion lines up with the prior cached state (same
+     * session), full snapshot otherwise. {@code subscriberLocation} is the location
+     * the subscriber registered at — which, for a global publish, differs from the
+     * (empty) publish location and is where {@code lastSentVersion} is tracked.
+     */
+    private void deliver(String key, String subscriberLocation,
+                         MinionTwinSubscriberRegistry.Subscription sub,
+                         TwinStateCache.Entry prior, ByteString newState,
+                         int newVersion, String newSession, boolean allowPatch) {
+        boolean canPatch = allowPatch
+            && prior != null
+            && prior.sessionId().equals(newSession)
+            && sub.lastSentVersion() == prior.version();
+        ByteString outBytes = canPatch ? patcher.diff(prior.state(), newState) : null;
+
+        TwinUpdate.Builder b = TwinUpdate.newBuilder()
+            .setConsumerKey(key)
+            .setLocation(subscriberLocation)
+            .setVersion(newVersion)
+            .setSessionId(newSession)
+            .setDispatchedAt(now());
+
+        if (outBytes != null) {
+            b.setTwinObject(outBytes).setIsPatch(true);
+        } else {
+            b.setTwinObject(newState).setIsPatch(false);
+        }
+
+        try {
+            synchronized (sub.observer()) {
+                sub.observer().onNext(b.build());
+            }
+            registry.updateLastSentVersion(key, subscriberLocation, sub.observer(), newVersion);
+        } catch (Throwable t) {
+            LOG.warn("Failed to send TwinUpdate to subscriber for key={} location={}; unregistering",
+                key, subscriberLocation, t);
+            registry.unregister(key, subscriberLocation, sub.observer());
         }
     }
 
@@ -141,6 +209,12 @@ public class TwinChannelDispatcher {
      */
     public void sendInitialSnapshot(String consumerKey, String location, StreamObserver<TwinUpdate> observer) {
         TwinStateCache.Entry e = cache.get(consumerKey, location);
+        if (e == null) {
+            // Fall back to globally-published state (cached under empty location) —
+            // passive-status is broadcast globally, so a location-scoped subscriber
+            // still needs it as its initial snapshot.
+            e = cache.get(consumerKey, "");
+        }
         if (e == null) {
             LOG.info("No cached Twin state for key={} location={}; subscriber will receive on first daemon publish",
                 consumerKey, location);
