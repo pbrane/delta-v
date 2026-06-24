@@ -31,5 +31,10 @@ public record DbInitProperties(
     boolean iplike,
     boolean timescaleDb,
     boolean vacuum,
-    boolean fullVacuum
+    boolean fullVacuum,
+    // When true, skip the schema migrator's database-version check (the "-Q" escape
+    // hatch). Lets deployments opt into PostgreSQL versions above the migrator's
+    // hardcoded ceiling — e.g. PostgreSQL 17, the CloudNativePG 1.29 default — once
+    // they've accepted the compatibility risk. Bound from OPENNMS_DBINIT_SKIP_VERSION_CHECK.
+    boolean skipVersionCheck
 ) {}
