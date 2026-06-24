@@ -137,8 +137,8 @@ cleanup() {
 trap cleanup EXIT
 
 psql_query() {
-    docker compose exec -T -e PGPASSWORD=opennms postgres \
-        psql -U opennms -d opennms -t -A -c "$1" 2>/dev/null
+    docker compose exec -T -e PGPASSWORD=deltav postgres \
+        psql -U deltav -d deltav -t -A -c "$1" 2>/dev/null
 }
 
 wait_for_db() {

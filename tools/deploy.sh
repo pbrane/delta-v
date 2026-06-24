@@ -173,7 +173,7 @@ do_test() {
     fi
 
     # Test 2: Database accessible
-    if docker compose exec -T -e PGPASSWORD=opennms postgres psql -U opennms -d opennms -c "SELECT 1" >/dev/null 2>&1; then
+    if docker compose exec -T -e PGPASSWORD=deltav postgres psql -U deltav -d deltav -c "SELECT 1" >/dev/null 2>&1; then
         log "  [PASS] PostgreSQL accessible"
         pass=$((pass + 1))
     else

@@ -51,9 +51,9 @@ class AlarmsMaterializerIT {
 
     @Container
     static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:15")
-            .withDatabaseName("opennms")
-            .withUsername("opennms")
-            .withPassword("opennms")
+            .withDatabaseName("deltav")
+            .withUsername("deltav")
+            .withPassword("deltav")
             .withInitScript("schema/alarms.sql");
 
     @DynamicPropertySource

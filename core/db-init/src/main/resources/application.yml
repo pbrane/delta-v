@@ -5,9 +5,9 @@ spring:
 
 opennms:
   dbinit:
-    database-name: opennms
-    database-user: opennms
-    database-password: opennms
+    database-name: deltav
+    database-user: deltav
+    database-password: deltav
     admin-user: postgres
     admin-password: ""
     admin-url: jdbc:postgresql://localhost:5432/template1
