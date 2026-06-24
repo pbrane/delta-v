@@ -257,21 +257,29 @@ do_perspective_app_init_image() {
 do_flow_enricher_image() {
     log "Building flow-enricher image (${IMAGE_PREFIX}/flow-enricher:$VERSION)..."
     cd "$REPO_ROOT"
-    ./mvnw -B -f core/flow-enricher/pom.xml -DskipTests package
+    # Reactor mode (-pl … -am install), not single-pom `-f … package`: flow-enricher
+    # depends on the local reactor module org.deltav.core:node-context-consumer,
+    # which is never published to a registry. `-f … package` would try to resolve it
+    # from ~/.m2 and fail on a clean cache (no prior `make build`). `-am` builds it
+    # first; `install` stages it so the Spring Boot repackage resolves it. Mirrors
+    # do_minion_gateway_image. See issue #367.
+    ./mvnw -B -pl core/flow-enricher -am -DskipTests install
     build_image flow-enricher -f "$REPO_ROOT/core/flow-enricher/Dockerfile" "$REPO_ROOT/core/flow-enricher"
 }
 
 do_prometheus_writer_image() {
     log "Building prometheus-writer image (${IMAGE_PREFIX}/prometheus-writer:$VERSION)..."
     cd "$REPO_ROOT"
-    ./mvnw -B -f core/prometheus-writer/pom.xml -DskipTests package
+    # Reactor mode for the local node-context-consumer dep (see do_flow_enricher_image / #367).
+    ./mvnw -B -pl core/prometheus-writer -am -DskipTests install
     build_image prometheus-writer -f "$REPO_ROOT/core/prometheus-writer/Dockerfile" "$REPO_ROOT/core/prometheus-writer"
 }
 
 do_alerts_forwarder_image() {
     log "Building alerts-forwarder image (${IMAGE_PREFIX}/alerts-forwarder:$VERSION)..."
     cd "$REPO_ROOT"
-    ./mvnw -B -f core/alerts-forwarder/pom.xml -DskipTests package
+    # Reactor mode for the local node-context-consumer dep (see do_flow_enricher_image / #367).
+    ./mvnw -B -pl core/alerts-forwarder -am -DskipTests install
     build_image alerts-forwarder -f "$REPO_ROOT/core/alerts-forwarder/Dockerfile" "$REPO_ROOT/core/alerts-forwarder"
 }
 
