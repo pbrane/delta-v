@@ -66,6 +66,13 @@ fail() { echo "  [FAIL] $*"; FAIL=$((FAIL + 1)); }
 err()  { echo "ERROR: $*" >&2; exit 2; }
 
 cleanup() {
+    # Restore the canonical provisiond-configuration.xml if this run overwrote it
+    # (#201): it is a git-tracked file shipping the full requisition set, so leaving
+    # it mutated drifts the working tree and wipes the other requisitions for later runs.
+    if [ -f overlays/provisiond/etc/provisiond-configuration.xml.e2e-backup ]; then
+        mv -f overlays/provisiond/etc/provisiond-configuration.xml.e2e-backup \
+              overlays/provisiond/etc/provisiond-configuration.xml
+    fi
     if $POST_CLEANUP; then
         log "Post-run cleanup (--post-cleanup): removing test data..."
         clean_all_nodes
@@ -75,8 +82,8 @@ cleanup() {
 trap cleanup EXIT
 
 psql_query() {
-    docker compose exec -T -e PGPASSWORD=opennms postgres \
-        psql -U opennms -d opennms -t -A -c "$1" 2>/dev/null
+    docker compose exec -T -e PGPASSWORD=deltav postgres \
+        psql -U deltav -d deltav -t -A -c "$1" 2>/dev/null
 }
 
 wait_for_db() {
@@ -215,6 +222,13 @@ REQEOF
 
         # Add requisition-def so Provisiond auto-imports on startup
         mkdir -p overlays/provisiond/etc
+        # Back up the canonical config so cleanup() can restore it (#201). Skip if a
+        # backup already exists (a prior run exited abnormally) so we keep the true
+        # original rather than a backup of the already-overwritten file.
+        [ -f overlays/provisiond/etc/provisiond-configuration.xml ] \
+            && [ ! -f overlays/provisiond/etc/provisiond-configuration.xml.e2e-backup ] \
+            && cp overlays/provisiond/etc/provisiond-configuration.xml \
+                  overlays/provisiond/etc/provisiond-configuration.xml.e2e-backup
         cat > overlays/provisiond/etc/provisiond-configuration.xml <<PROVEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <provisiond-configuration xmlns="http://xmlns.opennms.org/xsd/config/provisiond-configuration"

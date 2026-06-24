@@ -8,23 +8,29 @@
 # via DNS and polls https://google.com/ from its own vantage point.
 #
 # Creates an Application ("Google-Search-App") that maps the service to
-# two perspective locations (Default + mhuot-labs), then verifies that
+# two perspective locations (Default + nl6-lab), then verifies that
 # PerspectivePollerd executes polls from both Minions without creating
 # perspective outages. Phases 4/5 simulate a real service failure by
 # DNS-blocking google.com on the Default Minion, verifying outage creation
 # and recovery while confirming RPC timeouts do NOT create false outages.
+#
+# The second perspective is the in-stack nl6-minion (location=nl6-lab), which
+# shares the nl6 simulator's network namespace and reaches google.com via the
+# delta-v_default bridge's NAT egress — so it keeps polling google.com healthy
+# while the Default Minion is DNS-blocked, proving perspective isolation entirely
+# in-stack — no external lab Minion or VPN required.
 #
 # Usage:
 #   ./test-perspective-e2e.sh              Run the test
 #   ./test-perspective-e2e.sh --verbose    Show diagnostic queries on failure
 #   ./test-perspective-e2e.sh --pre-clean  Delete prior test data before run
 #   ./test-perspective-e2e.sh --post-cleanup  Delete test data after run
-#   ./test-perspective-e2e.sh --single-location  Validate Default only (no labbox)
+#   ./test-perspective-e2e.sh --single-location  Validate Default only (no nl6-lab)
 #
 # Prerequisites:
-#   - Delta-V deployed with full profile: ./deploy.sh up full
-#   - perspectivepollerd, provisiond, pollerd, minion, postgres, kafka running
-#   - Labbox Minion (mhuot-labs location) connected via SSH tunnel
+#   - Delta-V deployed with full profile: make up PROFILE=full
+#   - perspectivepollerd, provisiond, pollerd, minion, minion-gateway, postgres,
+#     kafka running, plus nl6 + nl6-minion (location=nl6-lab) for two-location mode
 #
 # Exit codes:
 #   0 = all tests passed
@@ -44,7 +50,7 @@ NODE_IP="169.254.1.1"
 SERVICE_NAME="Google-Search"
 APP_NAME="Google-Search-App"
 LOCATION_A="Default"
-LOCATION_B="mhuot-labs"
+LOCATION_B="nl6-lab"
 
 PROVISION_TIMEOUT=120
 PERSPECTIVE_TIMEOUT=180
@@ -78,8 +84,8 @@ fail() { echo "  [FAIL] $*"; FAIL=$((FAIL + 1)); }
 err()  { echo "ERROR: $*" >&2; exit 2; }
 
 psql_query() {
-    docker compose exec -T -e PGPASSWORD=opennms postgres \
-        psql -U opennms -d opennms -t -A -c "$1" 2>/dev/null
+    docker compose exec -T -e PGPASSWORD=deltav postgres \
+        psql -U deltav -d deltav -t -A -c "$1" 2>/dev/null
 }
 
 wait_for_db() {
@@ -158,8 +164,8 @@ cleanup() {
     docker exec -u root delta-v-minion sh -c \
         'grep -v "192.0.2.1" /etc/hosts > /tmp/h && cat /tmp/h > /etc/hosts && rm /tmp/h' 2>/dev/null || true
     # Restore provisiond-configuration.xml from the committed state (captured
-    # before the mhuot-labs inject) so the working tree stays clean for other
-    # E2E tests that depend on the canonical committed config.
+    # before Phase 1's perspective-test inject) so the working tree stays clean
+    # for other E2E tests that depend on the canonical committed config.
     if [ -f "${PROVISIOND_CONFIG_BACKUP}" ]; then
         cp "${PROVISIOND_CONFIG_BACKUP}" "${PROVISIOND_CONFIG}"
         rm -f "${PROVISIOND_CONFIG_BACKUP}"
@@ -214,12 +220,15 @@ wait_for_kafka_event() {
 log "Checking prerequisites..."
 
 RUNNING=$(docker compose ps --status running --format '{{.Name}}')
-for svc in postgres kafka provisiond perspectivepollerd minion minion-gateway; do
+REQUIRED_SERVICES="postgres kafka provisiond perspectivepollerd minion minion-gateway"
+# Two-location mode also needs the in-stack nl6-minion (location=nl6-lab).
+$SINGLE_LOCATION || REQUIRED_SERVICES="$REQUIRED_SERVICES nl6-minion"
+for svc in $REQUIRED_SERVICES; do
     if ! echo "$RUNNING" | grep -q "$svc"; then
-        err "Service '$svc' is not running. Deploy with: ./deploy.sh up full"
+        err "Service '$svc' is not running. Deploy with: make up PROFILE=full"
     fi
 done
-ok "Required services running (postgres, kafka, provisiond, perspectivepollerd, minion, minion-gateway)"
+ok "Required services running (${REQUIRED_SERVICES})"
 
 # v1.2.0-rc2 PR1: RPC channel migrated to gRPC bidi via minion-gateway.
 # Default for opennms.minion.transport.rpc is "grpc" (matchIfMissing=true);
@@ -247,55 +256,45 @@ case "$GATEWAY_LOG" in
     *) err "minion-gateway never logged 'RPC stream opened' for location=${LOCATION_A}; gRPC RPC channel not live" ;;
 esac
 ok "gRPC RPC stream live for location=${LOCATION_A} (rc2 PR1)"
-# The mhuot-labs perspective stream is only present when labbox SSH tunnel
-# is up and the labbox Minion has connected. Logged-not-required: if it's
-# missing, perspective polls from that side will not reach a Minion, which
-# the existing Phase 3/4/5 assertions already cover.
-case "$GATEWAY_LOG" in
-    *"RPC stream opened for minion="*"location=${LOCATION_B}"*)
-        ok "gRPC RPC stream live for location=${LOCATION_B} (rc2 PR1, labbox)" ;;
-    *)
-        log "  Note: no RPC stream from location=${LOCATION_B} yet — labbox tunnel may not be up" ;;
-esac
+# In two-location mode the nl6-lab perspective stream is the in-stack nl6-minion
+# (location=nl6-lab) — required, not best-effort. Wait up to 60s for the gateway
+# to accept its RPC stream (nl6-minion starts after the nl6 simulator is healthy).
+if ! $SINGLE_LOCATION; then
+    NL6_RPC_DEADLINE=$(( $(date +%s) + 60 ))
+    while (( $(date +%s) < NL6_RPC_DEADLINE )); do
+        GATEWAY_LOG=$(docker logs delta-v-minion-gateway 2>&1 || true)
+        case "$GATEWAY_LOG" in
+            *"RPC stream opened for minion="*"location=${LOCATION_B}"*) break ;;
+        esac
+        sleep 3
+    done
+    case "$GATEWAY_LOG" in
+        *"RPC stream opened for minion="*"location=${LOCATION_B}"*)
+            ok "gRPC RPC stream live for location=${LOCATION_B} (nl6-minion)" ;;
+        *) err "minion-gateway never logged 'RPC stream opened' for location=${LOCATION_B}; nl6-minion not connected (need full profile)" ;;
+    esac
+fi
 
-# The committed provisiond-configuration.xml has the mhuot-labs requisition-def
-# commented out (lab devices at 172.20.20.x need VPN). This test is the labbox-
-# dependent path, so we inject the requisition-def as active, then restore the
-# committed state on EXIT. Provisiond's import of mhuot-labs.xml (which has
-# nodes with location="mhuot-labs") is what populates monitoringlocations with
-# the mhuot-labs row — without this step, the LOC_COUNT check below would fail
-# because only Default (+ nl6-lab) get registered.
+# Capture the committed provisiond-configuration.xml so cleanup() can restore it
+# after Phase 1's perspective-test requisition-def inject — keeps the working tree
+# clean for other E2E tests that rely on the canonical committed config.
 cp "${PROVISIOND_CONFIG}" "${PROVISIOND_CONFIG_BACKUP}"
+# The nl6-lab monitoring location is registered by provisiond's import of the nl6
+# requisition (29 nodes at location=nl6-lab, swapped into the imports volume by the
+# provisiond-nl6-init sidecar on the nl6 profiles) — no host-overlay inject needed.
+# In two-location mode, wait for that row: the nl6 import runs at stack start and
+# can lag / retry on flaky nl6 DNS RPC, so it may not be present the instant we run.
 if $SINGLE_LOCATION; then
-    log "  --single-location: skipping mhuot-labs (labbox) inject; validating ${LOCATION_A} only"
+    log "  --single-location: skipping ${LOCATION_B} (nl6-lab); validating ${LOCATION_A} only"
 else
-python3 - "${PROVISIOND_CONFIG}" <<'PYEOF'
-import re, sys
-path = sys.argv[1]
-with open(path) as f: content = f.read()
-active_pattern = re.compile(
-    r'<requisition-def\s+import-name="mhuot-labs"[\s\S]+?</requisition-def>')
-stripped = re.sub(r'<!--[\s\S]*?-->', '', content)
-if active_pattern.search(stripped):
-    sys.exit(0)
-snippet = (
-    '  <requisition-def import-name="mhuot-labs"\n'
-    '                   import-url-resource="file:///opt/deltav/etc/imports/mhuot-labs.xml">\n'
-    '    <cron-schedule>0/30 * * * * ?</cron-schedule>\n'
-    '  </requisition-def>\n'
-)
-marker = '</provisiond-configuration>'
-with open(path, 'w') as f: f.write(content.replace(marker, snippet + marker, 1))
-PYEOF
-docker restart delta-v-provisiond >/dev/null 2>&1
-log "  Waiting up to 60s for provisiond to re-import mhuot-labs and register monitoringlocation..."
-deadline=$(( $(date +%s) + 60 ))
-while (( $(date +%s) < deadline )); do
-    if [ "$(psql_query "SELECT count(*) FROM monitoringlocations WHERE id='${LOCATION_B}'" || echo 0)" = "1" ]; then
-        break
-    fi
-    sleep 3
-done
+    log "  Waiting up to 120s for the ${LOCATION_B} monitoring location (nl6 node import)..."
+    deadline=$(( $(date +%s) + 120 ))
+    while (( $(date +%s) < deadline )); do
+        if [ "$(psql_query "SELECT count(*) FROM monitoringlocations WHERE id='${LOCATION_B}'" || echo 0)" = "1" ]; then
+            break
+        fi
+        sleep 5
+    done
 fi
 
 # Verify monitoring location(s) exist
@@ -373,8 +372,7 @@ ok "Requisition and foreign source written (no detectors)"
 # includes perspective-test so the inject is a no-op in the happy path;
 # the Python check skips comment blocks so a commented-out entry
 # wouldn't fool us into leaving it inactive. PROVISIOND_CONFIG_BACKUP
-# was already captured before the mhuot-labs inject, so cleanup()
-# restores both injects in one shot.
+# was captured above, so cleanup() restores any inject this run made.
 python3 - "${PROVISIOND_CONFIG}" "${FOREIGN_SOURCE}" <<'PYEOF'
 import re, sys
 path, fs = sys.argv[1], sys.argv[2]
@@ -396,10 +394,8 @@ PYEOF
 # --status running` shows the container even in its "restarting" state,
 # which fooled the previous check into passing prematurely; instead we
 # poll the /actuator/health endpoint until it returns 200 (or give up
-# at 60s). In two-location mode the first restart for the mhuot-labs inject
-# already waited for the monitoringlocations row; in --single-location mode
-# that inject is skipped, so the health poll below is the sole readiness gate
-# (provisiond may be cold here — the poll covers it either way).
+# at 60s). provisiond may be cold here (it is not restarted earlier in the
+# nl6-lab flow), so this health poll is the readiness gate either way.
 docker restart delta-v-provisiond >/dev/null 2>&1 || true
 deadline=$(( $(date +%s) + 60 ))
 prov_healthy=false
@@ -498,7 +494,7 @@ for LOC in "${PERSPECTIVE_LOCATIONS[@]}"; do
     psql_query "INSERT INTO application_perspective_location_map (appid, monitoringlocationid) VALUES (${APP_ID}, '${LOC}') ON CONFLICT DO NOTHING" || true
 done
 # Count only the locations this run manages, not every row for the app. A prior
-# two-location run can leave a mhuot-labs mapping behind; without scoping this,
+# two-location run can leave an nl6-lab mapping behind; without scoping this,
 # a subsequent --single-location run (sans --pre-clean) would see 2 != 1 and
 # fail spuriously.
 PLOC_IN_LIST=$(printf "'%s'," "${PERSPECTIVE_LOCATIONS[@]}"); PLOC_IN_LIST="${PLOC_IN_LIST%,}"
@@ -606,9 +602,9 @@ log "Phase 3 baseline established; poll completion is gated by Phases 4-5 (real 
 # fails → Unavailable. This is a real service failure (monitor executed,
 # target unreachable), not an infrastructure failure (RPC timeout).
 #
-# The mhuot-labs Minion (if connected) would still reach google.com, proving
-# perspective isolation. If mhuot-labs RPC times out, the onTimedOut() fix
-# ensures no false outage is created for that location.
+# The nl6-minion (location=nl6-lab) still reaches google.com from its own netns,
+# proving perspective isolation. If that location's RPC ever times out, the
+# onTimedOut() fix ensures no false outage is created for it.
 log ""
 log "Phase 4: Simulating service failure from Default Minion..."
 
@@ -692,11 +688,11 @@ if [ -n "$REDUCTION_KEY" ]; then
     fi
 fi
 
-# Verify mhuot-labs did NOT get a false outage from RPC timeout
+# Verify the nl6-lab perspective did NOT get a false outage (it still reaches google.com)
 if $SINGLE_LOCATION; then
     log "  --single-location: skipping ${LOCATION_B} false-outage isolation check"
 else
-    MHUOT_OPEN=$(psql_query "SELECT count(*) FROM outages o
+    LOC_B_OPEN=$(psql_query "SELECT count(*) FROM outages o
         WHERE o.perspective = '${LOCATION_B}'
           AND o.ifregainedservice IS NULL
           AND o.ifserviceid IN (
@@ -705,10 +701,10 @@ else
             JOIN node n ON ip.nodeid = n.nodeid
             WHERE n.foreignsource = '${FOREIGN_SOURCE}'
           )")
-    if [ "${MHUOT_OPEN:-0}" -eq 0 ]; then
-        ok "No false outage for ${LOCATION_B} (RPC timeout handled correctly)"
+    if [ "${LOC_B_OPEN:-0}" -eq 0 ]; then
+        ok "No false outage for ${LOCATION_B} — perspective isolation holds (nl6-minion still reaches google.com)"
     else
-        fail "${LOCATION_B} has ${MHUOT_OPEN} open outage(s) — onTimedOut() may be broken"
+        fail "${LOCATION_B} has ${LOC_B_OPEN} open outage(s) — isolation broken or onTimedOut() regressed"
     fi
 fi
 
@@ -789,8 +785,8 @@ log "Results: $PASS passed, $FAIL failed"
 log ""
 log "Validated:"
 log "  Phase 1: Requisition + foreign source → google.com node provisioned"
-log "  Phase 2: Application created with Default + mhuot-labs perspectives"
+log "  Phase 2: Application created with Default + nl6-lab perspectives"
 log "  Phase 3: Perspective polls scheduled, clean healthy baseline (no open outages)"
-log "  Phase 4: DNS block → outage + alarm created for Default, no false outage for mhuot-labs"
+log "  Phase 4: DNS block → outage + alarm created for Default, no false outage for nl6-lab"
 log "  Phase 5: DNS unblock → outage cleared, alarm cleared/deleted, nodeRegainedService on Kafka"
 [ $FAIL -eq 0 ] || exit 1

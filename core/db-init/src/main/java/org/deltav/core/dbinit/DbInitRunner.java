@@ -51,6 +51,24 @@ public class DbInitRunner implements CommandLineRunner {
         LOG.info("Starting database initialization...");
 
         var migrator = new Migrator();
+        configureMigrator(migrator);
+
+        migrator.setupDatabase(
+            true,
+            properties.vacuum(),
+            properties.fullVacuum(),
+            properties.iplike(),
+            properties.timescaleDb()
+        );
+
+        LOG.info("Database initialization complete.");
+    }
+
+    /**
+     * Configures the migrator from the bound properties. Package-private so the
+     * version-check wiring can be unit-tested without a database.
+     */
+    void configureMigrator(Migrator migrator) {
         migrator.setAdminDataSource(adminDataSource);
         migrator.setDataSource(dataSource);
         migrator.setApplicationContext(context);
@@ -62,14 +80,11 @@ public class DbInitRunner implements CommandLineRunner {
         migrator.setCreateUser(properties.createUser());
         migrator.setCreateDatabase(properties.createDatabase());
 
-        migrator.setupDatabase(
-            true,
-            properties.vacuum(),
-            properties.fullVacuum(),
-            properties.iplike(),
-            properties.timescaleDb()
-        );
-
-        LOG.info("Database initialization complete.");
+        if (properties.skipVersionCheck()) {
+            LOG.warn("OPENNMS_DBINIT_SKIP_VERSION_CHECK=true: skipping the schema migrator's "
+                + "database-version check. The target PostgreSQL version will NOT be validated "
+                + "against the migrator's supported range (e.g. this allows PostgreSQL 17.x).");
+            migrator.setValidateDatabaseVersion(false);
+        }
     }
 }

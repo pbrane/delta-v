@@ -110,8 +110,8 @@ cleanup() {
 
     if $POST_CLEANUP; then
         log "Post-run cleanup (--post-cleanup): removing test data..."
-        docker compose exec -T -e PGPASSWORD=opennms postgres \
-            psql -U opennms -d opennms -q \
+        docker compose exec -T -e PGPASSWORD=deltav postgres \
+            psql -U deltav -d deltav -q \
             -c "DELETE FROM alarms WHERE eventuei LIKE '%syslogd/cisco/link%'" \
             2>/dev/null || true
     fi
@@ -153,8 +153,8 @@ wait_for_kafka_event() {
 }
 
 psql_query() {
-    docker compose exec -T -e PGPASSWORD=opennms postgres \
-        psql -U opennms -d opennms -t -A -c "$1" 2>/dev/null
+    docker compose exec -T -e PGPASSWORD=deltav postgres \
+        psql -U deltav -d deltav -t -A -c "$1" 2>/dev/null
 }
 
 # ── Pre-run cleanup (--pre-clean) ─────────────────────────────────
