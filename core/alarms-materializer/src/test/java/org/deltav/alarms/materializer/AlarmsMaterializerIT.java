@@ -50,7 +50,7 @@ class AlarmsMaterializerIT {
             DockerImageName.parse("confluentinc/cp-kafka:7.4.0"));
 
     @Container
-    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:15")
+    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16")
             .withDatabaseName("opennms")
             .withUsername("opennms")
             .withPassword("opennms")

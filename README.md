@@ -141,7 +141,7 @@ Minion → Kafka Sink → Trapd/Syslogd
 | flow-enricher | Spring Boot 4 + Spring Cloud Stream | Flow decode via horizon UDP parsers, per-flow enrichment, publish to ClickHouse |
 | minion | Spring Boot 4 | Distributed data collection agent (Kafka RPC + Sink + Twin API + UDP flow listener) |
 | db-init | Spring Boot 4 | One-shot Liquibase schema migration |
-| postgres | postgres:15 | PostgreSQL database (alarms only) |
+| postgres | postgres:16 | PostgreSQL database (alarms only) |
 | clickhouse | clickhouse/clickhouse-server | Flow storage: `deltav.flows_raw` + 4 dimension materialized views (application, source_ip, conversation, dscp) |
 | clickhouse-init | one-shot | ClickHouse DDL bootstrap for `deltav.flows_raw` and dimension MVs |
 | kafka | Apache Kafka | Event transport backbone |

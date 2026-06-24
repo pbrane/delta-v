@@ -491,6 +491,8 @@ To log in as admin (e.g. to create custom dashboards):
 
 **Database connection errors:** Ensure postgres is healthy before other services start. The compose healthchecks handle this, but initial schema creation takes time.
 
+**postgres won't start after a 15 → 16 upgrade** (`FATAL: database files ... initialized by PostgreSQL 15, not compatible with version 16`): PG16 can't open a PG15 `pgdata` volume. The database is non-precious here (db-init rebuilds the schema via Liquibase; alarms are derivative), so drop the volume and let it reinitialize: `make reset` (or `docker compose down -v`), then `make up`.
+
 **Stale data after rebuild:** Run `make reset` to remove all volumes, then `make up PROFILE=full`.
 
 ## License
