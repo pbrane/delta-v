@@ -57,9 +57,9 @@ class AlarmdApplicationIT {
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16")
-            .withDatabaseName("opennms")
-            .withUsername("opennms")
-            .withPassword("opennms")
+            .withDatabaseName("deltav")
+            .withUsername("deltav")
+            .withPassword("deltav")
             .withInitScript("schema.sql");
 
     @DynamicPropertySource

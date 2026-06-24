@@ -57,9 +57,9 @@ class DbInitPostgres17IntegrationTest {
         registry.add("opennms.dbinit.admin-url", postgres::getJdbcUrl);
         registry.add("opennms.dbinit.admin-user", postgres::getUsername);
         registry.add("opennms.dbinit.admin-password", postgres::getPassword);
-        registry.add("opennms.dbinit.database-name", () -> "opennms");
-        registry.add("opennms.dbinit.database-user", () -> "opennms");
-        registry.add("opennms.dbinit.database-password", () -> "opennms");
+        registry.add("opennms.dbinit.database-name", () -> "deltav");
+        registry.add("opennms.dbinit.database-user", () -> "deltav");
+        registry.add("opennms.dbinit.database-password", () -> "deltav");
         // The fix under test: opt past the migrator's PostgreSQL-version ceiling.
         registry.add("opennms.dbinit.skip-version-check", () -> "true");
     }

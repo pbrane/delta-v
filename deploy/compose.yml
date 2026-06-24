@@ -43,9 +43,9 @@ services:
     image: postgres:15
     command: ["-c", "max_connections=350"]
     environment:
-      POSTGRES_DB: opennms
-      POSTGRES_USER: opennms
-      POSTGRES_PASSWORD: opennms
+      POSTGRES_DB: deltav
+      POSTGRES_USER: deltav
+      POSTGRES_PASSWORD: deltav
       POSTGRES_HOST_AUTH_METHOD: md5
       POSTGRES_INITDB_ARGS: --auth=md5
     volumes:
@@ -53,7 +53,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U opennms -d opennms"]
+      test: ["CMD-SHELL", "pg_isready -U deltav -d deltav"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -101,11 +101,11 @@ services:
         condition: service_healthy
     environment:
       OPENNMS_DBINIT_ADMIN_URL: jdbc:postgresql://postgres:5432/template1
-      OPENNMS_DBINIT_ADMIN_USER: opennms
-      OPENNMS_DBINIT_ADMIN_PASSWORD: opennms
-      OPENNMS_DBINIT_DATABASE_NAME: opennms
-      OPENNMS_DBINIT_DATABASE_USER: opennms
-      OPENNMS_DBINIT_DATABASE_PASSWORD: opennms
+      OPENNMS_DBINIT_ADMIN_USER: deltav
+      OPENNMS_DBINIT_ADMIN_PASSWORD: deltav
+      OPENNMS_DBINIT_DATABASE_NAME: deltav
+      OPENNMS_DBINIT_DATABASE_USER: deltav
+      OPENNMS_DBINIT_DATABASE_PASSWORD: deltav
       OPENNMS_DBINIT_CREATE_USER: "false"
       JAVA_TOOL_OPTIONS: -Xms256m -Xmx512m
 
@@ -438,9 +438,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1g -XX:MaxMetaspaceSize=256m -Dorg.opennms.core.ipc.twin.kafka.bootstrap.servers=kafka:9092 -Dorg.opennms.core.ipc.rpc.force-remote=true"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-pollerd
       OPENNMS_HOME: /opt/deltav
@@ -474,9 +474,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1g -Dorg.opennms.tsid.node-id=5"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OPENNMS_HOME: /opt/deltav
       # Vestigial — selects the strategy for horizon's stock TimeseriesPersister
@@ -510,9 +510,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OPENNMS_HOME: /opt/deltav
       INTERFACE_NODE_CACHE_REFRESH_MS: "15000"
@@ -541,9 +541,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-trapd
       KAFKA_SINK_CONSUMER_GROUP: opennms-trapd-sink
@@ -571,9 +571,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-syslogd
       KAFKA_SINK_CONSUMER_GROUP: opennms-syslogd-sink
@@ -601,9 +601,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-eventtranslator
       OPENNMS_HOME: /opt/deltav
@@ -624,9 +624,9 @@ services:
     hostname: enlinkd
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m -Dopennms.home=/opt/deltav"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: enlinkd
       OPENNMS_HOME: /opt/deltav
@@ -755,9 +755,9 @@ services:
       - "mhuot-lab-6:172.20.20.6"
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1g -XX:MaxMetaspaceSize=256m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OPENNMS_HOME: /opt/deltav
       OPENNMS_INSTANCE_ID: DeltaV
@@ -802,9 +802,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m -Dorg.opennms.alarms.snapshot.sync.ms=10000"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-bsmd
       OPENNMS_HOME: /opt/deltav
@@ -863,9 +863,9 @@ services:
         condition: service_completed_successfully
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1g -XX:MaxMetaspaceSize=256m -Dorg.opennms.core.ipc.rpc.force-remote=true"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-perspectivepollerd
       OPENNMS_HOME: /opt/deltav
@@ -897,9 +897,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1g -XX:MaxMetaspaceSize=256m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-alarmd
       OPENNMS_HOME: /opt/deltav
@@ -925,9 +925,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m -Dorg.opennms.core.ipc.sink.kafka.bootstrap.servers=kafka:9092 -Dorg.opennms.core.ipc.sink.kafka.group.id=opennms-telemetryd-sink -Dorg.opennms.core.ipc.twin.kafka.bootstrap.servers=kafka:9092"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_CONSUMER_GROUP: opennms-telemetryd
       OPENNMS_HOME: /opt/deltav
@@ -999,9 +999,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       DELTAV_FLOWS_SINK_TOPICS: "DeltaV.Sink.Telemetry-Netflow-5,DeltaV.Sink.Telemetry-Netflow-9,DeltaV.Sink.Telemetry-IPFIX,DeltaV.Sink.Telemetry-SFlow"
       DELTAV_FLOWS_OUTPUT_TOPIC: deltav-flows
@@ -1111,9 +1111,9 @@ services:
         condition: service_healthy
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/opennms
-      SPRING_DATASOURCE_USERNAME: opennms
-      SPRING_DATASOURCE_PASSWORD: opennms
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/deltav
+      SPRING_DATASOURCE_USERNAME: deltav
+      SPRING_DATASOURCE_PASSWORD: deltav
       DELTAV_ALARMS_STATE_TOPIC: deltav-alarms-state-change
     restart: unless-stopped
     healthcheck:

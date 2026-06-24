@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/opennms}
-    username: ${SPRING_DATASOURCE_USERNAME:opennms}
-    password: ${SPRING_DATASOURCE_PASSWORD:opennms}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/deltav}
+    username: ${SPRING_DATASOURCE_USERNAME:deltav}
+    password: ${SPRING_DATASOURCE_PASSWORD:deltav}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
