@@ -17,6 +17,11 @@ opennms:
     timescale-db: false
     vacuum: false
     full-vacuum: false
+    # Skip the schema migrator's database-version check (the "-Q" escape hatch).
+    # Set OPENNMS_DBINIT_SKIP_VERSION_CHECK=true to run against a PostgreSQL version
+    # above the migrator's hardcoded ceiling — e.g. PostgreSQL 17, the CloudNativePG
+    # 1.29 default. Off by default; the version is validated as normal.
+    skip-version-check: false
 
 logging:
   level:
