@@ -108,6 +108,11 @@ auth.json
 deploy/overlays/provisiond/etc/imports/*
 !deploy/overlays/provisiond/etc/imports/.gitkeep
 
+# E2E backup files: test-collectd-e2e.sh / test-passive-e2e.sh back up the canonical
+# provisiond-configuration.xml before overwriting it and restore it on EXIT (#201).
+# A *.e2e-backup only lingers after an abnormal exit and must never be committed.
+*.e2e-backup
+
 # Flat poller service catalog — the single source of truth is committed at
 # overlays/shared/poller-services.yaml; build.sh stages a copy into each
 # consuming daemon's overlay at image-build time. Those copies are generated,
