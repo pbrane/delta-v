@@ -38,7 +38,7 @@ class DbInitIntegrationTest {
 
     @Container
     static PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:15")
+            new PostgreSQLContainer<>("postgres:16")
                     .withDatabaseName("template1")
                     .withUsername("postgres")
                     .withPassword("postgres");

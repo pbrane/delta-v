@@ -52,7 +52,7 @@ With all 12 daemons on Spring Boot, the Karaf-based Sentinel image (`deltav/daem
 
 | Service            | Image                         | Purpose                                                                  | Host Port |
 |--------------------|-------------------------------|--------------------------------------------------------------------------|-----------|
-| postgres           | postgres:15                   | Shared database (alarms only)                                            | 5432      |
+| postgres           | postgres:16                   | Shared database (alarms only)                                            | 5432      |
 | kafka              | apache/kafka                  | Event bus (KRaft mode)                                                   | 19092     |
 | db-init            | deltav/db-init               | One-shot PostgreSQL schema migration (exits after init)                  | —         |
 | clickhouse         | clickhouse/clickhouse-server  | Flow storage: `deltav.flows_raw` + 4 dimension MVs                       | 8123      |
@@ -490,6 +490,8 @@ To log in as admin (e.g. to create custom dashboards):
 **Service won't start:** Check logs: `make logs SVC=<service>`. Spring Boot daemons log to stdout. Check `/actuator/health` for health status.
 
 **Database connection errors:** Ensure postgres is healthy before other services start. The compose healthchecks handle this, but initial schema creation takes time.
+
+**postgres won't start after a 15 → 16 upgrade** (`FATAL: database files ... initialized by PostgreSQL 15, not compatible with version 16`): PG16 can't open a PG15 `pgdata` volume. The database is non-precious here (db-init rebuilds the schema via Liquibase; alarms are derivative), so drop the volume and let it reinitialize: `make reset` (or `docker compose down -v`), then `make up`.
 
 **Stale data after rebuild:** Run `make reset` to remove all volumes, then `make up PROFILE=full`.
 

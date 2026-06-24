@@ -64,7 +64,7 @@ echo "RUNAS=$(id -u -n)" > "target/opennms-${ONMS_RELEASE}/etc/opennms.conf"
 ./target/opennms-"${ONMS_RELEASE}"/bin/opennms -vt start
 ```
 
-A quick PostgreSQL for dev: `docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 postgres:13`
+A quick PostgreSQL for dev: `docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 postgres:16`
 
 ## Architecture
 
