@@ -18,6 +18,7 @@ package org.deltav.gateway.twin;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
@@ -53,6 +54,27 @@ public class TwinPatchGenerator {
         } catch (Exception e) {
             LOG.warn("JSON Patch generation failed (from {} bytes -> to {} bytes); caller should fall back to snapshot",
                 from.size(), to.size(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Applies an RFC 6902 JSON Patch to a base state, reconstructing the full
+     * target state. Used to recover full Twin state from horizon's incremental
+     * patch publishes ({@code is_patch_object=true}), which carry only the delta.
+     *
+     * @return the full state as bytes, or null if the base or patch is
+     *         unparseable / the patch cannot be applied (caller drops the update).
+     */
+    public ByteString apply(ByteString base, ByteString patch) {
+        try {
+            JsonNode baseNode = objectMapper.readTree(base.toByteArray());
+            JsonNode patchNode = objectMapper.readTree(patch.toByteArray());
+            JsonNode result = JsonPatch.fromJson(patchNode).apply(baseNode);
+            return ByteString.copyFromUtf8(result.toString());
+        } catch (Exception e) {
+            LOG.warn("JSON Patch application failed (base {} bytes, patch {} bytes); dropping update",
+                base.size(), patch.size(), e);
             return null;
         }
     }

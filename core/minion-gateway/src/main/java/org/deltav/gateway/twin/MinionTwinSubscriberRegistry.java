@@ -20,8 +20,10 @@ import io.grpc.stub.StreamObserver;
 import org.deltav.minion.grpc.v1.TwinUpdate;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,6 +81,25 @@ public class MinionTwinSubscriberRegistry {
         return map == null ? Collections.emptyList() : Collections.unmodifiableCollection(map.values());
     }
 
+    /**
+     * All subscriptions for {@code consumerKey} across every location, each paired
+     * with the location it subscribed at. Used to fan a global (location-null)
+     * publish out to location-scoped subscribers — a Minion always subscribes at
+     * its own location, so a global update has to reach every location's set.
+     */
+    public synchronized List<LocatedSubscription> subscribersForAllLocations(String consumerKey) {
+        List<LocatedSubscription> out = new ArrayList<>();
+        for (Map.Entry<Key, Map<StreamObserver<TwinUpdate>, Subscription>> e : subs.entrySet()) {
+            if (e.getKey().consumerKey().equals(consumerKey)) {
+                for (Subscription s : e.getValue().values()) {
+                    out.add(new LocatedSubscription(e.getKey().location(), s));
+                }
+            }
+        }
+        return out;
+    }
+
     public record Key(String consumerKey, String location) {}
     public record Subscription(StreamObserver<TwinUpdate> observer, int lastSentVersion) {}
+    public record LocatedSubscription(String location, Subscription subscription) {}
 }
