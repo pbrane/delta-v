@@ -14,9 +14,49 @@ gh pr create --repo pbrane/delta-v --base develop ...
 gh pr create ...  # defaults to OpenNMS/opennms
 ```
 
+## Delta-V Architecture & Conventions (CRITICAL — read before contributing)
+
+Delta-V is a **microservice-mode** re-architecture of OpenNMS Horizon. The monolith and
+Apache Karaf are **gone** — the platform runs as independent Spring Boot daemon services
+orchestrated by docker-compose. Significant parts of the "legacy" guidance further down
+(Karaf, JAXB config, ActiveMQ/JMS, the `bin/opennms` monolith, CircleCI, JIRA) describe
+**upstream Horizon** and do **not** apply to delta-v code.
+
+**Architecture invariants:**
+- **No Karaf / OSGi.** Daemons are Spring Boot 4 microservices (`core/daemon-boot-*`), one
+  image each. No bundles, feature files, or blueprint.
+- **No events table, no Eventd, no in-JVM EventBus.** Events flow through Kafka; each daemon
+  owns its own EventExpander.
+- **Minion-mandatory I/O.** Daemons NEVER touch the network or poll locally — all device I/O
+  goes through a Minion via Kafka RPC. gRPC is used **only** for the minion-gateway↔Minion
+  channel (remote-Minion security); daemons stay on Kafka.
+- **RPC timeouts must NEVER create outages or fault events** — an RPC failure is not a service
+  being down.
+- **No ActiveMQ, no Newts/Cassandra, no legacy webapp.** Messaging is Kafka; time-series is
+  Prometheus/VictoriaMetrics (+ ClickHouse for flows); the JSP webapp is removed.
+- **Database identity is `deltav`** (db name + role + password), not `opennms` — connect with
+  `psql -U deltav -d deltav`. The `org.opennms.*` Java packages and `OPENNMS_DBINIT_*` /
+  `SPRING_DATASOURCE_*` env-var / property KEYS keep their names; only the DB identity values
+  are `deltav`.
+
+**Code conventions:**
+- **New delta-v code uses `org.deltav.*` packages** and its own copyright header — not `org.opennms.*`.
+- **Config: Jackson `XmlMapper`, never JAXB / `JaxbUtils`** in Spring Boot daemons
+  (with `defaultUseWrapper(false)` + `JaxbAnnotationModule` for `@XmlElementWrapper` models).
+- **Conventional Commits** (`feat:`/`fix:`/`chore:`/`docs:`/`test:`) referencing GitHub issues —
+  **not** JIRA `NMS-XXXXX`.
+- **Branch + PR, never commit to `develop`.** `git pull develop` before branching; PRs target
+  `--repo pbrane/delta-v --base develop`.
+- Horizon code is consumed as **pre-built JARs** from `pbrane/delta-v-horizon`
+  (`deltav.horizon.version`); fix shared bugs at the horizon source, not via delta-v exclusions.
+
 ## Project Overview
 
-OpenNMS Horizon is an enterprise-grade open-source network monitoring platform. Version 36.0.0-SNAPSHOT, licensed under AGPL v3. Java 21 required (`<java.version>21</java.version>` set in root `pom.xml` and every `core/*` module pom).
+Delta-V (`pbrane/delta-v`) is a microservice-mode fork of OpenNMS Horizon, an enterprise-grade
+open-source network monitoring platform, licensed under AGPL v3. The Maven reactor inherits
+Horizon's `36.0.0-SNAPSHOT` version; the deployable Docker images are versioned on delta-v's own
+`1.x` line. **Java 21 required** (`<java.version>21</java.version>` in root `pom.xml` and every
+`core/*` module pom).
 
 ## Build Commands
 
@@ -53,130 +93,131 @@ make help                 # list all targets
 
 `build.sh`, `deploy.sh`, and `doctor.sh` (under `tools/`) are internal engines invoked by `make`; you normally don't call them directly. The legacy `compile.pl`/`assemble.pl` Perl wrappers from upstream Horizon do NOT exist in delta-v.
 
-## Running Locally After Build
+## Running Locally
+
+Delta-V runs as containers via docker-compose, not the legacy `bin/opennms` monolith. Build
+images and bring the stack up:
 
 ```bash
-export ONMS_RELEASE=$(grep -m1 '<version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
-echo "RUNAS=$(id -u -n)" > "target/opennms-${ONMS_RELEASE}/etc/opennms.conf"
-# Configure PostgreSQL in target/opennms-${ONMS_RELEASE}/etc/opennms-datasources.xml
-./target/opennms-"${ONMS_RELEASE}"/bin/runjava -s
-./target/opennms-"${ONMS_RELEASE}"/bin/install -dis
-./target/opennms-"${ONMS_RELEASE}"/bin/opennms -vt start
+make images               # build all Docker images (or `make build` for JARs only)
+make up PROFILE=full      # start the stack (profiles: active|passive|full|demo)
+make status / make logs SVC=<svc> / make down
 ```
 
-A quick PostgreSQL for dev: `docker run -d -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 postgres:16`
+Postgres (the `deltav` database) and `db-init` (Liquibase schema migration) are part of the
+compose stack — no manual `bin/install`/`opennms-datasources.xml` step. To recreate the DB from
+scratch, `make down` with volume removal (`docker compose --profile <p> down -v`) then `make up`.
+
+> The legacy single-binary run (`bin/runjava`/`bin/install`/`bin/opennms`, `opennms.conf`,
+> `opennms-datasources.xml`) belongs to upstream Horizon and is not used in delta-v.
 
 ## Architecture
 
 ### Module Organization
 
-The codebase has two structural patterns:
+Delta-V is a **slim reactor (~34 modules)** — the bulk of OpenNMS Horizon (the `opennms-*`,
+`features/`, `container/`, `dependencies/` trees) lives in the separate `pbrane/delta-v-horizon`
+repo and is consumed here as **pre-built JARs** (`deltav.horizon.version`). The delta-v-owned code:
 
-**Modern structure:**
-- `core/` — Core platform (38 modules: api, cache, config, daemon, db, grpc, ipc, jmx, snmp, web, etc.)
-- `features/` — 87+ feature modules (alarms, collection, discovery, events, flows, kafka, poller, provisioning, rest, telemetry, topology-map, vaadin UI components, etc.)
-- `dependencies/` — Centralized dependency management (66 sub-modules)
-- `container/` — Karaf OSGi container assembly and features
-- `protocols/` — Protocol implementations (CIFS, NSClient, RADIUS, Selenium, XML)
-- `integrations/` — External system integrations
-- `tests/` — Shared test infrastructure (DAO tests, mock elements, mock SNMP agent)
-- `ui/` — Modern Vue 3 SPA frontend
+- `core/` — every delta-v module:
+  - `daemon-boot-*` (14) — the Spring Boot daemon apps: alarmd, bsmd, collectd, discovery,
+    enlinkd, eventtranslator, perspectivepollerd, pollerd, provisiond, syslogd, telemetryd, trapd,
+    plus `daemon-boot-minion` / `-minion-common`.
+  - `daemon-common`, `daemon-registry`, `daemon-sink-kafka`, `dao-jpa-support` — shared daemon infra.
+  - `minion-gateway`, `minion-grpc-contracts`, `deltav-kafka-contracts` — Minion gRPC ingress + contracts.
+  - `opennms-model-jakarta` — `jakarta.persistence` entity model.
+  - `db-init` — Liquibase schema migrator (runs as a container).
+  - `flow-enricher`, `alarms-materializer`, `alarms-kafka-publisher`, `alerts-forwarder`,
+    `node-context-consumer`, `event-forwarder-kafka`, `horizon-metric-bridge` — standalone
+    Spring Cloud Stream / bridge services.
+- `deploy/` — `compose.yml`, per-daemon `overlays/`, Dockerfiles, and the `test-*-e2e.sh` E2E scripts.
+- `tools/` — `build.sh` / `deploy.sh` / `doctor.sh` (the engines invoked by `make`).
+- `components/` — auxiliary image sources; `docs/` — architecture docs and plans.
 
-**Legacy structure (top-level `opennms-*` directories):**
-- `opennms-model/` — Domain model
-- `opennms-dao/`, `opennms-dao-api/` — Data access
-- `opennms-config/`, `opennms-config-api/`, `opennms-config-model/`, `opennms-config-jaxb/` — Configuration
-- `opennms-services/` — Core services
-- `opennms-provision/` — Provisioning
-- `opennms-webapp-rest/` — REST API
-- `opennms-web-api/` — Web API layer
-- `opennms-webapp/` — Legacy JSP webapp
-- `opennms-full-assembly/` — Final Horizon assembly
+### Runtime Architecture (Delta-V)
 
-### Runtime Architecture
+Delta-V runs as **independent Spring Boot daemon microservices**, not the Karaf-embedded
+monolith. Each daemon (`core/daemon-boot-*`: alarmd, bsmd, collectd, discovery, enlinkd,
+eventtranslator, perspectivepollerd, pollerd, provisiond, syslogd, telemetryd, trapd) is its
+own Docker image with its own Spring context, datasource, and Kafka consumers. They are wired
+together only by **Kafka** (events, RPC, sink, time-series) and **PostgreSQL** — there is no
+shared in-process container.
 
-OpenNMS embeds Apache Karaf (4.3.10) as an OSGi container. Karaf is embedded *above* the legacy webapp in the Spring context hierarchy, so the core is pre-initialized before Karaf extends it. New features should be written as OSGi bundles loaded via Karaf feature files.
+Deployable images: the per-daemon services above + `minion-gateway` (gRPC ingress translator
+for Minions) + Minion + `db-init` (Liquibase migration) + auxiliaries (clickhouse, grafana,
+prometheus-writer, flow-enricher, mock-snmp-agent, nl6 simulator, etc.). Orchestrated by
+`deploy/compose.yml` with profiles `active|passive|full|demo`.
 
-**Karaf feature files** are in `container/features/src/main/resources/`:
-- `features.xml` — Main features
-- `features-core.xml` — Core/third-party base features
-- `features-minion.xml` — Minion features
-- `features-sentinel.xml` — Sentinel features
-
-**Three deployable artifacts:** Horizon (core), Minion (distributed data collection), Sentinel (high-availability event processing).
+> Karaf, OSGi bundles, `container/features/*.xml`, and the embedded webapp are upstream-Horizon
+> constructs and are not part of delta-v's runtime. New code is a Spring `@Configuration`/`@Bean`
+> in the relevant daemon, not an OSGi blueprint/feature.
 
 ### Key Technology Stack
+
+Delta-V stack (where it diverges from upstream Horizon, the divergence is called out):
 
 | Layer | Technology |
 |-------|-----------|
 | Language | Java 21 |
 | Build | Maven wrapper (`./mvnw`), `make` front door |
-| OSGi Container | Apache Karaf 4.3.10 |
-| Web Framework | Spring 4.2.x (OpenNMS-patched fork), Spring Security 4.2.x (patched) |
-| ORM | Hibernate 3.6.11 (OpenNMS build) |
-| REST | Apache CXF 3.6.8 |
-| Messaging | Apache ActiveMQ 5.16.8, Apache Kafka 3.6.2 |
-| Integration | Apache Camel 2.21.5 |
-| Time-Series | Newts 3.0.0 (Cassandra-backed), RRDtool via JRRD2 |
-| Servlet Container | Jetty 9.4.x (embedded) |
-| Database | PostgreSQL (Liquibase 3.6.3 for schema) |
+| Daemon runtime | **Spring Boot 4** microservices (no Karaf/OSGi) |
+| ORM | **Hibernate 7 / `jakarta.persistence`** (entities in `opennms-model-jakarta`) |
+| Messaging | **Apache Kafka** (no ActiveMQ) — events, RPC, sink, time-series |
+| Minion transport | Kafka, plus **gRPC** for minion-gateway↔Minion |
+| Time-Series | **Prometheus / VictoriaMetrics** + **ClickHouse** (flows) — no Newts/RRD |
+| Database | PostgreSQL 16 (db `deltav`), Liquibase schema via `db-init` |
+| REST | Apache CXF / JAX-RS |
+| Config serialization | **Jackson `XmlMapper`** for daemon config (not JAXB) |
 | Frontend | Vue 3 + TypeScript + Vite + Pinia, Feather Design System |
-| Serialization | Jackson 2.16.2, Protobuf 3.25.5, JAXB 2.3.3, gRPC 1.75.0 |
+| Serialization | Jackson, Protobuf, gRPC |
+| Horizon dependency | pre-built JARs from `pbrane/delta-v-horizon` (`deltav.horizon.version`) |
 
-### Frontend (ui/)
+### Frontend
 
-The modern UI is a Vue 3 SPA in `ui/` built with:
-- **Package manager:** pnpm (enforced, version 10.24.0)
-- **Build tool:** Vite
-- **Component library:** Feather Design System
-- **State:** Pinia
-- **Visualization:** D3, Chart.js, Leaflet
-- **Tests:** Vitest + Vue Test Utils + Happy-DOM
-
-The UI also has a `menu/` sub-build that provides embeddable Vue components for legacy JSP pages. Build output goes to `src/main/dist/` and `src/menu/dist-menu/`.
+This reactor is the backend microservices; there is **no `ui/` module here**. The Vue 3 SPA
+(pnpm + Vite + Pinia + Feather Design System) lives in the upstream Horizon source
+(`pbrane/delta-v-horizon`); observability in delta-v is primarily Grafana over
+Prometheus/VictoriaMetrics + ClickHouse.
 
 ## Testing
 
-- **Unit tests:** JUnit 4 (primary) + JUnit 5 (with Vintage engine for compatibility)
-- **Mocking:** Mockito 3.12.4, PowerMock 2.0.9
-- **BDD:** Spock 2.3 (Groovy)
-- **Integration tests:** Testcontainers 1.19.7, Maven Failsafe plugin
-- **Coverage:** JaCoCo 0.8.9
-- **UI tests:** Vitest
+- **delta-v modules:** JUnit 5 + Mockito + AssertJ; integration tests via **Testcontainers**
+  (`@SpringBootTest @Testcontainers` against a real `postgres` container).
+- **E2E:** `deploy/test-*-e2e.sh` drive the running compose stack (psql to the `deltav` DB).
+  These are NOT a back-to-back suite — run them individually on a lean stack (some self-`down -v`).
+- (Upstream horizon JARs still carry JUnit 4 / PowerMock; delta-v code does not.)
 
-Run all tests for a module:
 ```bash
-./mvnw --projects :opennms-dao -am verify
-```
-
-Run integration tests:
-```bash
-# Integration tests (Failsafe) for a module
-./mvnw --projects :opennms-dao -am failsafe:integration-test failsafe:verify
+make test                                              # all reactor tests
+make test-class MODULE=:org.opennms.core.daemon-boot-pollerd TEST=SomeTest
+./mvnw -o -pl core/db-init test                        # one module's tests (incl. Testcontainers IT)
 ```
 
 ## Branching Model
 
-- `develop` — next major release (default branch)
-- `release-XX.x` — Horizon release branches
-- `foundation-YYYY` — foundation branches for Meridian
-- CI auto-merges forward: `foundation-YYYY` → `release-XX.x` → `develop`
-- Tags: `opennms-XX.X.X-1` for Horizon releases
+- `develop` — default branch; all work merges here via PR.
+- **Feature branches + PRs only — never commit directly to `develop`.** `git pull develop`
+  before branching. PRs target `--repo pbrane/delta-v --base develop` (see the Git Remote rule).
+- **Conventional Commits** referencing GitHub issues (e.g. `fix(db-init): … (#243)`).
+- Release tags are on delta-v's own `v1.x` line (e.g. `v1.3.0`), not upstream's `opennms-XX.X.X`.
+
+> Upstream's `release-XX.x` / `foundation-YYYY` branches and CI forward-merge do not apply here.
 
 ## Key Conventions
 
-- Spring beans use **constructor injection** (not `@Autowired` field injection)
-- Configuration uses **JAXB** for XML serialization of config model objects
-- REST endpoints use **CXF/JAX-RS** annotations
-- OSGi services registered via **Karaf blueprint** or **SCR annotations**
-- The Maven Enforcer Plugin bans certain dependencies (e.g., `commons-logging` — use `slf4j-api` instead). Fix violations by adding `<exclusions>` and using the approved alternative
-- Commit messages should reference JIRA issues: `NMS-XXXXX: description`
+- Spring beans use **constructor injection** (not `@Autowired` field injection).
+- Daemon config: **Jackson `XmlMapper`**, not JAXB (see invariants above).
+- REST endpoints use **CXF / JAX-RS** annotations.
+- New code registers via Spring `@Configuration`/`@Bean` (no Karaf blueprint / OSGi SCR).
+- Config property keys are **daemon-scoped** (`deltav.<daemon>.<feature>.<knob>`); shared keys
+  create coupling. Kafka topics and schemas are shared by design; feature flags are not.
+- The Maven Enforcer Plugin bans some deps (e.g. `commons-logging` — use `slf4j-api`). Fix
+  violations with `<exclusions>` + the approved alternative.
 
 ## CI/CD
 
-CircleCI with dynamic configuration. Path-based filtering determines which jobs run:
-- `ui/.*` triggers UI build
-- `docs/.*` triggers docs build
-- Source changes trigger full build
+**GitHub Actions** (`.github/workflows/`): `ci.yml` (build/test), `delta-v-build-images.yml`
+(calls `make images` to build/publish the Docker images), `codeql-analysis.yml`, `labeler.yml`.
 
-Smoke tests run in containers. Debug Karaf failures by checking `karaf.log` in CI artifacts and searching for "exception" — read OSGi resolution errors backwards from the end of "Unable to resolve root" lines.
+Daemons are Spring Boot apps — debug a failed boot from the container logs
+(`make logs SVC=<daemon>` or CI artifacts), not Karaf's `karaf.log`/OSGi resolution errors.
