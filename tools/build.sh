@@ -45,10 +45,19 @@ DAEMON_NAMES="alarmd bsmd collectd discovery enlinkd eventtranslator perspective
 # consumer's overlay at image-build time (per-daemon copies are git-ignored).
 CATALOG_CONSUMERS="pollerd perspectivepollerd"
 
-# shellcheck disable=SC1091
-. "$SCRIPT_DIR/version.sh"
-deltav_resolve_version
-deltav_sync_env_version
+# Daemons that consume the SNMP peer configuration. The single source of truth
+# is committed at overlays/shared/etc/snmp-config.xml and staged into each
+# consumer's overlay at image-build time (per-daemon copies are git-ignored).
+SNMP_CONSUMERS="collectd pollerd provisiond enlinkd perspectivepollerd"
+
+# Resolve the build version only when executed directly (not when sourced by a
+# test). Sourcing build.sh then exposes its functions without side effects.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    # shellcheck disable=SC1091
+    . "$SCRIPT_DIR/version.sh"
+    deltav_resolve_version
+    deltav_sync_env_version
+fi
 
 log() { echo "==> $*"; }
 err() { echo "ERROR: $*" >&2; exit 1; }
@@ -66,6 +75,22 @@ stage_shared_poller_catalog() {
         mkdir -p "$DEPLOY_DIR/overlays/$name/etc"
         cp "$shared" "$DEPLOY_DIR/overlays/$name/etc/poller-services.yaml"
         log "  staged shared poller catalog -> overlays/$name/etc/poller-services.yaml"
+    done
+}
+
+# Stage the single shared SNMP peer configuration into each SNMP-consuming
+# daemon's overlay (overlays/<daemon>/etc/snmp-config.xml) so the per-daemon
+# Docker COPY and the Dockerfile lint stage pick it up. The destination files
+# are git-ignored generated artifacts; overlays/shared/etc/snmp-config.xml is
+# the committed source of truth. Idempotent — safe to run before every build.
+stage_shared_snmp_config() {
+    local shared="$DEPLOY_DIR/overlays/shared/etc/snmp-config.xml"
+    [ -f "$shared" ] || err "shared snmp config not found: $shared"
+    local name
+    for name in $SNMP_CONSUMERS; do
+        mkdir -p "$DEPLOY_DIR/overlays/$name/etc"
+        cp "$shared" "$DEPLOY_DIR/overlays/$name/etc/snmp-config.xml"
+        log "  staged shared snmp config -> overlays/$name/etc/snmp-config.xml"
     done
 }
 
@@ -380,6 +405,10 @@ do_deltav_images() {
     # before the per-daemon COPY/lint runs.
     stage_shared_poller_catalog
 
+    # Stage the shared SNMP peer config into every SNMP-consuming daemon overlay
+    # before the per-daemon COPY/lint runs.
+    stage_shared_snmp_config
+
     # Phase 2: Build daemon-base image
     log "Building ${IMAGE_PREFIX}/daemon-base:$VERSION..."
     build_image daemon-base --no-cache \
@@ -556,6 +585,10 @@ do_single_daemon_image() {
     # perspectivepollerd bakes the current catalog (and lints it).
     stage_shared_poller_catalog
 
+    # Stage the shared SNMP peer config so a single-daemon rebuild of an
+    # SNMP-consuming daemon bakes the current config (and lints it).
+    stage_shared_snmp_config
+
     # compute-shared-libs.sh re-derives the shared/unique library split — it
     # needs every daemon's fat JAR present — and repopulates staging/. This is
     # unzip/copy work, not a compile.
@@ -664,4 +697,8 @@ main() {
     esac
 }
 
-main "$@"
+# Run the CLI dispatcher only when executed directly; sourcing (e.g. from a
+# test) loads the functions above without invoking a build.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    main "$@"
+fi
