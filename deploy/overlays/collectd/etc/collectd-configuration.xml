@@ -28,36 +28,6 @@
          <parameter key="password" value="${requisition:cassandra-pass|cassandra-password}" />
       </service>
    </package>
-   <package name="vmware6" remote="false">
-      <filter>(IPADDR != '0.0.0.0') &amp; (categoryName == 'VMware6')</filter>
-      <service name="VMware-VirtualMachine" interval="300000" user-defined="false" status="on">
-         <parameter key="collection" value="${requisition:collection|detector:collection|default-VirtualMachine6}" />
-         <parameter key="thresholding-enabled" value="true" />
-      </service>
-      <service name="VMware-HostSystem" interval="300000" user-defined="false" status="on">
-         <parameter key="collection" value="${requisition:collection|detector:collection|default-HostSystem6}" />
-         <parameter key="thresholding-enabled" value="true" />
-      </service>
-      <service name="VMwareCim-HostSystem" interval="300000" user-defined="false" status="on">
-         <parameter key="collection" value="${requisition:collection|detector:collection|default-ESX-HostSystem}" />
-         <parameter key="thresholding-enabled" value="true" />
-      </service>
-   </package>
-   <package name="vmware7" remote="false">
-      <filter>(IPADDR != '0.0.0.0') &amp; (categoryName == 'VMware7')</filter>
-      <service name="VMware-VirtualMachine" interval="300000" user-defined="false" status="on">
-         <parameter key="collection" value="${requisition:collection|detector:collection|default-VirtualMachine7}" />
-         <parameter key="thresholding-enabled" value="true" />
-      </service>
-      <service name="VMware-HostSystem" interval="300000" user-defined="false" status="on">
-         <parameter key="collection" value="${requisition:collection|detector:collection|default-HostSystem7}" />
-         <parameter key="thresholding-enabled" value="true" />
-      </service>
-      <service name="VMwareCim-HostSystem" interval="300000" user-defined="false" status="on">
-         <parameter key="collection" value="${requisition:collection|detector:collection|default-ESX-HostSystem}" />
-         <parameter key="thresholding-enabled" value="true" />
-      </service>
-   </package>
    <package name="opennms" remote="false">
       <filter>IPADDR != '0.0.0.0'</filter>
       <include-range begin="1.1.1.1" end="254.254.254.254" />
@@ -132,10 +102,6 @@
          <parameter key="collection" value="${requisition:collection|detector:collection|default}" />
          <parameter key="thresholding-enabled" value="true" />
       </service>
-      <service name="WMI" interval="300000" user-defined="false" status="off">
-         <parameter key="collection" value="${requisition:collection|detector:collection|default}" />
-         <parameter key="thresholding-enabled" value="true" />
-      </service>
       <service name="WS-Man" interval="300000" user-defined="false" status="on">
          <parameter key="collection" value="${requisition:collection|detector:collection|default}" />
          <parameter key="thresholding-enabled" value="true" />
@@ -172,11 +138,7 @@
    <collector service="Elasticsearch" class-name="org.opennms.protocols.xml.collector.XmlCollector" />
    <collector service="PostgreSQL" class-name="org.opennms.netmgt.collectd.JdbcCollector" />
    <collector service="SNMP" class-name="org.opennms.netmgt.collectd.SnmpCollector" />
-   <collector service="WMI" class-name="org.opennms.netmgt.collectd.WmiCollector" />
    <collector service="WS-Man" class-name="org.opennms.netmgt.collectd.WsManCollector" />
-   <collector service="VMware-VirtualMachine" class-name="org.opennms.netmgt.collectd.VmwareCollector" />
-   <collector service="VMware-HostSystem" class-name="org.opennms.netmgt.collectd.VmwareCollector" />
-   <collector service="VMwareCim-HostSystem" class-name="org.opennms.netmgt.collectd.VmwareCimCollector" />
    <collector service="OpenNMS-JVM" class-name="org.opennms.netmgt.collectd.Jsr160Collector" />
    <collector service="JMX-Minion" class-name="org.opennms.netmgt.collectd.Jsr160Collector" />
    <collector service="JMX-Cassandra" class-name="org.opennms.netmgt.collectd.Jsr160Collector" />
