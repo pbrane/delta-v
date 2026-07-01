@@ -1,5 +1,12 @@
 <datacollection-config xmlns="http://xmlns.opennms.org/xsd/config/datacollection" rrdRepository="${install.share.dir}/rrd/snmp/">
    <snmp-collection name="default" snmpStorageFlag="select">
+      <!-- The rrdRepository attribute (root element, above) and this <rrd>/<rra>
+           block are REQUIRED by datacollection-config.xsd (opennms-config-jaxb),
+           but inert under delta-v's Kafka -> VictoriaMetrics persistence: nothing
+           on the live path reads them (sample timestamps come from the collection
+           time, not the RRD step). Kept only to satisfy the schema-validating
+           unmarshaller. Removable once delta-v-horizon#26 relaxes the schema
+           (rrdRepository -> optional, snmp-collection/rrd -> minOccurs=0). -->
       <rrd step="300">
          <rra>RRA:AVERAGE:0.5:1:2016</rra>
          <rra>RRA:AVERAGE:0.5:12:1488</rra>
