@@ -37,20 +37,16 @@
          <parameter key="port" value="${requisition:port|detector:port|18980}" />
          <parameter key="retry" value="${requisition:collector-retry|requisition:retry|detector:retry|2}" />
          <parameter key="timeout" value="${requisition:collector-timeout|requisition:timeout|detector:timeout|3000}" />
-         <parameter key="rrd-base-name" value="java" />
          <parameter key="collection" value="${requisition:collection|detector:collection|jsr160}" />
          <parameter key="thresholding-enabled" value="true" />
-         <parameter key="ds-name" value="opennms-jvm" />
          <parameter key="friendly-name" value="${requisition:friendly-name|detector:friendly-name|opennms-jvm}" />
       </service>
       <service name="JMX-Minion" interval="300000" user-defined="false" status="on">
          <parameter key="port" value="${requisition:port|detector:port|18980}" />
          <parameter key="retry" value="${requisition:collector-retry|requisition:retry|detector:retry|2}" />
          <parameter key="timeout" value="${requisition:collector-timeout|requisition:timeout|detector:timeout|3000}" />
-         <parameter key="rrd-base-name" value="java" />
          <parameter key="collection" value="${requisition:collection|detector:collection|jmx-minion}" />
          <parameter key="thresholding-enabled" value="true" />
-         <parameter key="ds-name" value="jmx-minion" />
          <parameter key="friendly-name" value="${requisition:friendly-name|detector:friendly-name|jmx-minion}" />
          <parameter key="use-foreign-id-as-system-id" value="${requisition:use-foreign-id-as-system-id|detector:use-foreign-id-as-system-id|true}" />
       </service>
@@ -58,10 +54,8 @@
          <parameter key="port" value="${requisition:kafka-port|9999}" />
          <parameter key="retry" value="${requisition:collector-retry|requisition:retry|detector:retry|2}" />
          <parameter key="timeout" value="${requisition:collector-timeout|requisition:timeout|detector:timeout|3000}" />
-         <parameter key="rrd-base-name" value="java" />
          <parameter key="collection" value="${requisition:collection|detector:collection|jmx-kafka}" />
          <parameter key="thresholding-enabled" value="true" />
-         <parameter key="ds-name" value="jmx-kafka" />
          <parameter key="friendly-name" value="${requisition:friendly-name|detector:friendly-name|jmx-kafka}" />
       </service>
       <service name="OpenNMS-DB" interval="300000" user-defined="false" status="on">
