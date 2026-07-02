@@ -1,33 +1,4 @@
 <collectd-configuration xmlns="http://xmlns.opennms.org/xsd/config/collectd" threads="50">
-   <package name="cassandra-via-jmx" remote="false">
-      <filter>IPADDR != '0.0.0.0'</filter>
-      <service name="JMX-Cassandra" interval="300000" user-defined="false" status="on">
-         <parameter key="port" value="${requisition:port|detector:port|7199}" />
-         <parameter key="retry" value="${requisition:collector-retry|requisition:retry|detector:retry|2}" />
-         <parameter key="timeout" value="${requisition:collector-timeout|requisition:timeout|detector:timeout|3000}" />
-         <parameter key="protocol" value="${requisition:protocol|detector:protocol|rmi}" />
-         <parameter key="urlPath" value="${requisition:urlPath|detector:urlPath|/jmxrmi}" />
-         <parameter key="collection" value="${requisition:collection|detector:collection|jmx-cassandra30x}" />
-         <parameter key="friendly-name" value="${requisition:friendly-name|detector:friendly-name|cassandra}" />
-         <parameter key="thresholding-enabled" value="true" />
-         <parameter key="factory" value="${requisition:factory|detector:factory|PASSWORD_CLEAR}" />
-         <parameter key="username" value="${requisition:cassandra-user|cassandra-username}" />
-         <parameter key="password" value="${requisition:cassandra-pass|cassandra-password}" />
-      </service>
-      <service name="JMX-Cassandra-Newts" interval="300000" user-defined="false" status="on">
-         <parameter key="port" value="${requisition:port|detector:port|7199}" />
-         <parameter key="retry" value="${requisition:collector-retry|requisition:retry|detector:retry|2}" />
-         <parameter key="timeout" value="${requisition:collector-timeout|requisition:timeout|detector:timeout|3000}" />
-         <parameter key="protocol" value="${requisition:protocol|detector:protocol|rmi}" />
-         <parameter key="urlPath" value="${requisition:urlPath|detector:urlPath|/jmxrmi}" />
-         <parameter key="collection" value="${requisition:collection|detector:collection|jmx-cassandra30x-newts}" />
-         <parameter key="friendly-name" value="${requisition:friendly-name|detector:friendly-name|cassandra-newts}" />
-         <parameter key="thresholding-enabled" value="true" />
-         <parameter key="factory" value="${requisition:factory|detector:factory|PASSWORD_CLEAR}" />
-         <parameter key="username" value="${requisition:cassandra-user|cassandra-username}" />
-         <parameter key="password" value="${requisition:cassandra-pass|cassandra-password}" />
-      </service>
-   </package>
    <package name="nl6-lab" remote="false">
       <filter>IPADDR != '0.0.0.0'</filter>
       <include-range begin="10.0.0.1" end="10.0.0.255"/>
@@ -60,10 +31,6 @@
         scrapes (JMX, JDBC, Prometheus node/windows exporters, Elasticsearch, WS-Man)
         do NOT run through collectd — they flow via /actuator/prometheus -> Kafka ->
         VictoriaMetrics. Only register a <collector> whose class is actually bundled in
-        the collectd image, or collectd will log "class ... not available" and skip it.
-        The JMX-Cassandra entries below are the last non-SNMP holdover and are retired
-        separately on the chore/collectd-rrd-amputation branch, not here. -->
+        the collectd image, or collectd will log "class ... not available" and skip it. -->
    <collector service="SNMP" class-name="org.opennms.netmgt.collectd.SnmpCollector" />
-   <collector service="JMX-Cassandra" class-name="org.opennms.netmgt.collectd.Jsr160Collector" />
-   <collector service="JMX-Cassandra-Newts" class-name="org.opennms.netmgt.collectd.Jsr160Collector" />
 </collectd-configuration>
