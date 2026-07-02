@@ -184,11 +184,6 @@ services:
     parameters:
       service-name: "${requisition:service-name|detector:service-name|Task Scheduler}"
 
-  # NOTE: VMware monitors (VmwareCimMonitor / VmwareMonitor) are intentionally absent.
-  # delta-v does not bundle the vmware integration module, so those classes are not on
-  # the classpath and cannot be polled. If VMware support is ever added, reintroduce the
-  # module and the catalog entries together.
-
   - name: MS-RDP
     monitor: org.opennms.netmgt.poller.monitors.TcpMonitor
     interval: 300000
