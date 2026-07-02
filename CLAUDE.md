@@ -18,9 +18,9 @@ gh pr create ...  # defaults to OpenNMS/opennms
 
 Delta-V is a **microservice-mode** re-architecture of OpenNMS Horizon. The monolith and
 Apache Karaf are **gone** — the platform runs as independent Spring Boot daemon services
-orchestrated by docker-compose. Significant parts of the "legacy" guidance further down
-(Karaf, JAXB config, ActiveMQ/JMS, the `bin/opennms` monolith, CircleCI, JIRA) describe
-**upstream Horizon** and do **not** apply to delta-v code.
+orchestrated by docker-compose. Anything you may recall from upstream Horizon that involves
+Karaf/OSGi, JAXB config, ActiveMQ/JMS, the `bin/opennms` monolith, CircleCI, or JIRA describes
+**upstream Horizon only** and does **not** apply to delta-v code.
 
 **Architecture invariants:**
 - **No Karaf / OSGi.** Daemons are Spring Boot 4 microservices (`core/daemon-boot-*`), one
@@ -53,10 +53,11 @@ orchestrated by docker-compose. Significant parts of the "legacy" guidance furth
 ## Project Overview
 
 Delta-V (`pbrane/delta-v`) is a microservice-mode fork of OpenNMS Horizon, an enterprise-grade
-open-source network monitoring platform, licensed under AGPL v3. The Maven reactor inherits
-Horizon's `36.0.0-SNAPSHOT` version; the deployable Docker images are versioned on delta-v's own
-`1.x` line. **Java 21 required** (`<java.version>21</java.version>` in root `pom.xml` and every
-`core/*` module pom).
+open-source network monitoring platform, licensed under AGPL v3. The reactor and the deployable
+Docker images share delta-v's own `1.x` version line (`org.deltav:delta-v-parent`, currently
+`1.3.0`); upstream Horizon is consumed only as pre-built JARs at `deltav.horizon.version`
+(currently `1.0.19`). **Java 21 required** (`<java.version>21</java.version>` in root `pom.xml`
+and every `core/*` module pom).
 
 ## Build Commands
 
@@ -115,21 +116,23 @@ scratch, `make down` with volume removal (`docker compose --profile <p> down -v`
 
 ### Module Organization
 
-Delta-V is a **slim reactor (~34 modules)** — the bulk of OpenNMS Horizon (the `opennms-*`,
-`features/`, `container/`, `dependencies/` trees) lives in the separate `pbrane/delta-v-horizon`
-repo and is consumed here as **pre-built JARs** (`deltav.horizon.version`). The delta-v-owned code:
+Delta-V is a **slim reactor (33 modules, all under `core/`)** — the bulk of OpenNMS Horizon
+(the `opennms-*`, `features/`, `container/`, `dependencies/` trees) lives in the separate
+`pbrane/delta-v-horizon` repo and is consumed here as **pre-built JARs** (`deltav.horizon.version`).
+The delta-v-owned code (the module list below is representative, not exhaustive):
 
-- `core/` — every delta-v module:
+- `core/` — the delta-v modules:
   - `daemon-boot-*` (14) — the Spring Boot daemon apps: alarmd, bsmd, collectd, discovery,
     enlinkd, eventtranslator, perspectivepollerd, pollerd, provisiond, syslogd, telemetryd, trapd,
     plus `daemon-boot-minion` / `-minion-common`.
-  - `daemon-common`, `daemon-registry`, `daemon-sink-kafka`, `dao-jpa-support` — shared daemon infra.
+  - `daemon-common`, `daemon-registry`, `daemon-sink-kafka`, `dao-jpa-support`,
+    `poller-service-catalog`, `poller-timeseries-common` — shared daemon / poller infra.
   - `minion-gateway`, `minion-grpc-contracts`, `deltav-kafka-contracts` — Minion gRPC ingress + contracts.
   - `opennms-model-jakarta` — `jakarta.persistence` entity model.
   - `db-init` — Liquibase schema migrator (runs as a container).
   - `flow-enricher`, `alarms-materializer`, `alarms-kafka-publisher`, `alerts-forwarder`,
-    `node-context-consumer`, `event-forwarder-kafka`, `horizon-metric-bridge` — standalone
-    Spring Cloud Stream / bridge services.
+    `node-context-consumer`, `event-forwarder-kafka`, `horizon-metric-bridge`, `prometheus-writer`
+    — standalone Spring Cloud Stream / bridge services.
 - `deploy/` — `compose.yml`, per-daemon `overlays/`, Dockerfiles, and the `test-*-e2e.sh` E2E scripts.
 - `tools/` — `build.sh` / `deploy.sh` / `doctor.sh` (the engines invoked by `make`).
 - `components/` — auxiliary image sources; `docs/` — architecture docs and plans.
@@ -168,16 +171,17 @@ Delta-V stack (where it diverges from upstream Horizon, the divergence is called
 | Database | PostgreSQL 16 (db `deltav`), Liquibase schema via `db-init` |
 | REST | Apache CXF / JAX-RS |
 | Config serialization | **Jackson `XmlMapper`** for daemon config (not JAXB) |
-| Frontend | Vue 3 + TypeScript + Vite + Pinia, Feather Design System |
 | Serialization | Jackson, Protobuf, gRPC |
+| Operator surface | **No in-reactor UI** — Grafana over Prometheus/VictoriaMetrics + ClickHouse; per-daemon Spring Boot Actuator |
 | Horizon dependency | pre-built JARs from `pbrane/delta-v-horizon` (`deltav.horizon.version`) |
 
-### Frontend
+### Operator Surface (no frontend)
 
-This reactor is the backend microservices; there is **no `ui/` module here**. The Vue 3 SPA
-(pnpm + Vite + Pinia + Feather Design System) lives in the upstream Horizon source
-(`pbrane/delta-v-horizon`); observability in delta-v is primarily Grafana over
-Prometheus/VictoriaMetrics + ClickHouse.
+Delta-V has **no frontend** — there is no `ui/` module and no Vue/Vite/Pinia stack anywhere in
+the repo. The whole SPA (and the legacy JSP webapp) was dropped in the microservice
+re-architecture. The operator-facing surface is **Grafana** dashboards over
+Prometheus/VictoriaMetrics + ClickHouse, plus each daemon's **Spring Boot Actuator** endpoints
+(health, metrics) — not a bundled web UI.
 
 ## Testing
 
