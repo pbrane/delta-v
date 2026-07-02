@@ -120,6 +120,16 @@ deploy/overlays/provisiond/etc/imports/*
 deploy/overlays/pollerd/etc/poller-services.yaml
 deploy/overlays/perspectivepollerd/etc/poller-services.yaml
 
+# SNMP peer configuration — the single source of truth is committed at
+# overlays/shared/etc/snmp-config.xml; build.sh stages a copy into each
+# SNMP-consuming daemon's overlay at image-build time. Those copies are
+# generated, never committed (see tools/build.sh stage_shared_snmp_config).
+deploy/overlays/collectd/etc/snmp-config.xml
+deploy/overlays/pollerd/etc/snmp-config.xml
+deploy/overlays/provisiond/etc/snmp-config.xml
+deploy/overlays/enlinkd/etc/snmp-config.xml
+deploy/overlays/perspectivepollerd/etc/snmp-config.xml
+
 # C4 diagram export tooling (npm deps)
 docs/architecture/c4/scripts/node_modules/
 # Structurizr Lite regenerable artifacts (layout cache + compiled workspace)
