@@ -13,7 +13,7 @@ actual telemetry workload (flows) travels a pipeline that **bypasses telemetryd
 entirely**:
 
 ```
-Minion (UDP listener) ──gRPC──> minion-gateway ──Kafka──> flow-enricher ──> ClickHouse
+Minion (UDP listener) ──gRPC──> minion-gateway ──Kafka──> flow-enricher ──Kafka──> ClickHouse (Kafka engine)
 ```
 
 Telemetryd remains deployed as an extension seat for protocols that need event/metric
@@ -62,7 +62,8 @@ persist). Delta-V keeps the conceptual model but redistributes it across contain
 - **flow-enricher** consumes all four `DeltaV.Sink.Telemetry-*` topics through one
   Spring Cloud Stream binding and does the actual parsing via per-protocol
   `ProtocolMessageProcessor`s (Netflow-5/9, IPFIX, SFlow), enriches with node context,
-  and writes flow documents to `deltav-flows` (ClickHouse ingestion).
+  and publishes serialized `FlowDocument` protobufs to `deltav-flows` (one Kafka record
+  per document, via `use-native-encoding: true`).
 - **telemetryd** (`core/daemon-boot-telemetryd`) holds the same *capability*: its
   `TelemetryMessageConsumerManager` spawns one `KafkaSinkBridge` (a dedicated
   `KafkaConsumer` thread) per **enabled** queue, unwraps `SinkMessage`, and dispatches
@@ -77,6 +78,36 @@ persist). Delta-V keeps the conceptual model but redistributes it across contain
   wired because OpenConfig is a *connector* (daemon-initiated subscription) rather than
   a listener; Twin is how connector config would reach a Minion while honoring the
   Minion-mandatory I/O invariant.
+
+### 4. ClickHouse — Kafka-engine persistence (no Java persister)
+
+The consumer of the enriched `deltav-flows` topic is **ClickHouse itself**, not a
+deployable service. Delta-V declares it as SQL DDL shipped in the ClickHouse image's
+init scripts (`components/clickhouse/init/`, applied by `init-runner.sh`):
+
+- `03-flows-kafka.sql` creates `deltav.flows_kafka` with `ENGINE = Kafka` — the table
+  *is* a Kafka consumer: topic `deltav-flows`, consumer group
+  `deltav-clickhouse-persister`, `kafka_num_consumers = 2`, format `ProtobufSingle`
+  decoded against `deltav-flows.proto:FlowDocument`, and
+  `kafka_skip_broken_messages = 100` so a malformed record cannot wedge ingestion.
+- `20-flows-ingest.sql` creates the materialized view `deltav.flows_ingest TO
+  deltav.flows_raw`. In ClickHouse, an MV attached to a Kafka-engine table is what
+  actually drives consumption: it continuously reads `flows_kafka` and inserts **by
+  position** into the `flows_raw` MergeTree storage table.
+- Per-dimension rollup MVs (`10-mv-application`, `11-mv-source-ip`,
+  `12-mv-conversation`, `13-mv-dscp`) aggregate from `flows_raw` for the Grafana
+  dashboards.
+
+Consequences of this design:
+
+- **The Java pipeline ends at Kafka.** flow-enricher's contract is "put valid
+  `FlowDocument` protobufs on `deltav-flows`"; everything downstream is
+  ClickHouse-internal. There is no persister service to build, deploy, or monitor.
+- **Schema changes are a three-way sync**: the `FlowDocument` proto, the `flows_kafka`
+  column declarations, and the positional `SELECT` in `flows_ingest` must agree. The
+  migration pattern is DROP+recreate of both objects (see the comments in
+  `03-flows-kafka.sql`) — safe because both are stateless and the consumer group
+  resumes from its committed offset, so no messages are lost.
 
 ## Protocol-to-protocol coupling
 
@@ -183,6 +214,10 @@ These matter to the pipeline because they feed the SCS-consumed topics:
   - telemetryd's `KafkaSinkBridge` is a raw `KafkaConsumer` with a single shared group
     (`opennms-telemetryd-sink`). Multiple telemetryd replicas would divide partitions,
     but since all adapters are disabled there is nothing to scale today.
+  - The ClickHouse persister is not a service at all: it is the `flows_kafka`
+    Kafka-engine table. It scales via the `kafka_num_consumers` setting (currently 2,
+    bounded by the topic's partition count, i.e. 4) — a ClickHouse DDL change, not a
+    replica count.
   - The Minion listener itself scales by deploying more Minions per location (UDP
     fan-in is an exporter-side concern), not by consumer groups.
 
@@ -196,7 +231,8 @@ flowchart LR
     MIN -->|"gRPC TelemetryService (per-protocol bidi methods)"| GW[minion-gateway TelemetryGrpcService]
     GW -->|"DeltaV.Sink.Telemetry-* (SinkMessage, key = location@minion)"| K[(Kafka)]
     K -->|"SCS group deltav-flow-enricher"| FE[flow-enricher xN]
-    FE -->|deltav-flows| CH[(ClickHouse)]
+    FE -->|"deltav-flows (FlowDocument protobuf)"| K
+    K -->|"Kafka engine: flows_kafka, group deltav-clickhouse-persister"| CH[(ClickHouse flows_ingest MV -> flows_raw)]
     K -.->|"disabled queues"| TD[telemetryd - vestigial bridge]
     PROV[provisiond] -->|deltav-node-context| K
     K --> NCC[node-context-consumer] -.->|node context| FE
